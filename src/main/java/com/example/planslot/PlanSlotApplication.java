@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class PlanSlotApplication {
 
-    // dkssuadadks
+    // D
     public static void main(String[] args) {
         SpringApplication.run(PlanSlotApplication.class, args);
     }

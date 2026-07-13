@@ -3,22 +3,25 @@ package com.example.planslot.board.service;
 import com.example.planslot.board.dto.BoardDTO;
 import com.example.planslot.board.dto.BoardImageDTO;
 import com.example.planslot.board.entity.Board;
-import com.example.planslot.board.entity.BoardCommentStatus;
 import com.example.planslot.board.entity.BoardImage;
 import com.example.planslot.board.entity.BoardStatus;
 import com.example.planslot.board.entity.BoardType;
+import com.example.planslot.board.entity.BoardCommentStatus;
 import com.example.planslot.board.repository.BoardCommentRepository;
 import com.example.planslot.board.repository.BoardImageRepository;
 import com.example.planslot.board.repository.BoardRepository;
 import com.example.planslot.member.entity.Member;
 import com.example.planslot.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -35,6 +38,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -45,8 +49,8 @@ public class BoardServiceImpl implements BoardService {
 
     private final BoardRepository boardRepository;
     private final BoardImageRepository boardImageRepository;
-    private final BoardCommentRepository boardCommentRepository;
     private final MemberRepository memberRepository;
+    private final BoardCommentRepository boardCommentRepository;
 
     @Value("${file.upload.board-path:./uploads/board}")
     private String boardUploadPath;
@@ -74,6 +78,7 @@ public class BoardServiceImpl implements BoardService {
     @Override
     public Page<BoardDTO> getBoardList(BoardType boardType, String keyword, Pageable pageable) {
         String searchKeyword = normalizeKeyword(keyword);
+
         Page<Board> boardPage;
 
         if (searchKeyword == null) {
@@ -100,9 +105,12 @@ public class BoardServiceImpl implements BoardService {
     @Override
     @Transactional
     public BoardDTO getBoardDetail(Long boardId) {
-        Board board = findBoard(boardId);
+        int updatedCount = boardRepository.increaseViewCount(boardId, BoardStatus.ACTIVE);
+        if (updatedCount == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
+        }
 
-        board.increaseViewCount();
+        Board board = findBoard(boardId);
 
         return toDetailDTO(board);
     }
@@ -135,7 +143,7 @@ public class BoardServiceImpl implements BoardService {
         board.delete();
     }
 
-    // 게시글 이미지 등록 및 교체
+    // 게시글 이미지 등록, 교체 및 실제 파일 삭제
     @Override
     @Transactional
     public BoardImageDTO uploadBoardImage(Long boardId, MultipartFile image, Long memberId) {
@@ -145,10 +153,13 @@ public class BoardServiceImpl implements BoardService {
         validateImage(image);
 
         String fileUrl = saveImageFile(image);
+        registerNewFileRollbackSynchronization(fileUrl);
 
         BoardImage boardImage = boardImageRepository.findByBoardBoardId(boardId)
                 .map(savedImage -> {
+                    String oldFileUrl = savedImage.getFileUrl();
                     savedImage.updateFileUrl(fileUrl);
+                    deletePhysicalFileAfterCommit(oldFileUrl);
                     return savedImage;
                 })
                 .orElseGet(() -> BoardImage.builder()
@@ -159,7 +170,7 @@ public class BoardServiceImpl implements BoardService {
         return toImageDTO(boardImageRepository.save(boardImage));
     }
 
-    // 게시글 이미지 DB 정보 삭제
+    // 게시글 이미지 정보 및 실제 파일 삭제
     @Override
     @Transactional
     public void deleteBoardImage(Long boardId, Long imageId, Long memberId) {
@@ -171,7 +182,9 @@ public class BoardServiceImpl implements BoardService {
                 .findByFileIdAndBoardBoardId(imageId, boardId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글 이미지를 찾을 수 없습니다."));
 
+        String fileUrl = boardImage.getFileUrl();
         boardImageRepository.delete(boardImage);
+        deletePhysicalFileAfterCommit(fileUrl);
     }
 
     // 회원 조회
@@ -319,7 +332,7 @@ public class BoardServiceImpl implements BoardService {
                 .toLowerCase(Locale.ROOT);
     }
 
-    // 게시글 목록의 댓글 수 일괄 조회
+    // 게시글 목록의 댓글 수를 게시글별로 한 번에 조회
     private Map<Long, Long> getCommentCountMap(List<Board> boards) {
         if (boards.isEmpty()) {
             return Map.of();
@@ -361,8 +374,10 @@ public class BoardServiceImpl implements BoardService {
                 .map(this::toImageDTO)
                 .orElse(null);
 
-        long commentCount = boardCommentRepository
-                .countByBoardIdAndCommentStatus(board.getBoardId(), BoardCommentStatus.ACTIVE);
+        long commentCount = boardCommentRepository.countByBoardIdAndCommentStatus(
+                board.getBoardId(),
+                BoardCommentStatus.ACTIVE
+        );
 
         return BoardDTO.builder()
                 .boardId(board.getBoardId())
@@ -388,5 +403,62 @@ public class BoardServiceImpl implements BoardService {
                 .fileUrl(boardImage.getFileUrl())
                 .createdAt(boardImage.getCreatedAt())
                 .build();
+    }
+
+    // 물리 이미지 파일 삭제
+    private void deletePhysicalFile(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return;
+        }
+        try {
+            int lastSlashIndex = fileUrl.lastIndexOf('/');
+            if (lastSlashIndex >= 0) {
+                String fileName = fileUrl.substring(lastSlashIndex + 1);
+                Path uploadDirectory = Path.of(boardUploadPath).toAbsolutePath().normalize();
+                Path filePath = uploadDirectory.resolve(fileName).normalize();
+
+                if (filePath.startsWith(uploadDirectory)) {
+                    Files.deleteIfExists(filePath);
+                }
+            }
+        } catch (IOException exception) {
+            log.error("물리 이미지 파일 삭제 중 오류가 발생했습니다. fileUrl: {}, error: {}", fileUrl, exception.getMessage());
+        }
+    }
+
+    // 트랜잭션 커밋 후 물리 파일 삭제 예약
+    private void deletePhysicalFileAfterCommit(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return;
+        }
+
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    deletePhysicalFile(fileUrl);
+                }
+            });
+        } else {
+            deletePhysicalFile(fileUrl);
+        }
+    }
+
+    // 트랜잭션 롤백 시 신규 물리 파일 삭제 예약
+    private void registerNewFileRollbackSynchronization(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return;
+        }
+
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    if (status == STATUS_ROLLED_BACK) {
+                        deletePhysicalFile(fileUrl);
+                    }
+                }
+            });
+        }
     }
 }

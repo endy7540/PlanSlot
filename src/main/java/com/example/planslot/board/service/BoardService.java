@@ -26,6 +26,6 @@ public interface BoardService {
     // 게시글 이미지 등록 및 교체
     BoardImageDTO uploadBoardImage(Long boardId, MultipartFile image, Long memberId);
 
-    // 게시글 이미지 DB 정보 삭제
+    // 게시글 이미지 정보 및 실제 파일 삭제
     void deleteBoardImage(Long boardId, Long imageId, Long memberId);
 }

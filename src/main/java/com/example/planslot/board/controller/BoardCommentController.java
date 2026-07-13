@@ -16,7 +16,7 @@ public class BoardCommentController {
     private final BoardCommentService boardCommentService;
 
     // 댓글 및 대댓글 등록
-    @PostMapping("/post/{postId}/comment")
+    @PostMapping("/board/{postId}/comment")
     public ResponseEntity<Long> createComment(@PathVariable Long postId,
                                               @RequestParam Long memberId,
                                               @RequestBody BoardCommentDTO commentDTO) {
@@ -26,7 +26,7 @@ public class BoardCommentController {
     }
 
     // 게시글 댓글 목록 조회
-    @GetMapping("/post/{postId}/comments")
+    @GetMapping("/board/{postId}/comments")
     public ResponseEntity<List<BoardCommentDTO>> getCommentList(@PathVariable Long postId) {
         return ResponseEntity.ok(
                 boardCommentService.getCommentList(postId)

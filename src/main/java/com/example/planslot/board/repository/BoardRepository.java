@@ -5,6 +5,7 @@ import com.example.planslot.board.entity.BoardStatus;
 import com.example.planslot.board.entity.BoardType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -14,8 +15,10 @@ import java.util.Optional;
 
 public interface BoardRepository extends JpaRepository<Board, Long> {
 
+    @EntityGraph(attributePaths = {"writer"})
     Page<Board> findByBoardTypeAndBoardStatus(BoardType boardType, BoardStatus boardStatus, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"writer"})
     @Query("""
         SELECT b
         FROM Board b
@@ -41,5 +44,6 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     int increaseViewCount(@Param("boardId") Long boardId,
                           @Param("boardStatus") BoardStatus boardStatus);
 
+    @EntityGraph(attributePaths = {"writer"})
     Optional<Board> findByBoardIdAndBoardStatus(Long boardId, BoardStatus boardStatus);
 }

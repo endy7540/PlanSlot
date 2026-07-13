@@ -35,20 +35,9 @@ public interface BoardCommentRepository extends JpaRepository<BoardComment, Long
 
     Optional<BoardComment> findByCommentIdAndCommentStatus(Long commentId, BoardCommentStatus commentStatus);
 
-    // 게시글 하나의 활성 댓글 수 조회
+    // 여러 게시글의 활성 댓글 수를 게시글별로 한 번에 조회
     @Query("""
-            SELECT COUNT(c)
-            FROM BoardComment c
-            WHERE c.board.boardId = :boardId
-              AND c.commentStatus = :commentStatus
-            """)
-    long countByBoardIdAndCommentStatus(@Param("boardId") Long boardId,
-                                        @Param("commentStatus") BoardCommentStatus commentStatus);
-
-    // 여러 게시글의 활성 댓글 수 일괄 조회
-    @Query("""
-            SELECT c.board.boardId AS boardId,
-                   COUNT(c) AS commentCount
+            SELECT c.board.boardId AS boardId, COUNT(c) AS commentCount
             FROM BoardComment c
             WHERE c.board.boardId IN :boardIds
               AND c.commentStatus = :commentStatus
@@ -59,6 +48,16 @@ public interface BoardCommentRepository extends JpaRepository<BoardComment, Long
 
     interface BoardCommentCount {
         Long getBoardId();
-        Long getCommentCount();
+
+        long getCommentCount();
     }
+
+    @Query("""
+            SELECT COUNT(c)
+            FROM BoardComment c
+            WHERE c.board.boardId = :boardId
+              AND c.commentStatus = :commentStatus
+            """)
+    long countByBoardIdAndCommentStatus(@Param("boardId") Long boardId,
+                                        @Param("commentStatus") BoardCommentStatus commentStatus);
 }

@@ -9,4 +9,4 @@ public interface AuthTokenRepository extends JpaRepository<AuthToken, Long> {
     Optional<AuthToken> findByRefreshToken(String refreshToken);
 
     void deleteByMemberId(Long memberId);
-}
+}//

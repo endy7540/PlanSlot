@@ -7,4 +7,4 @@ import java.util.Optional;
 
 public interface AuthEmailRepository extends JpaRepository<AuthEmail, Long> {
     Optional<AuthEmail> findTopByEmailOrderByCreatedAtDesc(String email);
-}
+}//

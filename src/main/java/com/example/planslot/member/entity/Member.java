@@ -58,4 +58,4 @@ public class Member {
     public enum Status {
         ACTIVE, BANNED, SUSPENDED
     }
-}
+}//

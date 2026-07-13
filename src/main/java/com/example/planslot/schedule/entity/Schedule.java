@@ -1,7 +1,11 @@
 package com.example.planslot.schedule.entity;
 
+import com.example.planslot.member.entity.Member;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -11,6 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class Schedule {
 
     @Id
@@ -18,10 +23,9 @@ public class Schedule {
     @Column(name = "schedule_id")
     private Long scheduleId;
 
-    // TODO: Member 엔티티 완성되면 @ManyToOne(fetch = FetchType.LAZY)
-    //       @JoinColumn(name = "member_id", nullable = false) private Member member; 로 교체
-    @Column(name = "member_id", nullable = false)
-    private Long memberId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false)
+    private Member member;
 
     @Column(name = "title", length = 50, nullable = false)
     private String title;
@@ -39,12 +43,10 @@ public class Schedule {
     @Column(name = "end_date")
     private LocalDateTime endDate;
 
-    // TODO: 공용 컨버터(YnToBooleanConverter) 생기면 @Convert 붙여서 Boolean으로 교체
     @Column(name = "is_public", length = 1, nullable = false)
     @Builder.Default
     private String isPublic = "N";
 
-    // TODO: 공용 컨버터 생기면 @Convert 붙여서 Boolean으로 교체
     @Column(name = "google_sync_yn", length = 1, nullable = false)
     @Builder.Default
     private String googleSyncYn = "N";
@@ -59,25 +61,16 @@ public class Schedule {
     @Column(name = "location", length = 200)
     private String location;
 
+    @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 
     // ===== 비즈니스 로직 =====
 

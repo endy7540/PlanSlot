@@ -44,7 +44,7 @@ public class Member {
     private Status status;
 
     @CreatedDate
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "created_at", nullable = false, length = 20)
     private LocalDateTime createdAt;
 
     @LastModifiedDate

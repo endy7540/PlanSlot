@@ -17,8 +17,12 @@
       <h1 id="groupTitle">모임</h1>
       <p id="groupMeta">참여자 - 명</p>
     </div>
-    <div class="head-actions">
+    <div class="head-actions" id="headActions">
       <button class="btn btn-ghost" id="btnLeave">모임 탈퇴</button>
+      <div id="waitingActions" style="display:none; gap: 8px;">
+        <button class="btn btn-teal" id="btnAcceptInvite">초대 수락</button>
+        <button class="btn btn-ghost" id="btnRejectInvite">초대 거절</button>
+      </div>
     </div>
   </div>
 
@@ -127,7 +131,7 @@
 
 <script th:src="@{/js/group/group-shared.js}" src="../../static/js/group/group-shared.js"></script>
 <script>
-const group = currentGroup();
+let group = null;
 
 function renderHead(){
   document.getElementById('groupTitle').textContent = group.name;
@@ -135,10 +139,20 @@ function renderHead(){
   document.getElementById('settingsGroupName').value = group.name;
 
   const owner = isOwner(group);
+  const isWaiting = group.filter === 'waiting';
+
   document.getElementById('btnDeleteGroup').closest('.settings-block').style.display = owner ? 'block' : 'none';
-  document.getElementById('btnLeave').disabled = owner;
   document.getElementById('ownerLeaveHint').style.display = owner ? 'block' : 'none';
   document.getElementById('btnGoAi').href = linkToAi(group.id);
+
+  if (isWaiting) {
+    document.getElementById('btnLeave').style.display = 'none';
+    document.getElementById('waitingActions').style.display = 'flex';
+  } else {
+    document.getElementById('btnLeave').style.display = 'block';
+    document.getElementById('btnLeave').disabled = owner;
+    document.getElementById('waitingActions').style.display = 'none';
+  }
 
   const mini = document.getElementById('miniHeat');
   if(group.heat.length){
@@ -218,11 +232,16 @@ function renderMembers(){
     const kickBtn = row.querySelector('.btn-danger');
     if(kickBtn){
       kickBtn.addEventListener('click', ()=>{
-        openConfirm('모임원을 추방할까요?', `${m.name}님을 '${group.name}' 모임에서 추방합니다. 이 작업은 되돌릴 수 없어요.`, ()=>{
-          group.members = group.members.filter(x => x.id !== m.id);
-          renderHead();
-          renderMembers();
-          showToast(`${m.name}님을 추방했어요.`);
+        openConfirm('모임원을 추방할까요?', `${m.name}님을 '${group.name}' 모임에서 추방합니다. 이 작업은 되돌릴 수 없어요.`, async ()=>{
+          try {
+            const res = await fetch(`/group/api/detail/${group.id}/kick/${m.id}`, { method: 'DELETE' });
+            if(res.ok) {
+              showToast(`${m.name}님을 추방했어요.`);
+              fetchGroupDetail();
+            } else {
+              showToast('추방 중 오류가 발생했습니다.');
+            }
+          } catch(e) { console.error(e); }
         });
       });
     }
@@ -245,18 +264,27 @@ function renderMembers(){
         ` : `<span class="pill waiting">응답 대기중</span>`}
       </div>`;
     if(w.isMe){
-      row.querySelector('[data-act="accept"]').addEventListener('click', ()=>{
-        group.waiting = group.waiting.filter(x => x.id !== w.id);
-        group.members.push({id:MY_MEMBER_ID, name:'김플랜', role:'member'});
-        group.filter = 'joined';
-        renderHead();
-        renderMembers();
-        showToast('초대를 수락했어요. 모임에 참여했습니다.');
+      row.querySelector('[data-act="accept"]').addEventListener('click', async ()=>{
+        try {
+          const res = await fetch(`/group/api/detail/${group.id}/accept`, { method: 'POST' });
+          if(res.ok) {
+            showToast('초대를 수락했어요. 모임에 참여했습니다.');
+            fetchGroupDetail();
+          } else {
+            showToast('수락 중 오류가 발생했습니다.');
+          }
+        } catch(e) { console.error(e); }
       });
-      row.querySelector('[data-act="reject"]').addEventListener('click', ()=>{
-        group.waiting = group.waiting.filter(x => x.id !== w.id);
-        renderMembers();
-        showToast('초대를 거절했어요.');
+      row.querySelector('[data-act="reject"]').addEventListener('click', async ()=>{
+        try {
+          const res = await fetch(`/group/api/detail/${group.id}/reject`, { method: 'POST' });
+          if(res.ok) {
+            showToast('초대를 거절했어요.');
+            setTimeout(()=>{ window.location.href = linkToList(); }, 600);
+          } else {
+            showToast('거절 중 오류가 발생했습니다.');
+          }
+        } catch(e) { console.error(e); }
       });
     }
     waitingList.appendChild(row);
@@ -269,15 +297,25 @@ function setTab(tab){
   document.getElementById('panel-' + tab).classList.add('active');
 }
 
-document.getElementById('btnInvite').addEventListener('click', ()=>{
+document.getElementById('btnInvite').addEventListener('click', async ()=>{
   const input = document.getElementById('inviteEmail');
   const email = input.value.trim();
   if(!email || !email.includes('@')){ showToast('올바른 이메일 주소를 입력해주세요.'); return; }
-  if(group.members.some(m => m.name === email)){ showToast('이미 모임에 있는 회원이에요.'); return; }
-  group.waiting.push({id:'w'+Date.now(), email, inviterName:'김플랜'});
-  input.value = '';
-  renderMembers();
-  showToast(`${email}님에게 초대를 보냈어요.`);
+  
+  try {
+    const res = await fetch(`/group/api/detail/${group.id}/invite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    if(res.ok) {
+      input.value = '';
+      showToast(`${email}님에게 초대를 보냈어요.`);
+      fetchGroupDetail();
+    } else {
+      showToast('초대 중 오류가 발생했습니다.');
+    }
+  } catch(e) { console.error(e); }
 });
 
 document.getElementById('btnAddSchedule').addEventListener('click', ()=>{
@@ -294,36 +332,106 @@ document.getElementById('btnAddSchedule').addEventListener('click', ()=>{
   showToast('일정을 공유했어요.');
 });
 
-document.getElementById('btnSaveName').addEventListener('click', ()=>{
+document.getElementById('btnSaveName').addEventListener('click', async ()=>{
   const val = document.getElementById('settingsGroupName').value.trim();
   if(!val){ showToast('모임 이름을 입력해주세요.'); return; }
   if(val.length > 30){ showToast('모임 이름은 30자 이하로 입력해주세요.'); return; }
-  group.name = val;
-  renderHead();
-  showToast('모임 이름을 수정했어요.');
+  
+  try {
+    const res = await fetch(`/group/api/detail/${group.id}/name`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: val })
+    });
+    if(res.ok) {
+      showToast('모임 이름을 수정했어요.');
+      fetchGroupDetail();
+    } else {
+      showToast('수정 중 오류가 발생했습니다.');
+    }
+  } catch(e) { console.error(e); }
 });
 
 document.getElementById('btnDeleteGroup').addEventListener('click', ()=>{
-  openConfirm('모임을 삭제할까요?', `'${group.name}' 모임과 모든 일정, 채팅, 게시글이 삭제되고 되돌릴 수 없어요.`, ()=>{
-    GROUPS = GROUPS.filter(g => g.id !== group.id);
-    showToast('모임을 삭제했어요.');
-    setTimeout(()=>{ window.location.href = linkToList(); }, 600);
+  openConfirm('모임을 삭제할까요?', `'${group.name}' 모임과 모든 일정, 채팅, 게시글이 삭제되고 되돌릴 수 없어요.`, async ()=>{
+    try {
+      const res = await fetch(`/group/api/detail/${group.id}`, { method: 'DELETE' });
+      if(res.ok) {
+        showToast('모임을 삭제했어요.');
+        setTimeout(()=>{ window.location.href = linkToList(); }, 600);
+      } else {
+        showToast('삭제 중 오류가 발생했습니다.');
+      }
+    } catch(e) { console.error(e); }
   });
 });
 
 document.getElementById('btnLeave').addEventListener('click', ()=>{
   if(isOwner(group)) return;
-  openConfirm('모임을 탈퇴할까요?', `'${group.name}' 모임에서 탈퇴하면 공유했던 일정도 더 이상 모임원에게 보이지 않아요.`, ()=>{
-    GROUPS = GROUPS.filter(g => g.id !== group.id);
-    showToast('모임을 탈퇴했어요.');
-    setTimeout(()=>{ window.location.href = linkToList(); }, 600);
+  openConfirm('모임을 탈퇴할까요?', `'${group.name}' 모임에서 탈퇴하면 공유했던 일정도 더 이상 모임원에게 보이지 않아요.`, async ()=>{
+    try {
+      const res = await fetch(`/group/api/detail/${group.id}/leave`, { method: 'DELETE' });
+      if(res.ok) {
+        showToast('모임을 탈퇴했어요.');
+        setTimeout(()=>{ window.location.href = linkToList(); }, 600);
+      } else {
+        showToast('탈퇴 중 오류가 발생했습니다.');
+      }
+    } catch(e) { console.error(e); }
+  });
+});
+
+document.getElementById('btnAcceptInvite').addEventListener('click', async ()=>{
+  try {
+    const res = await fetch(`/group/api/detail/${group.id}/accept`, { method: 'POST' });
+    if(res.ok) {
+      showToast('초대를 수락했습니다. 모임에 참여했습니다.');
+      fetchGroupDetail();
+    } else {
+      showToast('수락 중 오류가 발생했습니다.');
+    }
+  } catch(e) { console.error(e); }
+});
+
+document.getElementById('btnRejectInvite').addEventListener('click', ()=>{
+  openConfirm('초대를 거절할까요?', `'${group.name}' 모임의 초대를 거절합니다.`, async ()=>{
+    try {
+      const res = await fetch(`/group/api/detail/${group.id}/reject`, { method: 'POST' });
+      if(res.ok) {
+        showToast('초대를 거절했습니다.');
+        setTimeout(()=>{ window.location.href = linkToList(); }, 600);
+      } else {
+        showToast('거절 중 오류가 발생했습니다.');
+      }
+    } catch(e) { console.error(e); }
   });
 });
 
 bindModal();
-renderHead();
-renderSchedule();
-renderMembers();
+
+async function fetchGroupDetail() {
+  const id = getQueryParam('id');
+  if(!id) {
+    showToast('잘못된 접근입니다.');
+    setTimeout(() => { window.location.href = linkToList(); }, 600);
+    return;
+  }
+  try {
+    const res = await fetch('/group/api/detail/' + id);
+    if(res.ok) {
+      group = await res.json();
+      renderHead();
+      renderSchedule();
+      renderMembers();
+    } else {
+      showToast('모임 정보를 불러오지 못했습니다.');
+      setTimeout(() => { window.location.href = linkToList(); }, 600);
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+fetchGroupDetail();
 </script>
 </body>
 </html>

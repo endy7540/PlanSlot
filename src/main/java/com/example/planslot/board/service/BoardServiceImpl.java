@@ -34,7 +34,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BoardServiceImpl implements BoardService {
-
     private static final long MAX_IMAGE_SIZE = 10L * 1024L * 1024L;
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
     private static final Set<String> IMAGE_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
@@ -159,10 +158,7 @@ public class BoardServiceImpl implements BoardService {
 
         BoardImage boardImage = boardImageRepository
                 .findByFileIdAndBoardBoardId(imageId, boardId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "게시글 이미지를 찾을 수 없습니다."
-                ));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글 이미지를 찾을 수 없습니다."));
 
         boardImageRepository.delete(boardImage);
     }
@@ -170,98 +166,62 @@ public class BoardServiceImpl implements BoardService {
     // 회원 조회
     private Member findMember(Long memberId) {
         if (memberId == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "회원 ID가 필요합니다."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "회원 ID가 필요합니다.");
         }
 
         return memberRepository.findById(memberId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "회원을 찾을 수 없습니다."
-                ));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
     }
 
     // 활성 상태 게시글 조회
     private Board findBoard(Long boardId) {
         if (boardId == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "게시글 ID가 필요합니다."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "게시글 ID가 필요합니다.");
         }
 
         return boardRepository
                 .findByBoardIdAndBoardStatus(boardId, BoardStatus.ACTIVE)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "게시글을 찾을 수 없습니다."
-                ));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
     }
 
     // 공지사항 작성 권한 확인
     private void validateNoticeWriter(BoardType boardType, Member member) {
         if (boardType == BoardType.NOTICE && member.getRole() != Member.Role.ADMIN) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "공지사항은 관리자만 작성할 수 있습니다."
-            );
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "공지사항은 관리자만 작성할 수 있습니다.");
         }
     }
 
     // 게시글 작성자 확인
     private void validateWriter(Board board, Long memberId) {
         if (memberId == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "회원 ID가 필요합니다."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "회원 ID가 필요합니다.");
         }
 
         if (!Objects.equals(board.getWriter().getId(), memberId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "게시글 작성자만 수정하거나 삭제할 수 있습니다."
-            );
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자만 수정하거나 삭제할 수 있습니다.");
         }
     }
 
     // 게시글 입력값 확인
     private void validateBoardDTO(BoardDTO boardDTO) {
         if (boardDTO == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "게시글 정보를 입력해 주세요."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "게시글 정보를 입력해 주세요.");
         }
 
         if (boardDTO.getTitle() == null || boardDTO.getTitle().isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "제목을 입력해 주세요."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "제목을 입력해 주세요.");
         }
 
         if (boardDTO.getTitle().trim().length() > 100) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "제목은 100자 이하로 입력해 주세요."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "제목은 100자 이하로 입력해 주세요.");
         }
 
         if (boardDTO.getContent() == null || boardDTO.getContent().isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "내용을 입력해 주세요."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "내용을 입력해 주세요.");
         }
 
         if (boardDTO.getContent().trim().length() > 1000) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "내용은 1000자 이하로 입력해 주세요."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "내용은 1000자 이하로 입력해 주세요.");
         }
     }
 
@@ -274,10 +234,7 @@ public class BoardServiceImpl implements BoardService {
         String searchKeyword = keyword.trim();
 
         if (searchKeyword.length() > 100) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "검색어는 100자 이하로 입력해 주세요."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "검색어는 100자 이하로 입력해 주세요.");
         }
 
         return searchKeyword;
@@ -286,35 +243,23 @@ public class BoardServiceImpl implements BoardService {
     // 이미지 파일 확인
     private void validateImage(MultipartFile image) {
         if (image == null || image.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "업로드할 이미지를 선택해 주세요."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "업로드할 이미지를 선택해 주세요.");
         }
 
         if (image.getSize() > MAX_IMAGE_SIZE) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "이미지는 10MB 이하만 업로드할 수 있습니다."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지는 10MB 이하만 업로드할 수 있습니다.");
         }
 
         String extension = getExtension(image.getOriginalFilename());
 
         if (!IMAGE_EXTENSIONS.contains(extension)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "JPG, JPEG, PNG, WEBP 이미지만 업로드할 수 있습니다."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "JPG, JPEG, PNG, WEBP 이미지만 업로드할 수 있습니다.");
         }
 
         String contentType = image.getContentType();
 
         if (contentType == null || !IMAGE_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "지원하지 않는 이미지 형식입니다."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 이미지 형식입니다.");
         }
     }
 
@@ -326,10 +271,7 @@ public class BoardServiceImpl implements BoardService {
         Path savedFilePath = uploadDirectory.resolve(savedFileName).normalize();
 
         if (!savedFilePath.startsWith(uploadDirectory)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "올바르지 않은 이미지 저장 경로입니다."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "올바르지 않은 이미지 저장 경로입니다.");
         }
 
         try {
@@ -343,11 +285,7 @@ public class BoardServiceImpl implements BoardService {
                 );
             }
         } catch (IOException exception) {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "이미지 저장에 실패했습니다.",
-                    exception
-            );
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 저장에 실패했습니다.", exception);
         }
 
         return "/uploads/board/" + savedFileName;
@@ -356,19 +294,13 @@ public class BoardServiceImpl implements BoardService {
     // 이미지 확장자 조회
     private String getExtension(String originalFilename) {
         if (originalFilename == null || originalFilename.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "이미지 파일명이 올바르지 않습니다."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일명이 올바르지 않습니다.");
         }
 
         int dotIndex = originalFilename.lastIndexOf('.');
 
         if (dotIndex < 0 || dotIndex == originalFilename.length() - 1) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "이미지 파일 확장자가 필요합니다."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일 확장자가 필요합니다.");
         }
 
         return originalFilename

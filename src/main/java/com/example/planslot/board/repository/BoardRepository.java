@@ -14,11 +14,7 @@ import java.util.Optional;
 
 public interface BoardRepository extends JpaRepository<Board, Long> {
 
-    Page<Board> findByBoardTypeAndBoardStatus(
-            BoardType boardType,
-            BoardStatus boardStatus,
-            Pageable pageable
-    );
+    Page<Board> findByBoardTypeAndBoardStatus(BoardType boardType, BoardStatus boardStatus, Pageable pageable);
 
     @Query("""
         SELECT b
@@ -30,12 +26,10 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
                 OR LOWER(b.content) LIKE LOWER(CONCAT('%', :keyword, '%'))
           )
         """)
-    Page<Board> searchBoards(
-            @Param("boardType") BoardType boardType,
-            @Param("boardStatus") BoardStatus boardStatus,
-            @Param("keyword") String keyword,
-            Pageable pageable
-    );
+    Page<Board> searchBoards(@Param("boardType") BoardType boardType,
+                             @Param("boardStatus") BoardStatus boardStatus,
+                             @Param("keyword") String keyword,
+                             Pageable pageable);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
@@ -44,13 +38,8 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
             WHERE b.boardId = :boardId
               AND b.boardStatus = :boardStatus
             """)
-    int increaseViewCount(
-            @Param("boardId") Long boardId,
-            @Param("boardStatus") BoardStatus boardStatus
-    );
+    int increaseViewCount(@Param("boardId") Long boardId,
+                          @Param("boardStatus") BoardStatus boardStatus);
 
-    Optional<Board> findByBoardIdAndBoardStatus(
-            Long boardId,
-            BoardStatus boardStatus
-    );
+    Optional<Board> findByBoardIdAndBoardStatus(Long boardId, BoardStatus boardStatus);
 }

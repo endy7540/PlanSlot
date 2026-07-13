@@ -43,7 +43,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BoardServiceImpl implements BoardService {
-    private static final long MAX_IMAGE_SIZE = 10L * 1024L * 1024L;
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
     private static final Set<String> IMAGE_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
@@ -268,10 +267,6 @@ public class BoardServiceImpl implements BoardService {
     private void validateImage(MultipartFile image) {
         if (image == null || image.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "업로드할 이미지를 선택해 주세요.");
-        }
-
-        if (image.getSize() > MAX_IMAGE_SIZE) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지는 10MB 이하만 업로드할 수 있습니다.");
         }
 
         String extension = getExtension(image.getOriginalFilename());

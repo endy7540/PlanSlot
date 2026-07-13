@@ -229,6 +229,54 @@
             msgBox.innerText = "서버 연결 실패.\n" + error;
         }
     }
+
+    // 회원가입 로직
+    async function doSignUp() {
+        const id = document.getElementById('signupId').value;
+        const pw = document.getElementById('signupPw').value;
+        const email = document.getElementById('signupEmail').value;
+        const nickname = document.getElementById('signupNickname').value;
+        const address = document.getElementById('signupAddress').value;
+        const msgBox = document.getElementById('signupMsg');
+
+        if(!id || !pw || !email) {
+            msgBox.style.color = "#B91C1C";
+            msgBox.innerText = '필수 항목(아이디, 비밀번호, 이메일)을 모두 입력해주세요.';
+            return;
+        }
+
+        try {
+            msgBox.innerText = "회원가입 요청 중...";
+            const response = await fetch(`${API_BASE}/members/signup`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    loginId: id,
+                    password: pw,
+                    email: email,
+                    nickname: nickname,
+                    address: address
+                })
+            });
+
+            const result = await response.text();
+
+            if(response.ok) {
+                msgBox.style.color = "#047857";
+                msgBox.innerText = result; // "회원가입 성공" 메시지 출력
+                // 가입 성공 2초 후 로그인 화면으로 전환
+                setTimeout(() => {
+                    togglePage('login');
+                }, 2000);
+            } else {
+                msgBox.style.color = "#B91C1C";
+                msgBox.innerText = `가입 실패: ${result}`;
+            }
+        } catch (error) {
+            msgBox.style.color = "#B91C1C";
+            msgBox.innerText = "서버 연결 실패.\n" + error;
+        }
+    }
 </script>
 
 </body>

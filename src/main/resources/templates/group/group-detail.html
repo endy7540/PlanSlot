@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlanSlot - 모임 상세</title>
+<link rel="stylesheet" th:href="@{/css/group/group-shared.css}" href="../../static/css/group/group-shared.css">
+</head>
+<body>
+
+<div class="app">
+  <div class="breadcrumb"><a th:href="@{/group/list}" href="group-list.html">← 내 모임</a></div>
+
+  <div class="page-head">
+    <div>
+      <div class="brand"><b>PlanSlot</b> · 모임 캘린더</div>
+      <h1 id="groupTitle">모임</h1>
+      <p id="groupMeta">참여자 - 명</p>
+    </div>
+    <div class="head-actions">
+      <button class="btn btn-ghost" id="btnLeave">모임 탈퇴</button>
+    </div>
+  </div>
+
+  <div class="detail-layout">
+    <section class="card detail-card">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="schedule" onclick="setTab('schedule')">일정</button>
+        <button class="tab-btn" data-tab="members" onclick="setTab('members')">인원 관리</button>
+        <button class="tab-btn" data-tab="settings" onclick="setTab('settings')">설정</button>
+      </div>
+
+      <!-- 일정 탭 -->
+      <div class="tab-panel active" id="panel-schedule">
+        <div class="section-row">
+          <h3>5월 모임 일정</h3>
+          <span style="color:var(--muted);font-size:11.5px">공개 일정만 모임원 전체에게 보여요</span>
+        </div>
+        <div class="calendar">
+          <div class="weekday">일</div><div class="weekday">월</div><div class="weekday">화</div><div class="weekday">수</div><div class="weekday">목</div><div class="weekday">금</div><div class="weekday">토</div>
+          <div class="date"><b>27</b></div><div class="date"><b>28</b></div><div class="date"><b>29</b></div><div class="date"><b>30</b></div><div class="date"><b>1</b></div><div class="date"><b>2</b></div><div class="date"><b>3</b></div>
+          <div class="date"><b>4</b></div><div class="date"><b>5</b></div><div class="date"><b>6</b></div><div class="date"><b>7</b></div><div class="date"><b>8</b></div><div class="date"><b>9</b></div><div class="date"><b>10</b></div>
+          <div class="date"><b>11</b></div><div class="date"><b>12</b></div><div class="date"><b>13</b><em>팀 회의</em></div><div class="date today"><b>14</b></div><div class="date"><b>15</b></div><div class="date"><b>16</b><em>추천 후보</em></div><div class="date"><b>17</b><em>추천 후보</em></div>
+        </div>
+
+        <div class="section-row"><h3>내가 공유한 일정</h3></div>
+        <div class="my-schedule-list" id="myScheduleList"></div>
+
+        <div class="share-form">
+          <input id="scheduleTitle" placeholder="일정 제목">
+          <input id="scheduleDate" type="date">
+          <input id="scheduleTime" type="time">
+          <select id="scheduleVisibility">
+            <option value="public">공개</option>
+            <option value="private">비공개</option>
+          </select>
+          <button class="btn btn-primary" id="btnAddSchedule">공유</button>
+        </div>
+      </div>
+
+      <!-- 인원 관리 탭 -->
+      <div class="tab-panel" id="panel-members">
+        <div class="section-row"><h3>초대하기</h3></div>
+        <div class="invite-form">
+          <input id="inviteEmail" type="email" placeholder="초대할 회원의 이메일 주소">
+          <button class="btn btn-primary" id="btnInvite">초대 보내기</button>
+        </div>
+
+        <div class="section-row"><h3>수락 대기중</h3></div>
+        <div class="waiting-list" id="waitingList"></div>
+
+        <div class="section-row" style="margin-top:18px"><h3>모임원 (<span id="memberCountLabel">0</span>)</h3></div>
+        <div id="memberList"></div>
+      </div>
+
+      <!-- 설정 탭 -->
+      <div class="tab-panel" id="panel-settings">
+        <div class="settings-block">
+          <h3>모임 이름</h3>
+          <div class="field-row">
+            <input id="settingsGroupName" maxlength="30">
+            <button class="btn btn-primary" id="btnSaveName">저장</button>
+          </div>
+        </div>
+
+        <div class="settings-block">
+          <h3>위험 구역</h3>
+          <div class="danger-zone">
+            <div class="danger-row">
+              <div>
+                <b>모임 삭제</b>
+                <span>삭제하면 모임의 일정, 채팅, 게시글이 모두 사라지고 되돌릴 수 없어요.</span>
+              </div>
+              <button class="btn btn-danger btn-sm" id="btnDeleteGroup">모임 삭제</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="hint-box" id="ownerLeaveHint">
+          방장은 모임을 바로 탈퇴할 수 없어요. 모임을 삭제하거나, 인원 관리에서 다른 모임원에게 방장을 넘겨준 뒤 탈퇴해주세요.
+        </div>
+      </div>
+    </section>
+
+    <!-- AI 추천 페이지로 이동하는 티저 카드 -->
+    <aside class="card ai-teaser">
+      <h3>AI 시간 추천</h3>
+      <p>모임원이 공유한 일정을 분석해서 다 같이 가능한 시간을 찾아드려요.</p>
+      <div class="mini-heat" id="miniHeat"></div>
+      <a class="btn btn-teal" id="btnGoAi" href="#" style="justify-content:center;margin-top:6px">AI 추천 보러가기 →</a>
+    </aside>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <h3 id="modalTitle">정말 진행할까요?</h3>
+    <p id="modalDesc"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="modalCancel">취소</button>
+      <button class="btn btn-danger" id="modalConfirm">확인</button>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/group/group-shared.js}" src="../../static/js/group/group-shared.js"></script>
+<script>
+const group = currentGroup();
+
+function renderHead(){
+  document.getElementById('groupTitle').textContent = group.name;
+  document.getElementById('groupMeta').textContent = `참여자 ${group.members.length}명`;
+  document.getElementById('settingsGroupName').value = group.name;
+
+  const owner = isOwner(group);
+  document.getElementById('btnDeleteGroup').closest('.settings-block').style.display = owner ? 'block' : 'none';
+  document.getElementById('btnLeave').disabled = owner;
+  document.getElementById('ownerLeaveHint').style.display = owner ? 'block' : 'none';
+  document.getElementById('btnGoAi').href = linkToAi(group.id);
+
+  const mini = document.getElementById('miniHeat');
+  if(group.heat.length){
+    const cols = group.heat[0].row.length;
+    let html = '';
+    for(let c=0;c<cols;c++){
+      const freeCount = group.heat.filter(r => r.row[c] === 'free').length;
+      const cls = freeCount === group.heat.length ? 'free' : (freeCount >= Math.ceil(group.heat.length/2) ? 'mid' : 'busy');
+      html += `<div class="mini-cell ${cls}"></div>`;
+    }
+    mini.innerHTML = html;
+  } else {
+    mini.innerHTML = '<span class="empty-note" style="padding:0">아직 분석할 일정이 없어요.</span>';
+  }
+}
+
+function renderSchedule(){
+  const list = document.getElementById('myScheduleList');
+  list.innerHTML = '';
+  if(!group.mySchedules.length){
+    list.innerHTML = '<div class="empty-note">아직 공유한 일정이 없어요. 아래에서 첫 일정을 공유해보세요.</div>';
+    return;
+  }
+  group.mySchedules.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'sched-item';
+    row.innerHTML = `
+      <div><b>${s.title}</b><span>${s.date} · ${s.time}</span></div>
+      <button class="vis-toggle ${s.visibility === 'public' ? 'public' : ''}">${s.visibility === 'public' ? '공개' : '비공개'}</button>`;
+    row.querySelector('.vis-toggle').addEventListener('click', ()=>{
+      s.visibility = s.visibility === 'public' ? 'private' : 'public';
+      renderSchedule();
+      showToast(s.visibility === 'public' ? '모임원 전체에게 공개했어요.' : '비공개로 전환했어요.');
+    });
+    list.appendChild(row);
+  });
+}
+
+function renderMembers(){
+  const memberList = document.getElementById('memberList');
+  const waitingList = document.getElementById('waitingList');
+  document.getElementById('memberCountLabel').textContent = group.members.length;
+  const owner = isOwner(group);
+
+  memberList.innerHTML = '';
+  group.members.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'member-row';
+    const canKick = owner && m.id !== MY_MEMBER_ID;
+    row.innerHTML = `
+      <div class="avatar">${initials(m.name)}</div>
+      <div class="member-info">
+        <div class="member-name-row">
+          <b class="nick-label">${m.name}${m.id === MY_MEMBER_ID ? ' (나)' : ''}</b>
+          <button class="edit-nick" title="이 모임에서만 보이는 별명 수정">✎ 별명 수정</button>
+        </div>
+        <span>${m.role === 'owner' ? '방장' : '모임원'}</span>
+      </div>
+      <div class="member-actions">${canKick ? '<button class="btn btn-danger btn-sm">추방</button>' : ''}</div>`;
+
+    row.querySelector('.edit-nick').addEventListener('click', ()=>{
+      const label = row.querySelector('.nick-label');
+      const current = m.name;
+      label.outerHTML = `<input class="nick-input nick-label" value="${current}">`;
+      const input = row.querySelector('.nick-input');
+      input.focus();
+      input.select();
+      const commit = ()=>{
+        m.name = input.value.trim() || current;
+        renderMembers();
+        showToast('별명을 수정했어요. 이 모임 안에서만 이 이름으로 보여요.');
+      };
+      input.addEventListener('keydown', e => { if(e.key === 'Enter') commit(); });
+      input.addEventListener('blur', commit);
+    });
+
+    const kickBtn = row.querySelector('.btn-danger');
+    if(kickBtn){
+      kickBtn.addEventListener('click', ()=>{
+        openConfirm('모임원을 추방할까요?', `${m.name}님을 '${group.name}' 모임에서 추방합니다. 이 작업은 되돌릴 수 없어요.`, ()=>{
+          group.members = group.members.filter(x => x.id !== m.id);
+          renderHead();
+          renderMembers();
+          showToast(`${m.name}님을 추방했어요.`);
+        });
+      });
+    }
+    memberList.appendChild(row);
+  });
+
+  waitingList.innerHTML = '';
+  if(!group.waiting.length){
+    waitingList.innerHTML = '<div class="empty-note">대기중인 초대가 없어요.</div>';
+  }
+  group.waiting.forEach(w => {
+    const row = document.createElement('div');
+    row.className = 'waiting-item';
+    row.innerHTML = `
+      <div><b>${w.email}</b><span>${w.inviterName}님이 초대함</span></div>
+      <div class="member-actions">
+        ${w.isMe ? `
+          <button class="btn btn-teal btn-sm" data-act="accept">수락</button>
+          <button class="btn btn-ghost btn-sm" data-act="reject">거절</button>
+        ` : `<span class="pill waiting">응답 대기중</span>`}
+      </div>`;
+    if(w.isMe){
+      row.querySelector('[data-act="accept"]').addEventListener('click', ()=>{
+        group.waiting = group.waiting.filter(x => x.id !== w.id);
+        group.members.push({id:MY_MEMBER_ID, name:'김플랜', role:'member'});
+        group.filter = 'joined';
+        renderHead();
+        renderMembers();
+        showToast('초대를 수락했어요. 모임에 참여했습니다.');
+      });
+      row.querySelector('[data-act="reject"]').addEventListener('click', ()=>{
+        group.waiting = group.waiting.filter(x => x.id !== w.id);
+        renderMembers();
+        showToast('초대를 거절했어요.');
+      });
+    }
+    waitingList.appendChild(row);
+  });
+}
+
+function setTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+document.getElementById('btnInvite').addEventListener('click', ()=>{
+  const input = document.getElementById('inviteEmail');
+  const email = input.value.trim();
+  if(!email || !email.includes('@')){ showToast('올바른 이메일 주소를 입력해주세요.'); return; }
+  if(group.members.some(m => m.name === email)){ showToast('이미 모임에 있는 회원이에요.'); return; }
+  group.waiting.push({id:'w'+Date.now(), email, inviterName:'김플랜'});
+  input.value = '';
+  renderMembers();
+  showToast(`${email}님에게 초대를 보냈어요.`);
+});
+
+document.getElementById('btnAddSchedule').addEventListener('click', ()=>{
+  const title = document.getElementById('scheduleTitle').value.trim();
+  const date = document.getElementById('scheduleDate').value;
+  const time = document.getElementById('scheduleTime').value;
+  const visibility = document.getElementById('scheduleVisibility').value;
+  if(!title || !date || !time){ showToast('제목, 날짜, 시간을 모두 입력해주세요.'); return; }
+  group.mySchedules.unshift({id:'s'+Date.now(), title, date, time, visibility});
+  document.getElementById('scheduleTitle').value = '';
+  document.getElementById('scheduleDate').value = '';
+  document.getElementById('scheduleTime').value = '';
+  renderSchedule();
+  showToast('일정을 공유했어요.');
+});
+
+document.getElementById('btnSaveName').addEventListener('click', ()=>{
+  const val = document.getElementById('settingsGroupName').value.trim();
+  if(!val){ showToast('모임 이름을 입력해주세요.'); return; }
+  if(val.length > 30){ showToast('모임 이름은 30자 이하로 입력해주세요.'); return; }
+  group.name = val;
+  renderHead();
+  showToast('모임 이름을 수정했어요.');
+});
+
+document.getElementById('btnDeleteGroup').addEventListener('click', ()=>{
+  openConfirm('모임을 삭제할까요?', `'${group.name}' 모임과 모든 일정, 채팅, 게시글이 삭제되고 되돌릴 수 없어요.`, ()=>{
+    GROUPS = GROUPS.filter(g => g.id !== group.id);
+    showToast('모임을 삭제했어요.');
+    setTimeout(()=>{ window.location.href = linkToList(); }, 600);
+  });
+});
+
+document.getElementById('btnLeave').addEventListener('click', ()=>{
+  if(isOwner(group)) return;
+  openConfirm('모임을 탈퇴할까요?', `'${group.name}' 모임에서 탈퇴하면 공유했던 일정도 더 이상 모임원에게 보이지 않아요.`, ()=>{
+    GROUPS = GROUPS.filter(g => g.id !== group.id);
+    showToast('모임을 탈퇴했어요.');
+    setTimeout(()=>{ window.location.href = linkToList(); }, 600);
+  });
+});
+
+bindModal();
+renderHead();
+renderSchedule();
+renderMembers();
+</script>
+</body>
+</html>

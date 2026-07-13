@@ -7,8 +7,6 @@ import com.example.planslot.group.repository.GroupMemberRepository;
 import com.example.planslot.group.repository.GroupRepository;
 import com.example.planslot.member.entity.Member;
 import com.example.planslot.member.repository.MemberRepository;
-import com.example.planslot.global.exception.CustomException;
-import com.example.planslot.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +24,7 @@ public class GroupServiceImpl implements GroupService {
     @Transactional
     public GroupDTO.Response createGroup(Long memberId, GroupDTO.CreateRequest request) {
         Member owner = memberRepository.findById(memberId)
-                .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED));
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
         Group group = Group.builder()
                 .groupName(request.groupName())

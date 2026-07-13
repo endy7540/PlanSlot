@@ -8,8 +8,8 @@ spring:
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
     url: jdbc:mariadb://localhost:3306/planslot
-    username: ${db_username}
-    password: ${db_password}
+    username: root
+    password: 1234
 
   jpa:
     hibernate:
@@ -22,7 +22,7 @@ spring:
         default_batch_fetch_size: 100
 
 jwt:
-  secret: ${secret_key}
+  secret: cGxhbnNsb3Qtc2VjcmV0LWtleS1mb3Itand0LWF1dGhlbnRpY2F0aW9uLXRlc3QtMTIzNA==
   access-token-validity-in-milliseconds: 3600000
 
 logging:

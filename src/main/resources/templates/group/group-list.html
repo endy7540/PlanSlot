@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlanSlot - 내 모임</title>
+<link rel="stylesheet" th:href="@{/css/group/group-shared.css}" href="../../static/css/group/group-shared.css">
+</head>
+<body>
+
+<div class="app">
+  <div class="page-head">
+    <div>
+      <div class="brand"><b>PlanSlot</b> · 모임 캘린더</div>
+      <h1>내 모임</h1>
+      <p>참여중인 모임을 확인하고, 초대받은 모임에 응답해보세요.</p>
+    </div>
+    <div class="head-actions">
+      <button class="btn btn-teal" id="btnNewGroup">+ 새 모임 만들기</button>
+    </div>
+  </div>
+
+  <div class="new-group-form" id="newGroupForm">
+    <input id="newGroupName" placeholder="모임 이름 (1~30자)" maxlength="30">
+    <button class="btn btn-primary" id="btnCreateGroup">생성하기</button>
+  </div>
+
+  <div class="toolbar">
+    <input class="search-box" id="groupSearch" placeholder="모임 이름 검색">
+    <div class="filter-chips">
+      <button class="chip active" data-filter="all">전체</button>
+      <button class="chip" data-filter="joined">참여중</button>
+      <button class="chip" data-filter="waiting">초대받음</button>
+    </div>
+  </div>
+
+  <div class="list-grid" id="groupGrid"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script th:src="@{/js/group/group-shared.js}" src="../../static/js/group/group-shared.js"></script>
+<script>
+function renderGrid(){
+  const wrap = document.getElementById('groupGrid');
+  const activeFilter = document.querySelector('.chip.active').dataset.filter;
+  const q = document.getElementById('groupSearch').value.trim().toLowerCase();
+
+  wrap.innerHTML = '';
+  const filtered = GROUPS
+    .filter(g => activeFilter === 'all' ? true : g.filter === activeFilter)
+    .filter(g => g.name.toLowerCase().includes(q));
+
+  if(!filtered.length){
+    wrap.innerHTML = '<div class="empty-note">조건에 맞는 모임이 없어요.</div>';
+    return;
+  }
+
+  filtered.forEach(g => {
+    const isWaiting = g.filter === 'waiting';
+    const badge = isWaiting
+      ? '<span class="pill waiting">초대 대기중</span>'
+      : (isOwner(g) ? '<span class="pill owner">내가 방장</span>' : '');
+    const card = document.createElement('a');
+    card.className = 'group-card';
+    card.href = linkToDetail(g.id);
+    card.innerHTML = `
+      <div class="top-row">
+        <div class="group-avatar">${initials(g.name)}</div>
+        <div>
+          <b>${g.name}</b>
+          <div class="count">참여자 ${g.members.length}명</div>
+        </div>
+      </div>
+      ${badge}
+      <div class="go">${isWaiting ? '초대 확인하기 →' : '모임 열기 →'}</div>
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    renderGrid();
+  });
+});
+document.getElementById('groupSearch').addEventListener('input', renderGrid);
+
+document.getElementById('btnNewGroup').addEventListener('click', ()=>{
+  const form = document.getElementById('newGroupForm');
+  form.classList.toggle('open');
+  if(form.classList.contains('open')) document.getElementById('newGroupName').focus();
+});
+
+document.getElementById('btnCreateGroup').addEventListener('click', ()=>{
+  const input = document.getElementById('newGroupName');
+  const name = input.value.trim();
+  if(!name){ showToast('모임 이름을 입력해주세요.'); return; }
+  if(name.length > 30){ showToast('모임 이름은 30자 이하로 입력해주세요.'); return; }
+  const id = 'g' + Date.now();
+  GROUPS.unshift({
+    id, name, ownerId:'me', filter:'joined',
+    members:[{id:'me', name:'김플랜', role:'owner'}],
+    waiting:[], mySchedules:[], heat:[], recs:[]
+  });
+  input.value = '';
+  document.getElementById('newGroupForm').classList.remove('open');
+  renderGrid();
+  showToast('새 모임을 만들었어요. 카드를 눌러 인원을 초대해보세요.');
+});
+
+renderGrid();
+</script>
+</body>
+</html>

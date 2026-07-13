@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlanSlot - 새 모임 만들기</title>
+<link rel="stylesheet" th:href="@{/css/group/group-shared.css}" href="../../static/css/group/group-shared.css">
+</head>
+<body>
+
+<div class="app">
+  <div class="breadcrumb"><a th:href="@{/group/list}" href="group-list.html">← 내 모임</a></div>
+
+  <div class="page-head">
+    <div>
+      <div class="brand"><b>PlanSlot</b> · 새 모임 만들기</div>
+      <h1>새 모임 만들기</h1>
+      <p>새로운 모임을 만들고 인원을 초대해보세요.</p>
+    </div>
+  </div>
+
+  <div class="detail-layout">
+    <section class="card detail-card" style="padding: 32px;">
+      <div class="settings-block">
+        <h3>모임 이름</h3>
+        <div class="field-row">
+          <input id="newGroupName" placeholder="모임 이름 (1~30자)" maxlength="30" style="flex: 1;">
+        </div>
+      </div>
+      
+      <div style="margin-top: 24px; display: flex; gap: 8px;">
+        <button class="btn btn-primary" id="btnCreateGroup">생성하기</button>
+        <button class="btn btn-ghost" id="btnCancel">취소</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script th:src="@{/js/group/group-shared.js}" src="../../static/js/group/group-shared.js"></script>
+<script>
+  document.getElementById('btnCreateGroup').addEventListener('click', ()=>{
+    const input = document.getElementById('newGroupName');
+    const name = input.value.trim();
+    if(!name){ showToast('모임 이름을 입력해주세요.'); return; }
+    if(name.length > 30){ showToast('모임 이름은 30자 이하로 입력해주세요.'); return; }
+
+    // 백엔드 서버의 /group/register 로 실제 POST 요청 보내기
+    fetch('/group/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token') // JWT 토큰
+      },
+      body: JSON.stringify({ groupName: name }) // 서버의 GroupDTO.CreateRequest 형식에 맞춤
+    })
+      .then(res => {
+        if(!res.ok) {
+          throw new Error('서버 에러가 발생했습니다.');
+        }
+        return res.json();
+      })
+      .then(data => {
+        showToast('새 모임을 만들었어요. 잠시 후 상세 페이지로 이동합니다.');
+        setTimeout(()=>{
+          window.location.href = linkToDetail(data.id); // 생성된 실제 모임의 ID를 사용해 상세 페이지로 이동
+        }, 1000);
+      })
+      .catch(err => {
+        showToast('모임 생성에 실패했습니다. (콘솔 확인)');
+        console.error(err);
+      });
+  });
+
+document.getElementById('btnCancel').addEventListener('click', ()=>{
+  window.location.href = linkToList();
+});
+
+document.getElementById('newGroupName').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') {
+    document.getElementById('btnCreateGroup').click();
+  }
+});
+</script>
+</body>
+</html>

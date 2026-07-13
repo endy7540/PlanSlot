@@ -4,12 +4,8 @@ server:
 spring:
   application:
     name: PlanSlot
-
-  datasource:
-    driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://localhost:3306/planslot
-    username: ${db_username}
-    password: ${db_password}
+  config:
+    import: optional:classpath:application-secret.yaml
 
   jpa:
     hibernate:
@@ -20,10 +16,6 @@ spring:
       hibernate:
         format_sql: true
         default_batch_fetch_size: 100
-
-jwt:
-  secret: ${secret_key}
-  access-token-validity-in-milliseconds: 3600000
 
 logging:
   level:

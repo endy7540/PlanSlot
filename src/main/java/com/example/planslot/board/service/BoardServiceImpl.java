@@ -3,9 +3,11 @@ package com.example.planslot.board.service;
 import com.example.planslot.board.dto.BoardDTO;
 import com.example.planslot.board.dto.BoardImageDTO;
 import com.example.planslot.board.entity.Board;
+import com.example.planslot.board.entity.BoardCommentStatus;
 import com.example.planslot.board.entity.BoardImage;
 import com.example.planslot.board.entity.BoardStatus;
 import com.example.planslot.board.entity.BoardType;
+import com.example.planslot.board.repository.BoardCommentRepository;
 import com.example.planslot.board.repository.BoardImageRepository;
 import com.example.planslot.board.repository.BoardRepository;
 import com.example.planslot.member.entity.Member;
@@ -25,7 +27,10 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -40,6 +45,7 @@ public class BoardServiceImpl implements BoardService {
 
     private final BoardRepository boardRepository;
     private final BoardImageRepository boardImageRepository;
+    private final BoardCommentRepository boardCommentRepository;
     private final MemberRepository memberRepository;
 
     @Value("${file.upload.board-path:./uploads/board}")
@@ -68,21 +74,26 @@ public class BoardServiceImpl implements BoardService {
     @Override
     public Page<BoardDTO> getBoardList(BoardType boardType, String keyword, Pageable pageable) {
         String searchKeyword = normalizeKeyword(keyword);
+        Page<Board> boardPage;
 
         if (searchKeyword == null) {
-            return boardRepository
-                    .findByBoardTypeAndBoardStatus(boardType, BoardStatus.ACTIVE, pageable)
-                    .map(this::toListDTO);
+            boardPage = boardRepository
+                    .findByBoardTypeAndBoardStatus(boardType, BoardStatus.ACTIVE, pageable);
+        } else {
+            boardPage = boardRepository.searchBoards(
+                    boardType,
+                    BoardStatus.ACTIVE,
+                    searchKeyword,
+                    pageable
+            );
         }
 
-        return boardRepository
-                .searchBoards(
-                        boardType,
-                        BoardStatus.ACTIVE,
-                        searchKeyword,
-                        pageable
-                )
-                .map(this::toListDTO);
+        Map<Long, Long> commentCountMap = getCommentCountMap(boardPage.getContent());
+
+        return boardPage.map(board -> toListDTO(
+                board,
+                commentCountMap.getOrDefault(board.getBoardId(), 0L)
+        ));
     }
 
     // 게시글 상세 조회 및 조회수 증가
@@ -308,8 +319,30 @@ public class BoardServiceImpl implements BoardService {
                 .toLowerCase(Locale.ROOT);
     }
 
+    // 게시글 목록의 댓글 수 일괄 조회
+    private Map<Long, Long> getCommentCountMap(List<Board> boards) {
+        if (boards.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> boardIds = boards.stream()
+                .map(Board::getBoardId)
+                .toList();
+
+        Map<Long, Long> commentCountMap = new HashMap<>();
+
+        boardCommentRepository
+                .countByBoardIdsAndCommentStatus(boardIds, BoardCommentStatus.ACTIVE)
+                .forEach(commentCount -> commentCountMap.put(
+                        commentCount.getBoardId(),
+                        commentCount.getCommentCount()
+                ));
+
+        return commentCountMap;
+    }
+
     // 게시글 목록 DTO 변환
-    private BoardDTO toListDTO(Board board) {
+    private BoardDTO toListDTO(Board board, long commentCount) {
         return BoardDTO.builder()
                 .boardId(board.getBoardId())
                 .writerId(board.getWriter().getId())
@@ -317,6 +350,7 @@ public class BoardServiceImpl implements BoardService {
                 .title(board.getTitle())
                 .viewCount(board.getViewCount())
                 .boardType(board.getBoardType())
+                .commentCount(commentCount)
                 .createdAt(board.getCreatedAt())
                 .build();
     }
@@ -326,6 +360,9 @@ public class BoardServiceImpl implements BoardService {
         BoardImageDTO boardImage = boardImageRepository.findByBoardBoardId(board.getBoardId())
                 .map(this::toImageDTO)
                 .orElse(null);
+
+        long commentCount = boardCommentRepository
+                .countByBoardIdAndCommentStatus(board.getBoardId(), BoardCommentStatus.ACTIVE);
 
         return BoardDTO.builder()
                 .boardId(board.getBoardId())
@@ -337,6 +374,7 @@ public class BoardServiceImpl implements BoardService {
                 .boardType(board.getBoardType())
                 .boardStatus(board.getBoardStatus())
                 .boardImage(boardImage)
+                .commentCount(commentCount)
                 .createdAt(board.getCreatedAt())
                 .updatedAt(board.getUpdatedAt())
                 .build();

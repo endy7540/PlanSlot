@@ -19,14 +19,14 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Locale;
 
 @RestController
-@RequestMapping("/post")
+@RequestMapping("/board")
 @RequiredArgsConstructor
 public class BoardController {
 
     private final BoardService boardService;
 
     // 게시글 등록
-    @PostMapping("/{boardType}")
+    @PostMapping("/type/{boardType}")
     public ResponseEntity<Long> createBoard(@PathVariable String boardType,
                                             @RequestParam Long memberId,
                                             @RequestBody BoardDTO boardDTO) {
@@ -36,7 +36,7 @@ public class BoardController {
     }
 
     // 게시판 종류별 목록 및 검색
-    @GetMapping("/{boardType}")
+    @GetMapping("/type/{boardType}")
     public ResponseEntity<Page<BoardDTO>> getBoardList(@PathVariable String boardType,
             @RequestParam(required = false) String keyword,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
@@ -83,7 +83,7 @@ public class BoardController {
         return ResponseEntity.status(HttpStatus.CREATED).body(boardImage);
     }
 
-    // 게시글 이미지 DB 정보 삭제
+    // 게시글 이미지 정보 및 실제 파일 삭제
     @DeleteMapping("/{boardId}/image/{imageId}")
     public ResponseEntity<Void> deleteBoardImage(@PathVariable Long boardId,
                                                  @PathVariable Long imageId,

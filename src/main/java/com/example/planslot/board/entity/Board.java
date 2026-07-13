@@ -68,11 +68,6 @@ public class Board {
         this.content = content;
     }
 
-    // 조회수 증가
-    public void increaseViewCount() {
-        this.viewCount++;
-    }
-
     // 게시글 삭제 상태 변경
     public void delete() {
         this.boardStatus = BoardStatus.DELETED;

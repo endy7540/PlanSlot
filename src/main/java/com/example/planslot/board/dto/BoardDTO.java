@@ -2,7 +2,11 @@ package com.example.planslot.board.dto;
 
 import com.example.planslot.board.entity.BoardStatus;
 import com.example.planslot.board.entity.BoardType;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -21,6 +25,7 @@ public class BoardDTO {
     private BoardType boardType;
     private BoardStatus boardStatus;
     private BoardImageDTO boardImage;
+    private long commentCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

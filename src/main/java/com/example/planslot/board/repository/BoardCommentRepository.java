@@ -14,6 +14,7 @@ public interface BoardCommentRepository extends JpaRepository<BoardComment, Long
     @Query("""
             SELECT c
             FROM BoardComment c
+            JOIN FETCH c.writer
             WHERE c.board.boardId = :boardId
               AND c.parentComment IS NULL
             ORDER BY c.createdAt ASC, c.commentId ASC
@@ -24,6 +25,7 @@ public interface BoardCommentRepository extends JpaRepository<BoardComment, Long
     @Query("""
             SELECT c
             FROM BoardComment c
+            JOIN FETCH c.writer
             WHERE c.parentComment.commentId IN :parentCommentIds
               AND c.commentStatus = :commentStatus
             ORDER BY c.createdAt ASC, c.commentId ASC
@@ -32,4 +34,31 @@ public interface BoardCommentRepository extends JpaRepository<BoardComment, Long
                                          @Param("commentStatus") BoardCommentStatus commentStatus);
 
     Optional<BoardComment> findByCommentIdAndCommentStatus(Long commentId, BoardCommentStatus commentStatus);
+
+    // 게시글 하나의 활성 댓글 수 조회
+    @Query("""
+            SELECT COUNT(c)
+            FROM BoardComment c
+            WHERE c.board.boardId = :boardId
+              AND c.commentStatus = :commentStatus
+            """)
+    long countByBoardIdAndCommentStatus(@Param("boardId") Long boardId,
+                                        @Param("commentStatus") BoardCommentStatus commentStatus);
+
+    // 여러 게시글의 활성 댓글 수 일괄 조회
+    @Query("""
+            SELECT c.board.boardId AS boardId,
+                   COUNT(c) AS commentCount
+            FROM BoardComment c
+            WHERE c.board.boardId IN :boardIds
+              AND c.commentStatus = :commentStatus
+            GROUP BY c.board.boardId
+            """)
+    List<BoardCommentCount> countByBoardIdsAndCommentStatus(@Param("boardIds") List<Long> boardIds,
+                                                            @Param("commentStatus") BoardCommentStatus commentStatus);
+
+    interface BoardCommentCount {
+        Long getBoardId();
+        Long getCommentCount();
+    }
 }

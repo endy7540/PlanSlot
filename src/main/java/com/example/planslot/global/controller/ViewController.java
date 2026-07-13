@@ -8,11 +8,11 @@ public class ViewController {
 
     @GetMapping("/auth")
     public String authPage() {
-        return "auth";
+        return "global/auth";
     }
 
     @GetMapping("/home")
     public String home() {
-        return "home";
+        return "global/home";
     }
 }

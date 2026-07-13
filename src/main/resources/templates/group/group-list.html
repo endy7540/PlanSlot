@@ -20,10 +20,7 @@
     </div>
   </div>
 
-  <div class="new-group-form" id="newGroupForm">
-    <input id="newGroupName" placeholder="모임 이름 (1~30자)" maxlength="30">
-    <button class="btn btn-primary" id="btnCreateGroup">생성하기</button>
-  </div>
+  <!-- 새 모임 만들기 폼은 /group/register 로 분리되었습니다. -->
 
   <div class="toolbar">
     <input class="search-box" id="groupSearch" placeholder="모임 이름 검색">
@@ -89,29 +86,34 @@ document.querySelectorAll('.chip').forEach(chip => {
 document.getElementById('groupSearch').addEventListener('input', renderGrid);
 
 document.getElementById('btnNewGroup').addEventListener('click', ()=>{
-  const form = document.getElementById('newGroupForm');
-  form.classList.toggle('open');
-  if(form.classList.contains('open')) document.getElementById('newGroupName').focus();
+  window.location.href = '/group/register';
 });
 
-document.getElementById('btnCreateGroup').addEventListener('click', ()=>{
-  const input = document.getElementById('newGroupName');
-  const name = input.value.trim();
-  if(!name){ showToast('모임 이름을 입력해주세요.'); return; }
-  if(name.length > 30){ showToast('모임 이름은 30자 이하로 입력해주세요.'); return; }
-  const id = 'g' + Date.now();
-  GROUPS.unshift({
-    id, name, ownerId:'me', filter:'joined',
-    members:[{id:'me', name:'김플랜', role:'owner'}],
-    waiting:[], mySchedules:[], heat:[], recs:[]
-  });
-  input.value = '';
-  document.getElementById('newGroupForm').classList.remove('open');
-  renderGrid();
-  showToast('새 모임을 만들었어요. 카드를 눌러 인원을 초대해보세요.');
-});
-
-renderGrid();
+async function fetchAndRenderGrid() {
+  try {
+    const res = await fetch('/group/api/my');
+    if (res.ok) {
+      const data = await res.json();
+      GROUPS = data.map(d => ({
+        id: d.id,
+        name: d.name,
+        ownerId: d.ownerId,
+        filter: d.filter,
+        members: new Array(d.memberCount).fill({}),
+        waiting: [],
+        mySchedules: [],
+        heat: [],
+        recs: []
+      }));
+      renderGrid();
+    } else {
+      showToast('모임 목록을 불러오지 못했습니다.');
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+fetchAndRenderGrid();
 </script>
 </body>
 </html>

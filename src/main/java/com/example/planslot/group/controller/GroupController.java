@@ -55,8 +55,8 @@ public class GroupController {
                 .body(response);
     }
 
-    // 내 모임 목록 조회 API
-    @GetMapping("/api/my")
+    // 내 모임 목록 조회
+    @GetMapping("/mygroup")
     @ResponseBody
     public ResponseEntity<List<GroupDTO.ListResponse>> getMyGroups() {
         Long memberId = 1L; // TODO: Security/Session 정보로 교체
@@ -64,75 +64,99 @@ public class GroupController {
         return ResponseEntity.ok(responses);
     }
 
-    // 모임 상세 정보 조회 API
-    @GetMapping("/api/detail/{id}")
+    // 모임 상세 정보 조회
+    @GetMapping("/detail/{groupId}")
     @ResponseBody
-    public ResponseEntity<GroupDTO.DetailResponse> getGroupDetail(@PathVariable("id") Long groupId) {
+    public ResponseEntity<GroupDTO.DetailResponse> getGroupDetail(@PathVariable("groupId") Long groupId) {
         Long memberId = 1L; // TODO: Security/Session 정보로 교체
         GroupDTO.DetailResponse response = groupService.getGroupDetail(groupId, memberId);
         return ResponseEntity.ok(response);
     }
 
-    // 모임 이름 수정 API
-    @PatchMapping("/api/detail/{id}/name")
+    // 모임 이름 수정
+    @PutMapping("/{groupId}")
     @ResponseBody
-    public ResponseEntity<Void> updateGroupName(@PathVariable("id") Long groupId, @RequestBody Map<String, String> body) {
+    public ResponseEntity<Void> updateGroupName(@PathVariable("groupId") Long groupId, @RequestBody Map<String, String> body) {
         Long memberId = 1L; // TODO
         groupService.updateGroupName(groupId, body.get("name"), memberId);
         return ResponseEntity.ok().build();
     }
 
-    // 모임 삭제 API
-    @DeleteMapping("/api/detail/{id}")
+    // 모임 삭제
+    @DeleteMapping("/{groupId}")
     @ResponseBody
-    public ResponseEntity<Void> deleteGroup(@PathVariable("id") Long groupId) {
+    public ResponseEntity<Void> deleteGroup(@PathVariable("groupId") Long groupId) {
         Long memberId = 1L;
         groupService.deleteGroup(groupId, memberId);
         return ResponseEntity.ok().build();
     }
 
-    // 모임 탈퇴 API
-    @DeleteMapping("/api/detail/{id}/leave")
+    // 모임 탈퇴
+    @DeleteMapping("/{groupId}/leave")
     @ResponseBody
-    public ResponseEntity<Void> leaveGroup(@PathVariable("id") Long groupId) {
+    public ResponseEntity<Void> leaveGroup(@PathVariable("groupId") Long groupId) {
         Long memberId = 1L;
         groupService.leaveGroup(groupId, memberId);
         return ResponseEntity.ok().build();
     }
 
-    // 모임원 추방 API
-    @DeleteMapping("/api/detail/{id}/kick/{targetId}")
+    // 모임원 추방
+    @DeleteMapping("/{groupId}/member/{targetMemberId}")
     @ResponseBody
-    public ResponseEntity<Void> kickMember(@PathVariable("id") Long groupId, @PathVariable("targetId") Long targetId) {
+    public ResponseEntity<Void> kickMember(
+            @PathVariable("groupId") Long groupId, 
+            @PathVariable("targetMemberId") Long targetMemberId) {
         Long memberId = 1L;
-        groupService.kickMember(groupId, targetId, memberId);
+        groupService.kickMember(groupId, targetMemberId, memberId);
         return ResponseEntity.ok().build();
     }
 
-    // 모임 초대 API
-    @PostMapping("/api/detail/{id}/invite")
+    // 모임 초대
+    @PostMapping("/{groupId}/invitation")
     @ResponseBody
-    public ResponseEntity<Void> inviteMember(@PathVariable("id") Long groupId, @RequestBody Map<String, String> body) {
+    public ResponseEntity<Void> inviteMember(@PathVariable("groupId") Long groupId, @RequestBody Map<String, String> body) {
         Long memberId = 1L;
         groupService.inviteMember(groupId, body.get("email"), memberId);
         return ResponseEntity.ok().build();
     }
 
-    // 초대 수락 API
-    @PostMapping("/api/detail/{id}/accept")
+    // 초대 수락/거절
+    @PatchMapping("/{groupId}/invitation/{invitationId}")
     @ResponseBody
-    public ResponseEntity<Void> acceptInvite(@PathVariable("id") Long groupId) {
+    public ResponseEntity<Void> handleInvitation(
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("invitationId") Long invitationId,
+            @RequestBody Map<String, String> body) {
         Long memberId = 1L;
-        groupService.acceptInvite(groupId, memberId);
+        String action = body.get("action"); // "ACCEPT" 또는 "REJECT" 로 전송
+        if ("ACCEPT".equalsIgnoreCase(action)) {
+            groupService.acceptInvite(groupId, memberId); // TODO: 추후 invitationId 검증 로직 추가 필요
+        } else if ("REJECT".equalsIgnoreCase(action)) {
+            groupService.rejectInvite(groupId, memberId);
+        }
         return ResponseEntity.ok().build();
     }
 
-    // 초대 거절 API
-    @PostMapping("/api/detail/{id}/reject")
+    // 자신 닉네임 수정
+    @PatchMapping("/{groupId}/nickname")
     @ResponseBody
-    public ResponseEntity<Void> rejectInvite(@PathVariable("id") Long groupId) {
+    public ResponseEntity<Void> updateMyNickname(
+            @PathVariable("groupId") Long groupId, 
+            @RequestBody Map<String, String> body) {
         Long memberId = 1L;
-        groupService.rejectInvite(groupId, memberId);
-        return ResponseEntity.ok().build();
+        // groupService.updateMyNickname(groupId, memberId, body.get("nickname"));
+        return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
+    }
+
+    // 타인 닉네임 수정
+    @PatchMapping("/{groupId}/member/{targetMemberId}/displayName")
+    @ResponseBody
+    public ResponseEntity<Void> updateMemberDisplayName(
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("targetMemberId") Long targetMemberId,
+            @RequestBody Map<String, String> body) {
+        Long memberId = 1L;
+        // groupService.updateMemberDisplayName(groupId, memberId, targetMemberId, body.get("displayName"));
+        return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
     }
 }

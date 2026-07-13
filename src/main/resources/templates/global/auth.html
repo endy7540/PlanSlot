@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlanSlot - 로그인 및 회원가입</title>
+    <style>
+        *{box-sizing:border-box}
+        body{
+            margin:0;
+            height:100vh;
+            overflow:hidden;
+            font-family:Pretendard,'Malgun Gothic',Arial,sans-serif;
+            background:#F3FAFF!important;
+            color:#182B3A!important;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
+        button,input,select,textarea{font-family:inherit}
+        button{cursor:pointer}
+
+        .panel{
+            background:#fff;
+            border:2px solid #DCEFFC!important;
+            border-radius:12px;
+            box-shadow:7px 7px 0 rgba(8,32,51,.05);
+            padding:32px 28px;
+        }
+        .logo{
+            font-size:36px;
+            font-weight:950;
+            color:#38BDF8!important;
+            letter-spacing:-.5px;
+            text-align:center;
+            margin-bottom:4px;
+        }
+        .tagline{
+            font-size:13px;
+            color:#748898!important;
+            text-align:center;
+            margin-bottom:28px;
+            line-height:1.4;
+        }
+        .form{
+            display:flex;
+            flex-direction:column;
+            gap:12px;
+        }
+        input{
+            border:2px solid #DCEFFC!important;
+            border-radius:10px;
+            padding:14px;
+            background:#fff;
+            font-size:14px;
+            outline:none;
+            transition:0.2s;
+        }
+        input:focus{
+            border-color:#38BDF8!important;
+            box-shadow:0 0 0 3px rgba(56,189,248,0.1);
+        }
+        .primary{
+            border-radius:10px;
+            padding:14px 16px;
+            font-weight:950;
+            border:0;
+            background:#075985!important;
+            color:#fff;
+            font-size:15px;
+            margin-top:8px;
+        }
+        .primary:hover{background:#0c4a6e!important}
+        .ghost{
+            border-radius:10px;
+            padding:14px 16px;
+            font-weight:950;
+            border:2px solid #DCEFFC!important;
+            background:#fff!important;
+            color:#182B3A;
+            font-size:14px;
+        }
+        .ghost:hover{background:#F0F9FF!important}
+        .btn-row{
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+            margin-top:20px;
+        }
+        .divider{
+            text-align:center;
+            color:#748898;
+            font-size:12px;
+            margin:16px 0;
+            position:relative;
+        }
+        .divider::before, .divider::after{
+            content:"";
+            position:absolute;
+            top:50%;
+            width:38%;
+            height:1px;
+            background:#DCEFFC;
+        }
+        .divider::before{left:0;}
+        .divider::after{right:0;}
+
+        .auth-container{
+            width:100%;
+            max-width:400px;
+            position:relative;
+        }
+        .auth-page{
+            display:none;
+        }
+        .auth-page.active{
+            display:block;
+            animation:fade 0.3s ease;
+        }
+        @keyframes fade{
+            from{opacity:0;transform:translateY(10px)}
+            to{opacity:1;transform:none}
+        }
+
+        /* 결과 메시지 출력용 스타일 */
+        .msg-box {
+            margin-top: 15px;
+            font-size: 13px;
+            font-weight: bold;
+            text-align: center;
+            color: #075985;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+<div class="auth-container">
+
+    <div class="panel auth-page active" id="page-login">
+        <div class="logo">PlanSlot</div>
+        <div class="tagline">AI가 함께하는<br>대학생 일정 플랫폼</div>
+
+        <div class="form">
+            <input type="text" id="loginId" placeholder="아이디">
+            <input type="password" id="loginPw" placeholder="비밀번호">
+            <button class="primary" onclick="doLogin()">로그인</button>
+        </div>
+
+        <div id="loginMsg" class="msg-box"></div>
+
+        <div class="divider">또는</div>
+
+        <div class="form">
+            <button class="ghost" onclick="togglePage('signup')">회원가입</button>
+        </div>
+    </div>
+
+    <div class="panel auth-page" id="page-signup">
+        <div class="logo" style="font-size:28px;">회원가입</div>
+        <div class="tagline" style="margin-bottom:20px;">플랜슬롯과 함께 일정을 계획해보세요.</div>
+
+        <div class="form">
+            <input type="text" id="signupId" placeholder="아이디 (필수)">
+            <input type="password" id="signupPw" placeholder="비밀번호 (필수)">
+            <input type="email" id="signupEmail" placeholder="이메일 (필수)">
+            <input type="text" id="signupNickname" placeholder="닉네임 (예: 이상엽)">
+            <input type="text" id="signupAddress" placeholder="주소 / 소속 (선택)">
+
+            <div id="signupMsg" class="msg-box"></div>
+
+            <div class="btn-row" style="margin-top:10px;">
+                <button class="primary" onclick="doSignUp()">가입 완료</button>
+                <button class="ghost" onclick="togglePage('login')">뒤로 가기</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const API_BASE = "http://localhost:8080/api";
+
+    // 화면 전환 함수
+    function togglePage(target) {
+        document.querySelectorAll('.auth-page').forEach(page => page.classList.remove('active'));
+        document.getElementById('page-' + target).classList.add('active');
+        // 화면 전환 시 메시지 초기화
+        document.getElementById('loginMsg').innerText = '';
+        document.getElementById('signupMsg').innerText = '';
+    }
+
+    // 로그인 로직
+    async function doLogin() {
+        const id = document.getElementById('loginId').value;
+        const pw = document.getElementById('loginPw').value;
+        const msgBox = document.getElementById('loginMsg');
+
+        if(!id || !pw) {
+            msgBox.innerText = '아이디와 비밀번호를 입력해주세요.';
+            return;
+        }
+
+        try {
+            msgBox.innerText = "로그인 요청 중...";
+            const response = await fetch(`${API_BASE}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginId: id, password: pw })
+            });
+
+            const result = await response.text();
+
+            if(response.ok) {
+                msgBox.style.color = "#047857";
+                msgBox.innerText = `로그인 성공! 홈 화면으로 이동합니다...`;
+
+                const tokenStr = result.replace("Bearer ", "").trim();
+                localStorage.setItem("jwtToken", tokenStr);
+
+                window.location.href = "/home";
+            } else {
+                msgBox.style.color = "#B91C1C";
+                msgBox.innerText = `로그인 실패: ${result}`;
+            }
+        } catch (error) {
+            msgBox.style.color = "#B91C1C";
+            msgBox.innerText = "서버 연결 실패.\n" + error;
+        }
+    }
+</script>
+
+</body>
+</html>

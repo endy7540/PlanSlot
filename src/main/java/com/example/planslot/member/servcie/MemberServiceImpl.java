@@ -39,4 +39,9 @@ public class MemberServiceImpl implements MemberService{
 
         return memberRepository.save(member).getId();
     }
+
+    @Override
+    public boolean checkDuplicateId(String loginId) {
+        return memberRepository.existsByLoginId(loginId);
+    }
 }

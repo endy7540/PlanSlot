@@ -31,8 +31,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         Member member = memberRepository.findByLoginId(loginId)
                 .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 소셜 계정입니다."));
 
-        String token = jwtTokenProvider.createAccessToken(member.getLoginId(), member.getRole().name(), false);
-
+        String token = jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().name(), false);
         String redirectUrl = "/auth/oauth2-callback?token=" + token;
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }

@@ -3,8 +3,10 @@ package com.example.planslot.schedule.service;
 import com.example.planslot.member.entity.Member;
 import com.example.planslot.member.repository.MemberRepository;
 import com.example.planslot.schedule.dto.ScheduleDTO;
+import com.example.planslot.schedule.entity.Deadline;
 import com.example.planslot.schedule.entity.Schedule;
 import com.example.planslot.schedule.entity.SourceType;
+import com.example.planslot.schedule.repository.DeadlineRepository;
 import com.example.planslot.schedule.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -23,6 +25,7 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
     private final MemberRepository memberRepository;
+    private final DeadlineRepository deadlineRepository;
 
     @Override
     @Transactional
@@ -45,30 +48,22 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         Schedule saved = scheduleRepository.save(schedule);
 
-        // TODO: ScheduleDeadline 완성되면 requestDTO에 deadline 정보 있을 때
-        //       ScheduleDeadline 생성해서 saved.getScheduleId()로 연결
+        if (requestDTO.getDeadlineDate() != null) {
+            Deadline deadline = Deadline.builder()
+                    .schedule(saved)
+                    .deadlineDate(requestDTO.getDeadlineDate())
+                    .notifyDaysBefore(requestDTO.getNotifyDaysBefore())
+                    .build();
+            deadlineRepository.save(deadline);
+        }
 
         return ScheduleDTO.from(saved);
     }
-
-    @Override
-    public List<ScheduleDTO> getScheduleList(Long memberId) {
-        return scheduleRepository.findAllByMemberId(memberId).stream()
-                .map(ScheduleDTO::from)
-                .toList();
-    }
-
-    @Override
-    public List<ScheduleDTO> getScheduleListByPeriod(Long memberId, LocalDateTime start, LocalDateTime end) {
-        return scheduleRepository.findAllByMemberIdAndPeriod(memberId, start, end).stream()
-                .map(ScheduleDTO::from)
-                .toList();
-    }
-
     @Override
     public ScheduleDTO getSchedule(Long scheduleId, Long memberId) {
         Schedule schedule = getOwnedSchedule(scheduleId, memberId);
-        return ScheduleDTO.from(schedule);
+        Deadline deadline = deadlineRepository.findBySchedule_ScheduleId(scheduleId).orElse(null);
+        return ScheduleDTO.fromWithDeadline(schedule, deadline);
     }
 
     @Override
@@ -86,9 +81,28 @@ public class ScheduleServiceImpl implements ScheduleService {
                 requestDTO.getLocation()
         );
 
-        // TODO: ScheduleDeadline 완성되면 데드라인 수정 로직 추가
+        if (requestDTO.getDeadlineDate() != null) {
+            Deadline deadline = deadlineRepository.findBySchedule_ScheduleId(scheduleId)
+                    .orElse(Deadline.builder().schedule(schedule).build());
+            deadline.update(requestDTO.getDeadlineDate(), requestDTO.getNotifyDaysBefore());
+            deadlineRepository.save(deadline);
+        }
 
         return ScheduleDTO.from(schedule);
+    }
+
+    @Override
+    public List<ScheduleDTO> getScheduleList(Long memberId) {
+        return scheduleRepository.findAllByMemberId(memberId).stream()
+                .map(ScheduleDTO::from)
+                .toList();
+    }
+
+    @Override
+    public List<ScheduleDTO> getScheduleListByPeriod(Long memberId, LocalDateTime start, LocalDateTime end) {
+        return scheduleRepository.findAllByMemberIdAndPeriod(memberId, start, end).stream()
+                .map(ScheduleDTO::from)
+                .toList();
     }
 
     @Override

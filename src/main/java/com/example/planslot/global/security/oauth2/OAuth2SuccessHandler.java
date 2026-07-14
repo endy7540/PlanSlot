@@ -31,10 +31,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         Member member = memberRepository.findByLoginId(loginId)
                 .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 소셜 계정입니다."));
 
-        // JWT 토큰 발급 (기본 1시간 유지로 설정)
         String token = jwtTokenProvider.createAccessToken(member.getLoginId(), member.getRole().name(), false);
 
-        // 프론트엔드로 토큰을 전달하기 위해 리다이렉트 (임시 페이지에서 로컬스토리지에 저장하도록 유도)
         String redirectUrl = "/auth/oauth2-callback?token=" + token;
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }

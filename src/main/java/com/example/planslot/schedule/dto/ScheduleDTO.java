@@ -1,5 +1,6 @@
 package com.example.planslot.schedule.dto;
 
+import com.example.planslot.schedule.entity.Deadline;
 import com.example.planslot.schedule.entity.Schedule;
 import com.example.planslot.schedule.entity.ScheduleType;
 import com.example.planslot.schedule.entity.SourceType;
@@ -50,6 +51,9 @@ public class ScheduleDTO {
 
     private LocalDateTime updatedAt;
 
+    private java.time.LocalDate deadlineDate;
+    private Integer notifyDaysBefore;
+
     // ===== 변환 메서드 =====
 
     public static ScheduleDTO from(Schedule schedule) {
@@ -68,5 +72,13 @@ public class ScheduleDTO {
                 .createdAt(schedule.getCreatedAt())
                 .updatedAt(schedule.getUpdatedAt())
                 .build();
+    }
+    public static ScheduleDTO fromWithDeadline(Schedule schedule, Deadline deadline) {
+        ScheduleDTO dto = from(schedule);
+        if (deadline != null) {
+            dto.deadlineDate = deadline.getDeadlineDate();
+            dto.notifyDaysBefore = deadline.getNotifyDaysBefore();
+        }
+        return dto;
     }
 }

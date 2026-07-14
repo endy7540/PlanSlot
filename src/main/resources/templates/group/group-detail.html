@@ -36,15 +36,17 @@
 
       <!-- 일정 탭 -->
       <div class="tab-panel active" id="panel-schedule">
-        <div class="section-row">
-          <h3>5월 모임 일정</h3>
-          <span style="color:var(--muted);font-size:11.5px">공개 일정만 모임원 전체에게 보여요</span>
+        <div class="section-row" style="margin-bottom:8px">
+          <h3 id="calendarMonthLabel">모임 일정</h3>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-ghost btn-sm" onclick="changeCalMonth(-1)">◀</button>
+            <button class="btn btn-ghost btn-sm" onclick="changeCalMonth(1)">▶</button>
+          </div>
         </div>
-        <div class="calendar">
-          <div class="weekday">일</div><div class="weekday">월</div><div class="weekday">화</div><div class="weekday">수</div><div class="weekday">목</div><div class="weekday">금</div><div class="weekday">토</div>
-          <div class="date"><b>27</b></div><div class="date"><b>28</b></div><div class="date"><b>29</b></div><div class="date"><b>30</b></div><div class="date"><b>1</b></div><div class="date"><b>2</b></div><div class="date"><b>3</b></div>
-          <div class="date"><b>4</b></div><div class="date"><b>5</b></div><div class="date"><b>6</b></div><div class="date"><b>7</b></div><div class="date"><b>8</b></div><div class="date"><b>9</b></div><div class="date"><b>10</b></div>
-          <div class="date"><b>11</b></div><div class="date"><b>12</b></div><div class="date"><b>13</b><em>팀 회의</em></div><div class="date today"><b>14</b></div><div class="date"><b>15</b></div><div class="date"><b>16</b><em>추천 후보</em></div><div class="date"><b>17</b><em>추천 후보</em></div>
+        <span style="display:block;margin-bottom:12px;color:var(--muted);font-size:11.5px">공개 일정만 모임원 전체에게 보여요</span>
+        
+        <div class="calendar" id="groupCalendarContainer">
+          <!-- JS로 달력이 렌더링됩니다 -->
         </div>
 
         <div class="section-row"><h3>내가 공유한 일정</h3></div>
@@ -499,6 +501,7 @@ async function fetchGroupDetail() {
       renderHead();
       renderSchedule();
       renderMembers();
+      fetchGroupSchedules();
     } else {
       showToast('모임 정보를 불러오지 못했습니다.');
       setTimeout(() => { window.location.href = linkToList(); }, 600);
@@ -508,6 +511,70 @@ async function fetchGroupDetail() {
   }
 }
 fetchGroupDetail();
+
+// === 동적 캘린더 로직 ===
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let groupSchedules = [];
+
+async function fetchGroupSchedules() {
+  try {
+    const res = await fetchApi(`/group/${group.id}/schedules`);
+    if(res.ok) {
+      groupSchedules = await res.json();
+      renderDynamicCalendar();
+    }
+  } catch(e) { console.error("일정 불러오기 실패", e); }
+}
+
+function changeCalMonth(delta) {
+  calMonth += delta;
+  if(calMonth < 0) { calMonth = 11; calYear--; }
+  if(calMonth > 11) { calMonth = 0; calYear++; }
+  renderDynamicCalendar();
+}
+
+function renderDynamicCalendar() {
+  document.getElementById('calendarMonthLabel').textContent = `${calYear}년 ${calMonth + 1}월 일정`;
+  
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = new Date();
+  
+  let html = `<div class="weekday" style="color:var(--danger)">일</div><div class="weekday">월</div><div class="weekday">화</div><div class="weekday">수</div><div class="weekday">목</div><div class="weekday">금</div><div class="weekday" style="color:var(--sky)">토</div>`;
+  
+  for(let i = 0; i < firstDay; i++) {
+    html += `<div class="date" style="background:#FAFCFE; opacity:0.5"></div>`;
+  }
+  
+  for(let d = 1; d <= daysInMonth; d++) {
+    const isToday = (calYear === today.getFullYear() && calMonth === today.getMonth() && d === today.getDate());
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    
+    const daySchedules = groupSchedules.filter(s => s.startDate && s.startDate.startsWith(dateStr));
+    
+    let eventsHtml = '';
+    // 최대 3개까지만 표시 (디자인 유지)
+    daySchedules.slice(0, 3).forEach(s => {
+      eventsHtml += `<em title="${s.title}">${s.title}</em>`;
+    });
+    if (daySchedules.length > 3) {
+      eventsHtml += `<span style="display:block;font-size:10px;color:var(--muted);text-align:center;margin-top:2px">+${daySchedules.length - 3}개 더보기</span>`;
+    }
+    
+    html += `<div class="date ${isToday ? 'today' : ''}"><b>${d}</b>${eventsHtml}</div>`;
+  }
+  
+  const totalCells = firstDay + daysInMonth;
+  const remainder = totalCells % 7;
+  if(remainder > 0) {
+    for(let i = 0; i < 7 - remainder; i++) {
+      html += `<div class="date" style="background:#FAFCFE; opacity:0.5"></div>`;
+    }
+  }
+  
+  document.getElementById('groupCalendarContainer').innerHTML = html;
+}
 </script>
 </body>
 </html>

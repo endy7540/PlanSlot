@@ -1,6 +1,9 @@
 package com.example.planslot.group.service;
 
 import com.example.planslot.group.dto.GroupDTO;
+import com.example.planslot.schedule.dto.ScheduleDTO;
+
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface GroupService {
@@ -34,4 +37,7 @@ public interface GroupService {
 
     // 초대 거절
     void rejectInvite(Long groupId, Long memberId);
+
+    // 모임 캘린더용 일정 조회
+    List<ScheduleDTO> getGroupSchedules(Long groupId, Long memberId, LocalDateTime start, LocalDateTime end);
 }

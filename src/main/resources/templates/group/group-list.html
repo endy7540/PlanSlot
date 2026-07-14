@@ -89,7 +89,7 @@ document.getElementById('btnNewGroup').addEventListener('click', ()=>{
 
 async function fetchAndRenderGrid() {
   try {
-    const res = await fetch('/group/api/my');
+    const res = await fetch('/group/mygroup');
     if (res.ok) {
       const data = await res.json();
       GROUPS = data.map(d => ({

@@ -32,14 +32,22 @@ public class AuthController {
     }
 
     @PostMapping("/email/send")
-    public ResponseEntity<String> sendEmailCode(@RequestBody AuthRequestDTO.EmailSend request) {
-        emailService.sendAuthCode(request.getEmail());
-        return ResponseEntity.ok("인증 번호 발송 완료");
+    public ResponseEntity<?> sendEmailCode(@RequestBody AuthRequestDTO.EmailSend request) {
+        try {
+            emailService.sendAuthCode(request.getEmail());
+            return ResponseEntity.ok("인증 번호 발송 완료");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PostMapping("/email/verify")
-    public ResponseEntity<String> verifyEmailCode(@RequestBody AuthRequestDTO.EmailVerify request) {
-        emailService.verifyAuthCode(request.getEmail(), request.getAuthCode());
-        return ResponseEntity.ok("인증 성공");
+    public ResponseEntity<?> verifyEmailCode(@RequestBody AuthRequestDTO.EmailVerify request) {
+        try {
+            emailService.verifyAuthCode(request.getEmail(), request.getAuthCode());
+            return ResponseEntity.ok("인증 성공");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

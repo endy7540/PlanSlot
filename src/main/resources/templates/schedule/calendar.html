@@ -120,6 +120,26 @@
 
         .empty-notice{color:#94A3B8;font-size:13px;padding:20px;text-align:center}
 
+        .toast{
+            position:fixed;
+            right:26px;
+            bottom:26px;
+            padding:14px 18px;
+            background:#075985;
+            color:#fff;
+            border-radius:10px;
+            box-shadow:0 10px 30px rgba(0,0,0,.2);
+            opacity:0;
+            transform:translateY(10px);
+            pointer-events:none;
+            transition:.2s;
+            font-weight:800;
+            font-size:13px;
+            z-index:10;
+        }
+        .toast.show{opacity:1;transform:none}
+        .toast.error{background:#B91C1C}
+
         .log{
             background:#0B1B2B;
             color:#9CDCF0;
@@ -154,7 +174,7 @@
             먼저 로그인 페이지에서 로그인한 뒤 다시 이 페이지로 돌아와주세요.
         </p>
         <div style="display:flex;gap:8px">
-            <a class="primary" href="/auth">로그인 페이지로 이동</a>
+            <a class="primary" href="/auth/login">로그인 페이지로 이동</a>
             <button class="ghost" onclick="location.reload()">토큰 다시 확인</button>
         </div>
     </div>
@@ -192,6 +212,8 @@
 
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
     const API_BASE = window.location.origin;
     let token = '';
@@ -203,6 +225,13 @@
         const time = new Date().toLocaleTimeString();
         const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
         el.textContent = `[${time}] ${label}\n${text}\n\n` + el.textContent;
+    }
+
+    function showToast(msg, isError) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show' + (isError ? ' error' : '');
+        setTimeout(() => t.classList.remove('show'), 2200);
     }
 
     // 실제 로그인 페이지(auth.html)가 저장하는 key: 'jwtToken' (Bearer 접두어 제외)
@@ -249,14 +278,26 @@
             const res = await fetch(url, { headers: authHeaders() });
             const text = await res.text();
             log(`GET ${url.replace(API_BASE,'')}`, `status: ${res.status}\n${text}`);
-            if (!res.ok) return;
-            const schedules = JSON.parse(text);
-            schedules.forEach(s => {
-                if (!s.startDate) return;
-                const dateKey = s.startDate.slice(0, 10);
-                if (!schedulesByDate[dateKey]) schedulesByDate[dateKey] = [];
-                schedulesByDate[dateKey].push(s);
-            });
+            if (!res.ok) {
+                if (res.status === 401 || res.status === 403) {
+                    showToast('로그인이 만료되었습니다. 다시 로그인해주세요.', true);
+                    localStorage.removeItem('jwtToken');
+                    document.getElementById('tokenBadge').textContent = '로그인 필요';
+                    document.getElementById('tokenBadge').classList.add('off');
+                    document.getElementById('authNotice').style.display = '';
+                    document.getElementById('calendarPanel').style.display = 'none';
+                    return;
+                }
+                showToast('일정 조회 실패: ' + res.status, true);
+            } else {
+                const schedules = JSON.parse(text);
+                schedules.forEach(s => {
+                    if (!s.startDate) return;
+                    const dateKey = s.startDate.slice(0, 10);
+                    if (!schedulesByDate[dateKey]) schedulesByDate[dateKey] = [];
+                    schedulesByDate[dateKey].push(s);
+                });
+            }
         } catch (e) {
             log('GET /schedule (에러)', e.message);
         }

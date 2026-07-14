@@ -173,11 +173,9 @@ public class GroupServiceImpl implements GroupService {
         if (groupMemberRepository.existsByGroup_IdAndMember_Id(groupId, targetMember.getId())) {
             throw new IllegalArgumentException("이미 초대되었거나 참여 중인 사용자입니다.");
         }
-        GroupMember membership = GroupMember.builder()
-                .group(group)
-                .member(targetMember)
-                .memberStatus(GroupMemberStatus.WAITING)
-                .build();
+        Member inviterMember = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("초대자를 찾을 수 없습니다."));
+        GroupMember membership = GroupMember.createInvited(group, targetMember, inviterMember);
         groupMemberRepository.save(membership);
     }
 

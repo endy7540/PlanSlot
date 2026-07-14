@@ -10,10 +10,14 @@ import com.example.planslot.group.repository.GroupRepository;
 import com.example.planslot.group.repository.GroupScheduleRepository;
 import com.example.planslot.member.entity.Member;
 import com.example.planslot.member.repository.MemberRepository;
+import com.example.planslot.schedule.repository.ScheduleRepository;
+import com.example.planslot.schedule.dto.ScheduleDTO;
+import com.example.planslot.schedule.entity.Schedule;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
@@ -28,6 +32,7 @@ public class GroupServiceImpl implements GroupService {
     private final GroupMemberRepository groupMemberRepository;
     private final MemberRepository memberRepository;
     private final GroupScheduleRepository groupScheduleRepository;
+    private final ScheduleRepository scheduleRepository;
 
     @Override
     @Transactional
@@ -191,6 +196,44 @@ public class GroupServiceImpl implements GroupService {
         GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId).orElseThrow(() -> new IllegalArgumentException("초대 내역이 없습니다."));
         if (membership.getMemberStatus() != GroupMemberStatus.WAITING) throw new IllegalArgumentException("대기 중인 초대가 아닙니다.");
         membership.changeStatus(GroupMemberStatus.ACTIVE);
+    }
+
+    @Override
+    public List<ScheduleDTO> getGroupSchedules(Long groupId, Long memberId, LocalDateTime start, LocalDateTime end) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
+
+        List<GroupMember> groupMembers = groupMemberRepository.findByGroup_Id(groupId);
+
+        // 현재 사용자가 모임원인지 확인
+        boolean isMember = groupMembers.stream()
+                .anyMatch(gm -> gm.getMember().getId().equals(memberId) &&
+                        gm.getMemberStatus() == GroupMemberStatus.ACTIVE);
+        
+        if (!isMember) {
+            throw new IllegalArgumentException("모임원이 아닙니다.");
+        }
+
+        List<ScheduleDTO> result = new ArrayList<>();
+        for (GroupMember gm : groupMembers) {
+            if (gm.getMemberStatus() == GroupMemberStatus.ACTIVE) {
+                Long targetMemberId = gm.getMember().getId();
+                List<Schedule> schedules;
+                if (start != null && end != null) {
+                    schedules = scheduleRepository.findAllByMemberIdAndPeriod(targetMemberId, start, end);
+                } else {
+                    schedules = scheduleRepository.findAllByMemberId(targetMemberId);
+                }
+
+                for (Schedule s : schedules) {
+                    // 자신의 일정이거나, 다른 사람의 공개 일정인 경우 포함
+                    if (targetMemberId.equals(memberId) || "Y".equals(s.getIsPublic())) {
+                        result.add(ScheduleDTO.from(s));
+                    }
+                }
+            }
+        }
+        return result;
     }
 
     @Override

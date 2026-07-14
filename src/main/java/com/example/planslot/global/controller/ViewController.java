@@ -20,5 +20,10 @@ public class ViewController {
     public String home() {
         return "global/home";
     }
+
+    @GetMapping("/auth/oauth2-callback")
+    public String oauth2Callback() {
+        return "global/oauth2-callback";
+    }
 }
 

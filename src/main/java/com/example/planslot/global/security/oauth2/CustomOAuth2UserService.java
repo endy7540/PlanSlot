@@ -29,21 +29,34 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
         String registrationId = userRequest.getClientRegistration().getRegistrationId();
         Map<String, Object> attributes = oAuth2User.getAttributes();
+        Map<String, Object> modifiableAttributes = new java.util.HashMap<>(attributes);
 
         String providerId = "";
         String email = "";
         String name = "";
+        String userNameAttributeName = "";
 
         if ("google".equals(registrationId)) {
             providerId = String.valueOf(attributes.get("sub"));
             email = String.valueOf(attributes.get("email"));
             name = String.valueOf(attributes.get("name"));
+            userNameAttributeName = "sub";
+        } else if ("kakao".equals(registrationId)) {
+            providerId = String.valueOf(attributes.get("id"));
+            Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
+            Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
+            
+            email = kakaoAccount.containsKey("email") ? String.valueOf(kakaoAccount.get("email")) : "kakao_" + providerId + "@kakao.com";
+            name = profile.containsKey("nickname") ? String.valueOf(profile.get("nickname")) : "카카오유저";
+            userNameAttributeName = "id";
         }
 
-        String loginId = registrationId + "_" + providerId;
-        
-        Member member = memberRepository.findByLoginId(loginId).orElse(null);
+        modifiableAttributes.put("normalized_email", email);
+
+        // 이메일로 기존 회원 조회 (소셜 연동)
+        Member member = memberRepository.findByEmail(email).orElse(null);
         if (member == null) {
+            String loginId = registrationId + "_" + providerId;
             String nickname = name + "_" + UUID.randomUUID().toString().substring(0, 4);
             member = Member.builder()
                     .loginId(loginId)
@@ -58,8 +71,8 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
         return new DefaultOAuth2User(
                 Collections.singleton(new SimpleGrantedAuthority("ROLE_MEMBER")),
-                attributes,
-                "sub" // 구글의 PK 키 이름
+                modifiableAttributes,
+                userNameAttributeName
         );
     }
 }

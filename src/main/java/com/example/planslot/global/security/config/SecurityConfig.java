@@ -19,6 +19,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    private final com.example.planslot.global.security.oauth2.CustomOAuth2UserService customOAuth2UserService;
+    private final com.example.planslot.global.security.oauth2.OAuth2SuccessHandler oAuth2SuccessHandler;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -26,8 +29,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/auth/signup", "/auth/login", "/error", "/auth", "/home", "/favicon.ico",
-                                "/members/checkDuplicate", "/api/test/**", "/css/**", "/js/**", "/images/**", "/group/**", "/notification/list").permitAll()
+                                "/members/checkDuplicate", "/api/test/**","/auth/email/send", "/auth/email/verify", "/auth/oauth2-callback",
+                                "/css/**", "/js/**", "/images/**", "/group/**", "/notification/list").permitAll()
                         .anyRequest().authenticated()
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                        .successHandler(oAuth2SuccessHandler)
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

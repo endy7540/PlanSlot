@@ -4,12 +4,12 @@ server:
 spring:
   application:
     name: PlanSlot
-  config:
-    import: optional:classpath:application-secret.yaml
+  profiles:
+    include: secret
 
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     show-sql: true
     open-in-view: false
     properties:

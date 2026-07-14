@@ -1,10 +1,8 @@
-const MY_MEMBER_ID = '1';
-
 // GROUPS 배열은 이제 백엔드 API에서 동적으로 가져옵니다.
 let GROUPS = [];
 
 function initials(name){ return name.slice(0,1); }
-function isOwner(group){ return group.ownerId === MY_MEMBER_ID; }
+function isOwner(group){ return group.ownerId === group.myMemberId; }
 function getGroupById(id){ return GROUPS.find(g => g.id === id); }
 
 function getQueryParam(name){

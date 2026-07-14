@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlanSlot - 캘린더</title>
+    <style>
+        *{box-sizing:border-box}
+        body{
+            margin:0;
+            min-height:100vh;
+            font-family:Pretendard,'Malgun Gothic',Arial,sans-serif;
+            background:#FFFFFF;
+            color:#182B3A;
+        }
+        button{cursor:pointer;font-family:inherit}
+
+        .header-nav{
+            height:78px;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:18px;
+            padding:0 28px;
+            background:#F3FAFF;
+            border-bottom:2px solid #DCEFFC;
+        }
+        .logo{font-size:26px;font-weight:950;color:#38BDF8;letter-spacing:-.5px}
+        .tagline{font-size:12px;color:#748898;margin-top:2px}
+
+        .token-badge{
+            display:inline-block;
+            background:#F0F9FF;
+            color:#075985;
+            border-radius:999px;
+            padding:6px 12px;
+            font-size:12px;
+            font-weight:900;
+        }
+        .token-badge.off{background:#FEE2E2;color:#991B1B}
+
+        .wrap{max-width:1100px;margin:0 auto;padding:24px 28px 60px}
+
+        .panel{
+            background:#fff;
+            border:2px solid #DCEFFC;
+            border-radius:12px;
+            box-shadow:7px 7px 0 rgba(8,32,51,.06);
+            padding:18px;
+            margin-bottom:18px;
+        }
+
+        .primary,.ghost{
+            border-radius:10px;
+            padding:11px 16px;
+            font-weight:900;
+            font-size:13px;
+            border:2px solid transparent;
+        }
+        .primary{background:#075985;color:#fff;border:0;text-decoration:none;display:inline-block}
+        .ghost{background:#fff;color:#182B3A;border:2px solid #DCEFFC}
+
+        .cal-nav{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            margin-bottom:16px;
+        }
+        .cal-nav h2{margin:0;font-size:20px}
+        .cal-nav .btn-row{display:flex;gap:8px}
+
+        .cal-grid{
+            display:grid;
+            grid-template-columns:repeat(7,1fr);
+            gap:6px;
+        }
+        .cal-dow{
+            text-align:center;
+            font-size:12px;
+            font-weight:900;
+            color:#748898;
+            padding:6px 0;
+        }
+        .cal-day{
+            min-height:96px;
+            border:2px solid #DCEFFC;
+            border-radius:10px;
+            padding:6px;
+            display:flex;
+            flex-direction:column;
+            gap:4px;
+            background:#fff;
+            cursor:pointer;
+            transition:.15s;
+        }
+        .cal-day:hover{background:#F0F9FF;border-color:#38BDF8}
+        .cal-day.other-month{background:#FAFCFE;opacity:.45}
+        .cal-day.today{border-color:#38BDF8;box-shadow:0 0 0 2px rgba(56,189,248,.15) inset}
+        .cal-day .date-num{font-size:12px;font-weight:900;color:#475569}
+        .cal-day.today .date-num{color:#075985}
+        .cal-day.just-added{animation:pulse-highlight 2.5s ease}
+        @keyframes pulse-highlight{
+            0%{background:#FEF9C3;border-color:#FACC15}
+            100%{background:#fff;border-color:#DCEFFC}
+        }
+
+        .event-chip{
+            font-size:11px;
+            font-weight:700;
+            background:#E0F2FE;
+            color:#075985;
+            border-radius:6px;
+            padding:2px 6px;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }
+        .event-chip.public{background:#DCFCE7;color:#166534}
+        .event-more{font-size:10px;color:#94A3B8;padding-left:2px}
+
+        .empty-notice{color:#94A3B8;font-size:13px;padding:20px;text-align:center}
+
+        .toast{
+            position:fixed;
+            right:26px;
+            bottom:26px;
+            padding:14px 18px;
+            background:#075985;
+            color:#fff;
+            border-radius:10px;
+            box-shadow:0 10px 30px rgba(0,0,0,.2);
+            opacity:0;
+            transform:translateY(10px);
+            pointer-events:none;
+            transition:.2s;
+            font-weight:800;
+            font-size:13px;
+            z-index:10;
+        }
+        .toast.show{opacity:1;transform:none}
+        .toast.error{background:#B91C1C}
+
+        .log{
+            background:#0B1B2B;
+            color:#9CDCF0;
+            border-radius:10px;
+            padding:14px;
+            font-family:'Consolas',monospace;
+            font-size:12px;
+            white-space:pre-wrap;
+            max-height:200px;
+            overflow:auto;
+        }
+    </style>
+</head>
+<body>
+
+<header class="header-nav">
+    <div>
+        <div class="logo">PlanSlot</div>
+        <div class="tagline">개인 캘린더 (월간 뷰) — 날짜를 클릭해 일정을 등록/조회하세요</div>
+    </div>
+    <div id="tokenBadge" class="token-badge off">로그인 필요</div>
+</header>
+
+<div class="wrap">
+
+    <!-- 로그인 상태 안내 -->
+    <div class="panel" id="authNotice" style="display:none">
+        <div class="cal-nav" style="margin:0">
+            <h2 style="font-size:18px">로그인이 필요합니다</h2>
+        </div>
+        <p style="color:#748898;font-size:13px;line-height:1.6;margin:0 0 12px">
+            먼저 로그인 페이지에서 로그인한 뒤 다시 이 페이지로 돌아와주세요.
+        </p>
+        <div style="display:flex;gap:8px">
+            <a class="primary" href="/auth/login">로그인 페이지로 이동</a>
+            <button class="ghost" onclick="location.reload()">토큰 다시 확인</button>
+        </div>
+    </div>
+
+    <!-- 캘린더 -->
+    <div class="panel" id="calendarPanel" style="display:none">
+        <div class="cal-nav">
+            <div class="btn-row">
+                <button class="ghost" onclick="moveMonth(-1)">◀ 이전달</button>
+                <button class="ghost" onclick="goToday()">오늘</button>
+                <button class="ghost" onclick="moveMonth(1)">다음달 ▶</button>
+            </div>
+            <h2 id="monthLabel"></h2>
+            <a class="primary" id="newScheduleBtn" href="schedule">+ 새 일정 등록</a>
+        </div>
+        <div class="cal-grid" id="dowRow">
+            <div class="cal-dow" style="color:#DC2626">일</div>
+            <div class="cal-dow">월</div>
+            <div class="cal-dow">화</div>
+            <div class="cal-dow">수</div>
+            <div class="cal-dow">목</div>
+            <div class="cal-dow">금</div>
+            <div class="cal-dow" style="color:#2563EB">토</div>
+        </div>
+        <div class="cal-grid" id="calGrid" style="margin-top:6px"></div>
+    </div>
+
+    <!-- 요청 로그 -->
+    <div class="panel">
+        <div class="cal-nav" style="margin-bottom:10px">
+            <h2 style="font-size:16px">요청 로그</h2>
+        </div>
+        <div id="log" class="log">여기에 API 요청/응답 로그가 표시됩니다.</div>
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const API_BASE = window.location.origin;
+    let token = '';
+    let viewYear, viewMonth; // viewMonth: 0-11
+    let schedulesByDate = {}; // { 'YYYY-MM-DD': [schedule, ...] }
+
+    function log(label, data) {
+        const el = document.getElementById('log');
+        const time = new Date().toLocaleTimeString();
+        const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        el.textContent = `[${time}] ${label}\n${text}\n\n` + el.textContent;
+    }
+
+    function showToast(msg, isError) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show' + (isError ? ' error' : '');
+        setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    // 실제 로그인 페이지(auth.html)가 저장하는 key: 'jwtToken' (Bearer 접두어 제외)
+    function checkAuth() {
+        token = localStorage.getItem('jwtToken') || '';
+        const badge = document.getElementById('tokenBadge');
+        const notice = document.getElementById('authNotice');
+        const calPanel = document.getElementById('calendarPanel');
+
+        if (token) {
+            badge.textContent = '로그인됨 (토큰 보유)';
+            badge.classList.remove('off');
+            notice.style.display = 'none';
+            calPanel.style.display = '';
+        } else {
+            badge.textContent = '로그인 필요';
+            badge.classList.add('off');
+            notice.style.display = '';
+            calPanel.style.display = 'none';
+        }
+        return !!token;
+    }
+
+    function authHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        };
+    }
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function fmtLocalDateTime(date) {
+        return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    }
+
+    async function loadMonthSchedules() {
+        const start = new Date(viewYear, viewMonth, 1, 0, 0, 0);
+        const end = new Date(viewYear, viewMonth + 1, 0, 23, 59, 59);
+        const url = `${API_BASE}/schedule?start=${encodeURIComponent(fmtLocalDateTime(start))}&end=${encodeURIComponent(fmtLocalDateTime(end))}`;
+
+        schedulesByDate = {};
+        try {
+            const res = await fetch(url, { headers: authHeaders() });
+            const text = await res.text();
+            log(`GET ${url.replace(API_BASE,'')}`, `status: ${res.status}\n${text}`);
+            if (!res.ok) {
+                if (res.status === 401 || res.status === 403) {
+                    showToast('로그인이 만료되었습니다. 다시 로그인해주세요.', true);
+                    localStorage.removeItem('jwtToken');
+                    document.getElementById('tokenBadge').textContent = '로그인 필요';
+                    document.getElementById('tokenBadge').classList.add('off');
+                    document.getElementById('authNotice').style.display = '';
+                    document.getElementById('calendarPanel').style.display = 'none';
+                    return;
+                }
+                showToast('일정 조회 실패: ' + res.status, true);
+            } else {
+                const schedules = JSON.parse(text);
+                schedules.forEach(s => {
+                    if (!s.startDate) return;
+                    const dateKey = s.startDate.slice(0, 10);
+                    if (!schedulesByDate[dateKey]) schedulesByDate[dateKey] = [];
+                    schedulesByDate[dateKey].push(s);
+                });
+            }
+        } catch (e) {
+            log('GET /schedule (에러)', e.message);
+        }
+        renderCalendar();
+    }
+
+    function moveMonth(delta) {
+        viewMonth += delta;
+        if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+        if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+        loadMonthSchedules();
+    }
+
+    function goToday() {
+        const now = new Date();
+        viewYear = now.getFullYear();
+        viewMonth = now.getMonth();
+        loadMonthSchedules();
+    }
+
+    function renderCalendar() {
+        document.getElementById('monthLabel').textContent = `${viewYear}년 ${viewMonth + 1}월`;
+
+        const firstOfMonth = new Date(viewYear, viewMonth, 1);
+        const startDow = firstOfMonth.getDay(); // 0=일
+        const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+        const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+        const today = new Date();
+        const todayKey = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+
+        const cells = [];
+        // 이전달 꼬리
+        for (let i = startDow - 1; i >= 0; i--) {
+            const d = daysInPrevMonth - i;
+            cells.push({ day: d, otherMonth: true, y: viewMonth === 0 ? viewYear - 1 : viewYear, m: viewMonth === 0 ? 11 : viewMonth - 1 });
+        }
+        // 이번달
+        for (let d = 1; d <= daysInMonth; d++) {
+            cells.push({ day: d, otherMonth: false, y: viewYear, m: viewMonth });
+        }
+        // 다음달 머리 (6주 채우기)
+        while (cells.length % 7 !== 0 || cells.length < 42) {
+            const last = cells[cells.length - 1];
+            const nextM = last.m === 11 ? 0 : last.m + 1;
+            const nextY = last.m === 11 ? last.y + 1 : last.y;
+            cells.push({ day: cells.filter(c => c.m === nextM && c.y === nextY).length + 1, otherMonth: true, y: nextY, m: nextM });
+            if (cells.length >= 42) break;
+        }
+
+        const grid = document.getElementById('calGrid');
+        grid.innerHTML = cells.map(c => {
+            const dateKey = `${c.y}-${pad(c.m+1)}-${pad(c.day)}`;
+            const dayEvents = schedulesByDate[dateKey] || [];
+            const isToday = dateKey === todayKey;
+            const chips = dayEvents.slice(0, 3).map(s =>
+                `<div class="event-chip${s.isPublic ? ' public' : ''}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId})">${escapeHtml(s.title)}</div>`
+            ).join('');
+            const more = dayEvents.length > 3 ? `<div class="event-more">+${dayEvents.length - 3}개 더보기</div>` : '';
+
+            return `
+        <div class="cal-day${c.otherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}" data-date="${dateKey}" onclick="openNewSchedule('${dateKey}')">
+          <div class="date-num">${c.day}</div>
+          ${chips}
+          ${more}
+        </div>`;
+        }).join('');
+    }
+
+    function openNewSchedule(dateKey) {
+        window.location.href = `schedule?date=${dateKey}`;
+    }
+
+    function openSchedule(scheduleId) {
+        window.location.href = `schedule?scheduleId=${scheduleId}`;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    // 초기화
+    (function init() {
+        const params = new URLSearchParams(window.location.search);
+        const dateParam = params.get('date'); // 등록/수정 완료 후 넘어온 날짜 (YYYY-MM-DD)
+
+        const base = dateParam ? new Date(dateParam) : new Date();
+        viewYear = base.getFullYear();
+        viewMonth = base.getMonth();
+
+        if (checkAuth()) {
+            loadMonthSchedules().then(() => {
+                if (dateParam) highlightDate(dateParam);
+            });
+        }
+    })();
+
+    function highlightDate(dateKey) {
+        const el = document.querySelector(`.cal-day[data-date="${dateKey}"]`);
+        if (!el) return;
+        el.classList.add('just-added');
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        setTimeout(() => el.classList.remove('just-added'), 2500);
+    }
+</script>
+</body>
+</html>

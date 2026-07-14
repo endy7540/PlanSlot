@@ -25,8 +25,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/api/members/signup", "/api/auth/login", "/error", "/auth", "/home", "/favicon.ico",
-                                "/api/test/**", "/css/**", "/js/**", "/images/**", "/group/**").permitAll()
+                        .requestMatchers("/", "/auth/signup", "/auth/login", "/error", "/auth", "/home", "/favicon.ico",
+                                "/members/checkDuplicate", "/api/test/**", "/css/**", "/js/**", "/images/**", "/group/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

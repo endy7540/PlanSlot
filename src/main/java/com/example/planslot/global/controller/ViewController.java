@@ -6,8 +6,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class ViewController {
 
-    @GetMapping("/auth")
-    public String authPage() {
+    @GetMapping("/auth/login")
+    public String loginPage() {
+        return "global/auth";
+    }
+
+    @GetMapping("/auth/signup")
+    public String signupPage() {
         return "global/auth";
     }
 
@@ -16,3 +21,4 @@ public class ViewController {
         return "global/home";
     }
 }
+

@@ -145,6 +145,10 @@
         <div class="form">
             <input type="text" id="loginId" placeholder="아이디">
             <input type="password" id="loginPw" placeholder="비밀번호">
+            <div style="display:flex; align-items:center; gap:6px; font-size:13px; color:#182B3A;">
+                <input type="checkbox" id="keepLogin" style="width:16px; height:16px; margin:0; padding:0;">
+                <label for="keepLogin" style="cursor:pointer; user-select:none;">로그인 상태 유지</label>
+            </div>
             <button class="primary" onclick="doLogin()">로그인</button>
         </div>
 
@@ -162,10 +166,14 @@
         <div class="tagline" style="margin-bottom:20px;">플랜슬롯과 함께 일정을 계획해보세요.</div>
 
         <div class="form">
-            <input type="text" id="signupId" placeholder="아이디 (필수)">
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="signupId" placeholder="아이디 (필수)" style="flex:1; margin:0;">
+                <button type="button" class="ghost" style="padding:0 16px; margin:0;" onclick="checkDuplicateIdBtn()">중복 확인</button>
+            </div>
             <input type="password" id="signupPw" placeholder="비밀번호 (필수)">
+            <input type="password" id="signupPwConfirm" placeholder="비밀번호 재확인 (필수)">
             <input type="email" id="signupEmail" placeholder="이메일 (필수)">
-            <input type="text" id="signupNickname" placeholder="닉네임 (예: 이상엽)">
+            <input type="text" id="signupNickname" placeholder="닉네임 (예: 홍길동)">
             <input type="text" id="signupAddress" placeholder="주소 / 소속 (선택)">
 
             <div id="signupMsg" class="msg-box"></div>
@@ -180,21 +188,121 @@
 </div>
 
 <script>
-    const API_BASE = "http://localhost:8080/api";
+    const API_BASE = "http://localhost:8080";
 
     // 화면 전환 함수
-    function togglePage(target) {
+    function togglePage(target, updateUrl = true) {
         document.querySelectorAll('.auth-page').forEach(page => page.classList.remove('active'));
         document.getElementById('page-' + target).classList.add('active');
+        
         // 화면 전환 시 메시지 초기화
         document.getElementById('loginMsg').innerText = '';
         document.getElementById('signupMsg').innerText = '';
+
+        // 입력 폼 초기화
+        document.querySelectorAll('.auth-container input').forEach(input => {
+            if (input.type === 'checkbox') {
+                input.checked = false;
+            } else {
+                input.value = '';
+            }
+        });
+        
+        // 중복 확인 상태 초기화
+        if (typeof isIdVerified !== 'undefined') {
+            isIdVerified = false;
+        }
+
+        // 브라우저 URL 동기화
+        if (updateUrl) {
+            const newPath = target === 'signup' ? '/auth/signup' : '/auth/login';
+            if (window.location.pathname !== newPath) {
+                window.history.pushState({}, '', newPath);
+            }
+        }
     }
+
+    let isIdVerified = false;
+
+    // 아이디 중복 확인 요청
+    async function checkDuplicateIdBtn() {
+        const id = document.getElementById('signupId').value;
+        const msgBox = document.getElementById('signupMsg');
+
+        if (!id) {
+            msgBox.style.color = "#B91C1C";
+            msgBox.innerText = '아이디를 입력해주세요.';
+            return;
+        }
+
+        try {
+            msgBox.innerText = '중복 확인 중...';
+            const response = await fetch(`${API_BASE}/members/checkDuplicate?loginId=${encodeURIComponent(id)}`);
+            if (response.ok) {
+                const isDuplicate = await response.json(); // 백엔드에서 true/false 반환
+                if (isDuplicate) {
+                    msgBox.style.color = "#B91C1C";
+                    msgBox.innerText = '이미 사용 중인 아이디입니다.';
+                    isIdVerified = false;
+                } else {
+                    msgBox.style.color = "#047857";
+                    msgBox.innerText = '사용 가능한 아이디입니다.';
+                    isIdVerified = true;
+                }
+            } else {
+                msgBox.style.color = "#B91C1C";
+                msgBox.innerText = '중복 확인에 실패했습니다.';
+            }
+        } catch (error) {
+            msgBox.style.color = "#B91C1C";
+            msgBox.innerText = '서버 통신에 실패했습니다.';
+        }
+    }
+
+    // 비밀번호 실시간 검증 함수
+    function checkPasswordMatch() {
+        const pw = document.getElementById('signupPw').value;
+        const pwConfirm = document.getElementById('signupPwConfirm').value;
+        const msgBox = document.getElementById('signupMsg');
+
+        if (pwConfirm.length === 0) {
+            msgBox.innerText = '';
+            return;
+        }
+
+        if (pw === pwConfirm) {
+            msgBox.style.color = "#047857";
+            msgBox.innerText = '비밀번호가 일치합니다.';
+        } else {
+            msgBox.style.color = "#B91C1C";
+            msgBox.innerText = '비밀번호가 서로 일치하지 않습니다.';
+        }
+    }
+
+    // URL에 따라 초기 화면을 로그인 또는 회원가입으로 자동 설정
+    window.addEventListener('DOMContentLoaded', () => {
+        if (window.location.pathname.includes('/auth/signup')) {
+            togglePage('signup', false);
+        } else {
+            togglePage('login', false);
+        }
+
+        // 아이디 변경 시 중복확인 초기화
+        document.getElementById('signupId').addEventListener('input', () => {
+            isIdVerified = false;
+            document.getElementById('signupMsg').innerText = '';
+        });
+
+        // 비밀번호 실시간 검증 이벤트 리스너 등록
+        document.getElementById('signupPw').addEventListener('input', checkPasswordMatch);
+        document.getElementById('signupPwConfirm').addEventListener('input', checkPasswordMatch);
+    });
 
     // 로그인 로직
     async function doLogin() {
         const id = document.getElementById('loginId').value;
         const pw = document.getElementById('loginPw').value;
+        const keep = document.getElementById('keepLogin').checked;
         const msgBox = document.getElementById('loginMsg');
 
         if(!id || !pw) {
@@ -207,7 +315,7 @@
             const response = await fetch(`${API_BASE}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ loginId: id, password: pw })
+                body: JSON.stringify({ loginId: id, password: pw, keepLogin: keep })
             });
 
             const result = await response.text();
@@ -222,11 +330,11 @@
                 window.location.href = "/home";
             } else {
                 msgBox.style.color = "#B91C1C";
-                msgBox.innerText = `로그인 실패: ${result}`;
+                msgBox.innerText = '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.';
             }
         } catch (error) {
             msgBox.style.color = "#B91C1C";
-            msgBox.innerText = "서버 연결 실패.\n" + error;
+            msgBox.innerText = '서버 통신에 실패했습니다.';
         }
     }
 
@@ -234,20 +342,33 @@
     async function doSignUp() {
         const id = document.getElementById('signupId').value;
         const pw = document.getElementById('signupPw').value;
+        const pwConfirm = document.getElementById('signupPwConfirm').value;
         const email = document.getElementById('signupEmail').value;
         const nickname = document.getElementById('signupNickname').value;
         const address = document.getElementById('signupAddress').value;
         const msgBox = document.getElementById('signupMsg');
 
-        if(!id || !pw || !email) {
+        if(!id || !pw || !pwConfirm || !email) {
             msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '필수 항목(아이디, 비밀번호, 이메일)을 모두 입력해주세요.';
+            msgBox.innerText = '필수 항목(아이디, 비밀번호, 비밀번호 재확인, 이메일)을 모두 입력해주세요.';
+            return;
+        }
+
+        if(!isIdVerified) {
+            msgBox.style.color = "#B91C1C";
+            msgBox.innerText = '아이디 중복 확인을 먼저 진행해주세요.';
+            return;
+        }
+
+        if(pw !== pwConfirm) {
+            msgBox.style.color = "#B91C1C";
+            msgBox.innerText = '비밀번호가 서로 일치하지 않습니다.';
             return;
         }
 
         try {
             msgBox.innerText = "회원가입 요청 중...";
-            const response = await fetch(`${API_BASE}/members/signup`, {
+            const response = await fetch(`${API_BASE}/auth/signup`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -270,11 +391,11 @@
                 }, 2000);
             } else {
                 msgBox.style.color = "#B91C1C";
-                msgBox.innerText = `가입 실패: ${result}`;
+                msgBox.innerText = '회원가입에 실패했습니다. 입력 정보를 다시 확인해주세요.';
             }
         } catch (error) {
             msgBox.style.color = "#B91C1C";
-            msgBox.innerText = "서버 연결 실패.\n" + error;
+            msgBox.innerText = '서버 통신에 실패했습니다.';
         }
     }
 </script>

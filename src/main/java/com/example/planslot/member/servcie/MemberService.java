@@ -4,4 +4,5 @@ import com.example.planslot.member.dto.MemberRequestDTO;
 
 public interface MemberService {
     Long signUp(MemberRequestDTO.SignUp request);
+    boolean checkDuplicateId(String loginId);
 }

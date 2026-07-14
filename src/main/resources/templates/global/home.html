@@ -4,41 +4,50 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PlanSlot - 홈</title>
+  <link rel="stylesheet" th:href="@{/css/notification/notification.css}"
+        href="/css/notification/notification.css">
   <style>
-    /* 기존 시안 스타일 재사용 */
     *{box-sizing:border-box}
     body{
-      margin:0; height:100vh; overflow:hidden;
+      margin:0;height:100vh;overflow:hidden;
       font-family:Pretendard,'Malgun Gothic',Arial,sans-serif;
-      background:#FFFFFF!important; color:#182B3A!important;
-      display:flex; flex-direction:column;
+      background:#FFFFFF!important;color:#182B3A!important;
+      display:flex;flex-direction:column;
     }
-    button{cursor:pointer; font-family:inherit;}
+    button{cursor:pointer;font-family:inherit}
     .header-nav{
-      height:78px; flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
-      padding:0 28px; background:#F3FAFF; border-bottom:2px solid #DCEFFC; box-shadow:0 6px 18px rgba(8,32,51,.05);
+      height:78px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+      padding:0 28px;background:#F3FAFF;border-bottom:2px solid #DCEFFC;
+      box-shadow:0 6px 18px rgba(8,32,51,.05);
     }
-    .header-brand .logo{font-size:28px; font-weight:950; color:#38BDF8!important;}
-    .header-brand .tagline{margin-top:4px; font-size:11px; color:#748898!important;}
-    .header-actions{display:flex; gap:10px;}
-    .btn-logout {
-      padding: 8px 16px; border: 2px solid #DCEFFC; background: #fff; border-radius: 8px;
-      font-weight: bold; color: #075985; transition: 0.2s;
+    .header-brand .logo{font-size:28px;font-weight:950;color:#38BDF8!important}
+    .header-brand .tagline{margin-top:4px;font-size:11px;color:#748898!important}
+    .header-actions{display:flex;align-items:center;gap:10px}
+    .btn-logout{
+      padding:8px 16px;border:2px solid #DCEFFC;background:#fff;border-radius:8px;
+      font-weight:bold;color:#075985;transition:.2s;
     }
-    .btn-logout:hover { background: #E0F2FE; }
-    .main{flex:1; padding:24px 28px; overflow:auto;}
-    .hero-row{display:grid; grid-template-columns:1.6fr repeat(3,1fr); gap:14px; margin-bottom:16px;}
-    .hero-card, .stat-card{
-      background:#fff; border:2px solid #DCEFFC!important; border-radius:12px; padding:24px;
+    .btn-logout:hover{background:#E0F2FE}
+    .main{flex:1;padding:24px 28px;overflow:auto}
+    .hero-row{display:grid;grid-template-columns:1.6fr repeat(3,1fr);gap:14px;margin-bottom:16px}
+    .hero-card,.stat-card{
+      background:#fff;border:2px solid #DCEFFC!important;border-radius:12px;padding:24px;
       box-shadow:7px 7px 0 rgba(8,32,51,.05);
     }
-    .hero-card{border-left:12px solid #38BDF8!important;}
-    .hero-card h1{font-size:30px; margin:8px 0;}
-    .hero-card p{color:#748898; margin-bottom: 20px;}
-    .stat-card{display:flex; flex-direction:column; justify-content:center; text-align:center;}
-    .stat-card b{font-size:38px; color:#075985; margin-bottom:6px;}
-    .stat-card span{color:#748898; font-weight:700;}
-    .primary{padding:12px 20px; border-radius:10px; font-weight:900; border:0; background:#075985!important; color:#fff;}
+    .hero-card{border-left:12px solid #38BDF8!important}
+    .hero-card h1{font-size:30px;margin:8px 0}
+    .hero-card p{color:#748898;margin-bottom:20px}
+    .stat-card{display:flex;flex-direction:column;justify-content:center;text-align:center}
+    .stat-card b{font-size:38px;color:#075985;margin-bottom:6px}
+    .stat-card span{color:#748898;font-weight:700}
+    .primary{
+      padding:12px 20px;border-radius:10px;font-weight:900;border:0;
+      background:#075985!important;color:#fff;
+    }
+    @media(max-width:900px){
+      .hero-row{grid-template-columns:1fr 1fr}
+      .hero-card{grid-column:1/-1}
+    }
   </style>
 </head>
 <body>
@@ -48,7 +57,36 @@
     <div class="logo">PlanSlot</div>
     <div class="tagline">AI가 함께하는 대학생 일정 플랫폼</div>
   </div>
+
   <div class="header-actions">
+    <div class="notification-wrap">
+      <button class="notification-bell" id="notificationBell" type="button" aria-label="알림 열기">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+          <path d="M10 21h4"></path>
+        </svg>
+        <span class="notification-badge" id="notificationBadge">0</span>
+      </button>
+
+      <div class="notification-dropdown" id="notificationDropdown">
+        <div class="notification-dropdown-head">
+          <div>
+            <b>알림</b>
+            <span id="dropdownUnreadText">읽지 않은 알림 0개</span>
+          </div>
+          <button class="notification-text-button" id="dropdownReadAll" type="button">전체 읽음</button>
+        </div>
+
+        <div class="notification-dropdown-list" id="notificationDropdownList">
+          <div class="notification-loading">알림을 불러오는 중...</div>
+        </div>
+
+        <a class="notification-view-all" th:href="@{/notification/list}" href="/notification/list">
+          알림 전체 보기 →
+        </a>
+      </div>
+    </div>
+
     <button id="authBtn" class="btn-logout">로딩중...</button>
   </div>
 </header>
@@ -56,48 +94,66 @@
 <main class="main">
   <div class="hero-row">
     <div class="hero-card">
-      <div style="color:#8B5CF6; font-weight:900; font-size:12px;">PLAN YOUR TIME</div>
+      <div style="color:#8B5CF6;font-weight:900;font-size:12px;">PLAN YOUR TIME</div>
       <h1>환영합니다!</h1>
       <p>개인 일정과 모임 일정을 한 곳에서 관리하고, AI가 더 나은 시간을 추천해줘요.</p>
       <button class="primary" onclick="testApiCall()">내 정보 불러오기 테스트</button>
     </div>
-    <div class="stat-card" style="border-left:10px solid #A78BFA;"><b>0</b><span>이번 주 일정</span></div>
-    <div class="stat-card" style="border-left:10px solid #38BDF8;"><b>0</b><span>참여 중인 모임</span></div>
-    <div class="stat-card" style="border-left:10px solid #7DD3FC;"><b>0</b><span>새 알림</span></div>
+
+    <div class="stat-card" style="border-left:10px solid #A78BFA;">
+      <b>0</b>
+      <span>이번 주 일정</span>
+    </div>
+
+    <div class="stat-card" style="border-left:10px solid #38BDF8;">
+      <b>0</b>
+      <span>참여 중인 모임</span>
+    </div>
+
+    <div class="stat-card" style="border-left:10px solid #7DD3FC;">
+      <b id="homeUnreadCount">0</b>
+      <span>새 알림</span>
+    </div>
   </div>
 </main>
 
+<div class="notification-toast" id="notificationToast"></div>
+
 <script>
-  // 페이지가 로드될 때 토큰을 확인해서 버튼을 바꿔줍니다. (강제 이동 안 함!)
   window.onload = function() {
     const token = localStorage.getItem("jwtToken");
     const authBtn = document.getElementById("authBtn");
 
     if (!token) {
-      // 토큰이 없을 때 (비로그인 상태)
       authBtn.innerText = "로그인 / 회원가입";
       authBtn.onclick = function() {
         window.location.href = "/auth/login";
       };
     } else {
-      // 토큰이 있을 때 (로그인 상태)
       authBtn.innerText = "로그아웃";
       authBtn.onclick = function() {
-        localStorage.removeItem("jwtToken"); // 토큰 삭제
+        localStorage.removeItem("jwtToken");
+        localStorage.removeItem("memberId");
         alert("안전하게 로그아웃 되었습니다.");
-        window.location.reload(); // 화면 새로고침하여 비로그인 상태로 전환
+        window.location.reload();
       };
     }
   };
 
   async function testApiCall() {
     const token = localStorage.getItem("jwtToken");
-    if(!token) {
+
+    if (!token) {
       alert("로그인 후 이용할 수 있는 기능입니다.");
       return;
     }
-    alert("현재 브라우저에 저장된 토큰:\n" + token.substring(0, 30) + "... \n\n이 토큰을 백엔드로 보내면 유저 정보를 알 수 있습니다!");
+
+    alert("현재 브라우저에 저장된 토큰:\n" + token.substring(0, 30)
+            + "... \n\n이 토큰을 백엔드로 보내면 유저 정보를 알 수 있습니다!");
   }
 </script>
+
+<script th:src="@{/js/notification/notification.js}"
+        src="/js/notification/notification.js"></script>
 </body>
 </html>

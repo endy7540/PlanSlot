@@ -43,4 +43,4 @@ public class AuthEmail {
     public void verifySuccess() {
         this.isVerified = "Y";
     }
-}//
+}

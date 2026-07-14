@@ -56,4 +56,8 @@ public class Group {
     public void updateGroupName(String groupName) {
         this.groupName = groupName;
     }
+
+    public void changeOwner(Member newOwner) {
+        this.owner = newOwner;
+    }
 }

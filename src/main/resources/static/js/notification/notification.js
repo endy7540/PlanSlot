@@ -1,9 +1,5 @@
 const NOTIFICATION_API = '/notification';
 
-// 로그인 연동이 끝나면 localStorage의 memberId를 사용하고,
-// 아직 저장된 값이 없을 때만 테스트 회원 1번을 사용합니다.
-const CURRENT_MEMBER_ID = localStorage.getItem('memberId') || '1';
-
 // 실제 화면 주소가 확정되면 이 부분만 수정하면 됩니다.
 const NOTIFICATION_TARGET_ROUTES = {
     POST: targetId => `/board/${encodeURIComponent(targetId)}`,
@@ -29,10 +25,9 @@ function getNotificationHeaders() {
     return headers;
 }
 
-// 회원 ID가 포함된 알림 API 주소 생성
+// 알림 API 주소 생성
 function notificationUrl(path = '') {
-    const separator = path.includes('?') ? '&' : '?';
-    return `${NOTIFICATION_API}${path}${separator}memberId=${encodeURIComponent(CURRENT_MEMBER_ID)}`;
+    return `${NOTIFICATION_API}${path}`;
 }
 
 // 알림 목록 및 안 읽은 개수 새로고침
@@ -338,9 +333,9 @@ function formatNotificationDate(createdAt) {
     }
 
     return createdDate.toLocaleDateString('ko-KR', {
-        year:'numeric',
-        month:'2-digit',
-        day:'2-digit'
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
     });
 }
 

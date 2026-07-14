@@ -75,3 +75,14 @@ function buildHeatmapHTML(group){
   html += `<div class="heat-row total"><b>전체</b>${totalRow.map(v => `<div class="heat-cell ${heatClass(v)}"></div>`).join('')}</div>`;
   return html;
 }
+
+function fetchApi(url, options = {}) {
+  const token = localStorage.getItem('jwtToken');
+  if (!options.headers) {
+    options.headers = {};
+  }
+  if (token) {
+    options.headers['Authorization'] = 'Bearer ' + token;
+  }
+  return fetch(url, options);
+}

@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: PlanSlot
+  profiles:
+    include: secret
 
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver

@@ -35,10 +35,9 @@ public class NotificationServiceImpl implements NotificationService {
     private final MemberRepository memberRepository;
     private final GroupMemberRepository groupMemberRepository;
 
-    // 게시판 댓글 등 일반 게시판 알림
+    // 게시판 알림 전송
     @Override
-    public void sendBoardMessage(Long receiverId, String title, String content,
-                                 String targetType, Long targetId) {
+    public void sendBoardMessage(Long receiverId, String title, String content, String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
         NotificationSetting setting = getOrCreateNotificationSetting(receiver);
 
@@ -49,10 +48,10 @@ public class NotificationServiceImpl implements NotificationService {
         saveNotification(receiver, NotificationType.MESSAGE, title, content, targetType, targetId);
     }
 
-    // 모임 정보 변경 등 일반 모임 알림
+    // 모임 알림 전송
     @Override
-    public void sendGroupMessage(Long receiverId, Long groupId, String title,
-                                 String content, String targetType, Long targetId) {
+    public void sendGroupMessage(Long receiverId, Long groupId, String title, String content,
+                                 String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
         NotificationSetting setting = getOrCreateNotificationSetting(receiver);
 
@@ -67,10 +66,10 @@ public class NotificationServiceImpl implements NotificationService {
         saveNotification(receiver, NotificationType.MESSAGE, title, content, targetType, targetId);
     }
 
-    // 공유 캘린더 일정 등록 및 수정 알림
+    // 모임 일정 알림 전송
     @Override
-    public void sendScheduleMessage(Long receiverId, Long groupId, String title,
-                                    String content, String targetType, Long targetId) {
+    public void sendScheduleMessage(Long receiverId, Long groupId, String title, String content,
+                                    String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
         NotificationSetting setting = getOrCreateNotificationSetting(receiver);
 
@@ -85,10 +84,9 @@ public class NotificationServiceImpl implements NotificationService {
         saveNotification(receiver, NotificationType.MESSAGE, title, content, targetType, targetId);
     }
 
-    // 개인 일정 시작 전 또는 마감 임박 알림
+    // 개인 리마인더 알림 전송
     @Override
-    public void sendReminderMessage(Long receiverId, String title, String content,
-                                    String targetType, Long targetId) {
+    public void sendReminderMessage(Long receiverId, String title, String content, String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
         NotificationSetting setting = getOrCreateNotificationSetting(receiver);
 
@@ -99,10 +97,10 @@ public class NotificationServiceImpl implements NotificationService {
         saveNotification(receiver, NotificationType.MESSAGE, title, content, targetType, targetId);
     }
 
-    // 특정 모임 일정의 시작 전 알림
+    // 모임 리마인더 알림 전송
     @Override
-    public void sendGroupReminderMessage(Long receiverId, Long groupId, String title,
-                                         String content, String targetType, Long targetId) {
+    public void sendGroupReminderMessage(Long receiverId, Long groupId, String title, String content,
+                                         String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
         NotificationSetting setting = getOrCreateNotificationSetting(receiver);
 
@@ -117,35 +115,24 @@ public class NotificationServiceImpl implements NotificationService {
         saveNotification(receiver, NotificationType.MESSAGE, title, content, targetType, targetId);
     }
 
-    // 공유 캘린더 또는 모임 초대 알림
+    // 모임 초대는 설정과 관계없이 앱 내 알림함에 저장
     @Override
-    public void sendGroupInvitation(Long receiverId, String title, String content,
-                                    String targetType, Long targetId) {
+    public void sendGroupInvitation(Long receiverId, String title, String content, String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
-        NotificationSetting setting = getOrCreateNotificationSetting(receiver);
-
-        if (!setting.isAllEnabled() || !setting.isGroupEnabled()) {
-            return;
-        }
 
         saveNotification(receiver, NotificationType.INVITATION, title, content, targetType, targetId);
     }
 
-    // 모집 게시글을 통한 사용자 초대 알림
+    // 모집 직접 초대는 설정과 관계없이 앱 내 알림함에 저장
     @Override
     public void sendApplicationInvitation(Long receiverId, String title, String content,
                                           String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
-        NotificationSetting setting = getOrCreateNotificationSetting(receiver);
-
-        if (!setting.isAllEnabled() || !setting.isApplicationEnabled()) {
-            return;
-        }
 
         saveNotification(receiver, NotificationType.INVITATION, title, content, targetType, targetId);
     }
 
-    // 게시글 신청 및 신청 처리 결과 알림
+    // 신청 발생 및 신청 처리 결과 알림 전송
     @Override
     public void sendApplicationNotification(Long receiverId, String title, String content,
                                             String targetType, Long targetId) {
@@ -175,6 +162,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional(readOnly = true)
     public long getUnreadCount(Long memberId) {
         findReceiver(memberId);
+
         return notificationRepository.countByReceiver_IdAndIsReadFalse(memberId);
     }
 
@@ -199,7 +187,6 @@ public class NotificationServiceImpl implements NotificationService {
         findReceiver(memberId);
 
         List<Notification> notifications = notificationRepository.findAllByReceiver_IdAndIsReadFalse(memberId);
-
         notifications.forEach(Notification::read);
     }
 
@@ -234,7 +221,7 @@ public class NotificationServiceImpl implements NotificationService {
         return toNotificationSettingDTO(setting);
     }
 
-    // 내가 가입한 모임별 알림 설정 조회
+    // 참여 중인 모임별 알림 설정 조회
     @Override
     @Transactional(readOnly = true)
     public List<GroupNotificationSettingDTO> getGroupNotificationSettings(Long memberId) {
@@ -261,7 +248,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .toList();
     }
 
-    // 특정 모임 알림 설정 수정
+    // 모임별 알림 설정 수정
     @Override
     public GroupNotificationSettingDTO updateGroupNotificationSetting(Long memberId, Long groupId, boolean enabled) {
         if (groupId == null) {
@@ -290,7 +277,7 @@ public class NotificationServiceImpl implements NotificationService {
         return toGroupNotificationSettingDTO(savedSetting);
     }
 
-    // 알림 수신자 조회
+    // 알림 수신 회원 조회
     private Member findReceiver(Long receiverId) {
         if (receiverId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알림 수신자 ID가 필요합니다.");
@@ -301,7 +288,7 @@ public class NotificationServiceImpl implements NotificationService {
                         HttpStatus.NOT_FOUND, "알림 수신자를 찾을 수 없습니다."));
     }
 
-    // 회원 알림 설정 조회 또는 기본 설정 생성
+    // 회원의 알림 설정 조회 또는 기본 설정 생성
     private NotificationSetting getOrCreateNotificationSetting(Member member) {
         return notificationSettingRepository.findByMember_Id(member.getId())
                 .orElseGet(() -> notificationSettingRepository.save(
@@ -311,7 +298,7 @@ public class NotificationServiceImpl implements NotificationService {
                 ));
     }
 
-    // 모임 회원 여부와 모임별 알림 설정 확인
+    // 모임원 상태와 모임별 알림 수신 여부 확인
     private boolean isGroupNotificationEnabled(Long groupId, Long memberId) {
         if (groupId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "모임 ID가 필요합니다.");
@@ -330,7 +317,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .orElse(true);
     }
 
-    // 알림 데이터 검증 및 저장
+    // 알림 엔티티 생성 및 저장
     private void saveNotification(Member receiver, NotificationType notificationType,
                                   String title, String content, String targetType, Long targetId) {
         validateNotificationData(title, content);
@@ -383,7 +370,7 @@ public class NotificationServiceImpl implements NotificationService {
         return normalizedTargetType;
     }
 
-    // 알림 엔티티를 DTO로 변환
+    // 알림 엔티티를 응답 DTO로 변환
     private NotificationDTO toNotificationDTO(Notification notification) {
         return NotificationDTO.builder()
                 .notificationId(notification.getId())
@@ -398,7 +385,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .build();
     }
 
-    // 전체 및 기능별 알림 설정을 DTO로 변환
+    // 전체 알림 설정을 응답 DTO로 변환
     private NotificationSettingDTO toNotificationSettingDTO(NotificationSetting setting) {
         return NotificationSettingDTO.builder()
                 .allEnabled(setting.isAllEnabled())
@@ -410,7 +397,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .build();
     }
 
-    // 모임별 알림 설정을 DTO로 변환
+    // 모임별 알림 설정을 응답 DTO로 변환
     private GroupNotificationSettingDTO toGroupNotificationSettingDTO(GroupNotificationSetting setting) {
         return GroupNotificationSettingDTO.builder()
                 .groupId(setting.getGroup().getId())

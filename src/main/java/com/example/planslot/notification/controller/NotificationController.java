@@ -1,13 +1,17 @@
 package com.example.planslot.notification.controller;
 
+import com.example.planslot.member.repository.MemberRepository;
 import com.example.planslot.notification.dto.NotificationDTO;
 import com.example.planslot.notification.dto.NotificationSettingDTO;
 import com.example.planslot.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.security.Principal;
 import java.util.List;
 
 @Controller
@@ -15,23 +19,28 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationController {
     private final NotificationService notificationService;
+    private final MemberRepository memberRepository;
 
     // 내 알림 목록 조회
     @GetMapping
-    public ResponseEntity<List<NotificationDTO>> getNotifications(@RequestParam Long memberId) {
+    public ResponseEntity<List<NotificationDTO>> getNotifications(Principal principal) {
+        Long memberId = getLoginMemberId(principal);
+
         return ResponseEntity.ok(notificationService.getNotifications(memberId));
     }
 
     // 안 읽은 알림 개수 조회
     @GetMapping("/unread-count")
-    public ResponseEntity<Long> getUnreadCount(@RequestParam Long memberId) {
+    public ResponseEntity<Long> getUnreadCount(Principal principal) {
+        Long memberId = getLoginMemberId(principal);
+
         return ResponseEntity.ok(notificationService.getUnreadCount(memberId));
     }
 
     // 알림 한 개 읽음 처리
     @PatchMapping("/{notificationId}/read")
-    public ResponseEntity<Void> readNotification(@PathVariable Long notificationId,
-                                                 @RequestParam Long memberId) {
+    public ResponseEntity<Void> readNotification(@PathVariable Long notificationId, Principal principal) {
+        Long memberId = getLoginMemberId(principal);
         notificationService.readNotification(notificationId, memberId);
 
         return ResponseEntity.noContent().build();
@@ -39,7 +48,8 @@ public class NotificationController {
 
     // 내 알림 전체 읽음 처리
     @PatchMapping("/read-all")
-    public ResponseEntity<Void> readAllNotifications(@RequestParam Long memberId) {
+    public ResponseEntity<Void> readAllNotifications(Principal principal) {
+        Long memberId = getLoginMemberId(principal);
         notificationService.readAllNotifications(memberId);
 
         return ResponseEntity.noContent().build();
@@ -53,17 +63,30 @@ public class NotificationController {
 
     // 전체 및 기능별 알림 설정 조회
     @GetMapping("/setting")
-    public ResponseEntity<NotificationSettingDTO> getNotificationSetting(@RequestParam Long memberId) {
+    public ResponseEntity<NotificationSettingDTO> getNotificationSetting(Principal principal) {
+        Long memberId = getLoginMemberId(principal);
+
         return ResponseEntity.ok(notificationService.getNotificationSetting(memberId));
     }
 
     // 전체 및 기능별 알림 설정 수정
     @PutMapping("/setting")
     public ResponseEntity<NotificationSettingDTO> updateNotificationSetting(
-            @RequestParam Long memberId,
+            Principal principal,
             @RequestBody NotificationSettingDTO notificationSettingDTO) {
-        return ResponseEntity.ok(
-                notificationService.updateNotificationSetting(memberId, notificationSettingDTO)
-        );
+        Long memberId = getLoginMemberId(principal);
+
+        return ResponseEntity.ok(notificationService.updateNotificationSetting(memberId, notificationSettingDTO));
+    }
+
+    // 인증 정보에서 로그인 회원 ID 조회
+    private Long getLoginMemberId(Principal principal) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+
+        return memberRepository.findByEmail(principal.getName())
+                .map(member -> member.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인 회원을 찾을 수 없습니다."));
     }
 }

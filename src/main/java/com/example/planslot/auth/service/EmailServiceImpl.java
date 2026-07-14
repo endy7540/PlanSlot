@@ -17,10 +17,15 @@ public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender javaMailSender;
     private final AuthEmailRepository authEmailRepository;
+    private final com.example.planslot.member.repository.MemberRepository memberRepository;
 
     @Override
     @Transactional
     public void sendAuthCode(String email) {
+        if (memberRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("이미 가입된 이메일입니다. (소셜 로그인 계정 포함)");
+        }
+
         // 6자리 랜덤 코드 생성
         String authCode = createCode();
 

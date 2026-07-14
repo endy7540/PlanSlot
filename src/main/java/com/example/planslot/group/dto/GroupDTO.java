@@ -67,6 +67,7 @@ public class GroupDTO {
             String name,
             String ownerId,
             String filter,
+            String myMemberId,
             List<MemberInfo> members,
             List<WaitingInfo> waiting,
             List<ScheduleInfo> mySchedules,

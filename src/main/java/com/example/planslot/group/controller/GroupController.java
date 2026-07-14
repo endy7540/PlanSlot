@@ -104,9 +104,12 @@ public class GroupController {
     // 모임 탈퇴
     @DeleteMapping("/{groupId}/leave")
     @ResponseBody
-    public ResponseEntity<Void> leaveGroup(@PathVariable("groupId") Long groupId, Authentication authentication) {
+    public ResponseEntity<Void> leaveGroup(
+            @PathVariable("groupId") Long groupId, 
+            @RequestParam(value = "newOwnerId", required = false) Long newOwnerId,
+            Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        groupService.leaveGroup(groupId, memberId);
+        groupService.leaveGroup(groupId, memberId, newOwnerId);
         return ResponseEntity.ok().build();
     }
 

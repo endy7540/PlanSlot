@@ -21,7 +21,7 @@ public interface GroupService {
     void deleteGroup(Long groupId, Long memberId);
 
     // 모임 탈퇴
-    void leaveGroup(Long groupId, Long memberId);
+    void leaveGroup(Long groupId, Long memberId, Long newOwnerId);
 
     // 모임원 추방
     void kickMember(Long groupId, Long targetMemberId, Long memberId);

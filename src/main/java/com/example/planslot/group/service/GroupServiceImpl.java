@@ -117,6 +117,7 @@ public class GroupServiceImpl implements GroupService {
                 group.getGroupName(),
                 ownerIdStr,
                 filter,
+                memberId.toString(),
                 members,
                 waiting,
                 mySchedules,
@@ -148,11 +149,16 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public void leaveGroup(Long groupId, Long memberId) {
+    public void leaveGroup(Long groupId, Long memberId, Long newOwnerId) {
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
-        if (group.getOwner().getId().equals(memberId)) throw new IllegalArgumentException("방장은 탈퇴할 수 없습니다.");
+        if (group.getOwner().getId().equals(memberId)) {
+            if (newOwnerId == null) throw new IllegalArgumentException("방장을 위임할 사용자를 선택해야 합니다.");
+            Member newOwner = memberRepository.findById(newOwnerId).orElseThrow(() -> new IllegalArgumentException("위임할 사용자를 찾을 수 없습니다."));
+            group.changeOwner(newOwner);
+        }
         GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId).orElseThrow(() -> new IllegalArgumentException("참여 중이 아닙니다."));
         groupMemberRepository.delete(membership);
+        group.decreasePersonCount();
     }
 
     @Override

@@ -22,9 +22,10 @@ public class JwtTokenProvider {
         this.accessTokenValidityTime = accessTokenValidityTime;
     }
 
-    public String createAccessToken(String email, String role) {
+    public String createAccessToken(String email, String role, boolean keepLogin) {
         long now = (new Date()).getTime();
-        Date validity = new Date(now + this.accessTokenValidityTime);
+        long validityTime = keepLogin ? (30L * 24 * 60 * 60 * 1000) : (60L * 60 * 1000);
+        Date validity = new Date(now + validityTime);
 
         return Jwts.builder()
                 .subject(email)

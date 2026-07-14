@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlanSlot - 알림</title>
+  <link rel="stylesheet" th:href="@{/css/notification/notification.css}"
+        href="/css/notification/notification.css">
+</head>
+<body class="notification-page">
+
+<header class="notification-page-header">
+  <a class="notification-page-brand" th:href="@{/home}" href="/home">
+    <b>PlanSlot</b>
+    <span>AI가 함께하는 대학생 일정 플랫폼</span>
+  </a>
+
+  <a class="notification-home-button" th:href="@{/home}" href="/home">
+    홈으로 돌아가기
+  </a>
+</header>
+
+<main class="notification-page-main">
+  <div class="notification-page-title">
+    <div>
+      <div class="notification-page-label">NOTIFICATION</div>
+      <h1>전체 알림</h1>
+      <p>새로운 소식과 일정 안내를 한곳에서 확인해보세요.</p>
+    </div>
+
+    <button class="notification-read-all-button" id="listReadAll" type="button">
+      전체 읽음
+    </button>
+  </div>
+
+  <section class="notification-list-card">
+    <div class="notification-list-head">
+      <b>알림 목록</b>
+      <span id="listUnreadText">읽지 않은 알림 0개</span>
+    </div>
+
+    <div class="notification-full-list" id="notificationFullList">
+      <div class="notification-loading">알림을 불러오는 중...</div>
+    </div>
+  </section>
+</main>
+
+<div class="notification-toast" id="notificationToast"></div>
+
+<script th:src="@{/js/notification/notification.js}"
+        src="/js/notification/notification.js"></script>
+</body>
+</html>

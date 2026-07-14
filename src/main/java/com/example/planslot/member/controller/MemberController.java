@@ -1,23 +1,22 @@
 package com.example.planslot.member.controller;
 
-import com.example.planslot.member.dto.MemberRequestDTO;
 import com.example.planslot.member.servcie.MemberService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 @RestController
-@RequestMapping("/api/members")
+@RequestMapping("/members")
 @RequiredArgsConstructor
 public class MemberController {
     private final MemberService memberService;
 
-    @PostMapping("/signup")
-    public ResponseEntity<String> signUp(@RequestBody MemberRequestDTO.SignUp request) {
-        Long memberId = memberService.signUp(request);
-        return ResponseEntity.ok("회원가입 성공");
+    @GetMapping("/checkDuplicate")
+    public ResponseEntity<Boolean> checkDuplicate(@RequestParam("loginId") String loginId) {
+        return ResponseEntity.ok(memberService.checkDuplicateId(loginId));
     }
 }

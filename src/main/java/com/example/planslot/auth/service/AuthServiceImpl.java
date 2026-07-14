@@ -24,6 +24,6 @@ public class AuthServiceImpl implements AuthService{
         if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
-        return jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().name());
+        return jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().name(), request.isKeepLogin());
     }
 }

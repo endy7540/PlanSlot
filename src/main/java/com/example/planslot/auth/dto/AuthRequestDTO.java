@@ -9,5 +9,6 @@ public class AuthRequestDTO {
     public static class Login {
         private String loginId;
         private String password;
+        private boolean keepLogin;
     }
 }

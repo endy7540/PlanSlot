@@ -140,7 +140,7 @@
 
     <div class="panel auth-page active" id="page-login">
         <div class="logo">PlanSlot</div>
-        <div class="tagline">AI가 함께하는<br>대학생 일정 플랫폼</div>
+        <div class="tagline">AI가 함께하는<br>일정 플랫폼</div>
 
         <div class="form">
             <input type="text" id="loginId" placeholder="아이디">
@@ -347,8 +347,9 @@
                 document.getElementById('sendEmailBtn').innerText = '재발송';
                 startEmailTimer();
             } else {
+                const errorMsg = await response.text();
                 msgBox.style.color = "#B91C1C";
-                msgBox.innerText = '이메일 발송에 실패했습니다. 올바른 주소인지 확인해주세요.';
+                msgBox.innerText = errorMsg || '이메일 발송에 실패했습니다. 올바른 주소인지 확인해주세요.';
             }
         } catch (error) {
             msgBox.style.color = "#B91C1C";

@@ -6,8 +6,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import com.example.planslot.member.repository.MemberRepository;
+
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +20,16 @@ import java.util.Map;
 public class GroupController {
 
     private final GroupService groupService;
+    private final MemberRepository memberRepository;
+
+    private Long getAuthenticatedMemberId(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalStateException("인증되지 않은 사용자입니다.");
+        }
+        return memberRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."))
+                .getId();
+    }
 
     // 목록 조회 화면 반환
     @GetMapping("/list")
@@ -36,18 +49,15 @@ public class GroupController {
         return "group/ai-recommend";
     }
 
-    // 모임 생성 화면 반환
-    @GetMapping("/register")
-    public String groupRegister() {
-        return "group/group-register";
-    }
+
 
     // 모임 생성 요청 처리
     @PostMapping("/register")
     public ResponseEntity<GroupDTO.Response> registerGroup(
-            @Valid @RequestBody GroupDTO.CreateRequest request
+            @Valid @RequestBody GroupDTO.CreateRequest request,
+            Authentication authentication
     ) {
-        Long memberId = 1L; // 임시 하드코딩
+        Long memberId = getAuthenticatedMemberId(authentication);
         GroupDTO.Response response = groupService.createGroup(memberId, request);
 
         return ResponseEntity
@@ -58,8 +68,8 @@ public class GroupController {
     // 내 모임 목록 조회
     @GetMapping("/mygroup")
     @ResponseBody
-    public ResponseEntity<List<GroupDTO.ListResponse>> getMyGroups() {
-        Long memberId = 1L; // TODO: Security/Session 정보로 교체
+    public ResponseEntity<List<GroupDTO.ListResponse>> getMyGroups(Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
         List<GroupDTO.ListResponse> responses = groupService.getMyGroups(memberId);
         return ResponseEntity.ok(responses);
     }
@@ -67,8 +77,8 @@ public class GroupController {
     // 모임 상세 정보 조회
     @GetMapping("/detail/{groupId}")
     @ResponseBody
-    public ResponseEntity<GroupDTO.DetailResponse> getGroupDetail(@PathVariable("groupId") Long groupId) {
-        Long memberId = 1L; // TODO: Security/Session 정보로 교체
+    public ResponseEntity<GroupDTO.DetailResponse> getGroupDetail(@PathVariable("groupId") Long groupId, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
         GroupDTO.DetailResponse response = groupService.getGroupDetail(groupId, memberId);
         return ResponseEntity.ok(response);
     }
@@ -76,8 +86,8 @@ public class GroupController {
     // 모임 이름 수정
     @PutMapping("/{groupId}")
     @ResponseBody
-    public ResponseEntity<Void> updateGroupName(@PathVariable("groupId") Long groupId, @RequestBody Map<String, String> body) {
-        Long memberId = 1L; // TODO
+    public ResponseEntity<Void> updateGroupName(@PathVariable("groupId") Long groupId, @RequestBody Map<String, String> body, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
         groupService.updateGroupName(groupId, body.get("name"), memberId);
         return ResponseEntity.ok().build();
     }
@@ -85,8 +95,8 @@ public class GroupController {
     // 모임 삭제
     @DeleteMapping("/{groupId}")
     @ResponseBody
-    public ResponseEntity<Void> deleteGroup(@PathVariable("groupId") Long groupId) {
-        Long memberId = 1L;
+    public ResponseEntity<Void> deleteGroup(@PathVariable("groupId") Long groupId, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
         groupService.deleteGroup(groupId, memberId);
         return ResponseEntity.ok().build();
     }
@@ -94,8 +104,8 @@ public class GroupController {
     // 모임 탈퇴
     @DeleteMapping("/{groupId}/leave")
     @ResponseBody
-    public ResponseEntity<Void> leaveGroup(@PathVariable("groupId") Long groupId) {
-        Long memberId = 1L;
+    public ResponseEntity<Void> leaveGroup(@PathVariable("groupId") Long groupId, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
         groupService.leaveGroup(groupId, memberId);
         return ResponseEntity.ok().build();
     }
@@ -105,8 +115,9 @@ public class GroupController {
     @ResponseBody
     public ResponseEntity<Void> kickMember(
             @PathVariable("groupId") Long groupId, 
-            @PathVariable("targetMemberId") Long targetMemberId) {
-        Long memberId = 1L;
+            @PathVariable("targetMemberId") Long targetMemberId,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
         groupService.kickMember(groupId, targetMemberId, memberId);
         return ResponseEntity.ok().build();
     }
@@ -114,8 +125,8 @@ public class GroupController {
     // 모임 초대
     @PostMapping("/{groupId}/invitation")
     @ResponseBody
-    public ResponseEntity<Void> inviteMember(@PathVariable("groupId") Long groupId, @RequestBody Map<String, String> body) {
-        Long memberId = 1L;
+    public ResponseEntity<Void> inviteMember(@PathVariable("groupId") Long groupId, @RequestBody Map<String, String> body, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
         groupService.inviteMember(groupId, body.get("email"), memberId);
         return ResponseEntity.ok().build();
     }
@@ -126,8 +137,9 @@ public class GroupController {
     public ResponseEntity<Void> handleInvitation(
             @PathVariable("groupId") Long groupId,
             @PathVariable("invitationId") Long invitationId,
-            @RequestBody Map<String, String> body) {
-        Long memberId = 1L;
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
         String action = body.get("action"); // "ACCEPT" 또는 "REJECT" 로 전송
         if ("ACCEPT".equalsIgnoreCase(action)) {
             groupService.acceptInvite(groupId, memberId); // TODO: 추후 invitationId 검증 로직 추가 필요
@@ -142,8 +154,9 @@ public class GroupController {
     @ResponseBody
     public ResponseEntity<Void> updateMyNickname(
             @PathVariable("groupId") Long groupId, 
-            @RequestBody Map<String, String> body) {
-        Long memberId = 1L;
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
         // groupService.updateMyNickname(groupId, memberId, body.get("nickname"));
         return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
     }
@@ -154,8 +167,9 @@ public class GroupController {
     public ResponseEntity<Void> updateMemberDisplayName(
             @PathVariable("groupId") Long groupId,
             @PathVariable("targetMemberId") Long targetMemberId,
-            @RequestBody Map<String, String> body) {
-        Long memberId = 1L;
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
         // groupService.updateMemberDisplayName(groupId, memberId, targetMemberId, body.get("displayName"));
         return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
     }

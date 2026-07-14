@@ -34,6 +34,20 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="modal-overlay" id="createGroupModal" style="display:none;">
+  <div class="modal-box">
+    <h3>새 모임 만들기</h3>
+    <p>새로운 모임을 만들고 인원을 초대해보세요.</p>
+    <div style="margin: 16px 0;">
+      <input id="newGroupName" placeholder="모임 이름 (1~30자)" maxlength="30" style="width: 100%; padding: 8px;">
+    </div>
+    <div class="modal-actions" style="display: flex; gap: 8px;">
+      <button class="btn btn-ghost" id="createCancel">취소</button>
+      <button class="btn btn-primary" id="createConfirm">생성하기</button>
+    </div>
+  </div>
+</div>
+
 <script th:src="@{/js/group/group-shared.js}" src="../../static/js/group/group-shared.js"></script>
 <script>
 function renderGrid(){
@@ -84,12 +98,53 @@ document.querySelectorAll('.chip').forEach(chip => {
 document.getElementById('groupSearch').addEventListener('input', renderGrid);
 
 document.getElementById('btnNewGroup').addEventListener('click', ()=>{
-  window.location.href = '/group/register';
+  document.getElementById('newGroupName').value = '';
+  document.getElementById('createGroupModal').style.display = 'flex';
+});
+
+document.getElementById('createCancel').addEventListener('click', ()=>{
+  document.getElementById('createGroupModal').style.display = 'none';
+});
+
+document.getElementById('createConfirm').addEventListener('click', ()=>{
+  const input = document.getElementById('newGroupName');
+  const name = input.value.trim();
+  if(!name){ showToast('모임 이름을 입력해주세요.'); return; }
+  if(name.length > 30){ showToast('모임 이름은 30자 이하로 입력해주세요.'); return; }
+
+  fetchApi('/group/register', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ groupName: name })
+  })
+    .then(res => {
+      if(!res.ok) throw new Error('서버 에러가 발생했습니다.');
+      return res.json();
+    })
+    .then(data => {
+      document.getElementById('createGroupModal').style.display = 'none';
+      showToast('새 모임을 만들었어요. 잠시 후 상세 페이지로 이동합니다.');
+      setTimeout(()=>{
+        window.location.href = linkToDetail(data.groupId);
+      }, 1000);
+    })
+    .catch(err => {
+      showToast('모임 생성에 실패했습니다. (콘솔 확인)');
+      console.error(err);
+    });
+});
+
+document.getElementById('newGroupName').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') {
+    document.getElementById('createConfirm').click();
+  }
 });
 
 async function fetchAndRenderGrid() {
   try {
-    const res = await fetch('/group/mygroup');
+    const res = await fetchApi('/group/mygroup');
     if (res.ok) {
       const data = await res.json();
       GROUPS = data.map(d => ({

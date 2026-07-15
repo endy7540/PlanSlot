@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlanSlot - 일정 수정</title>
+    <link rel="stylesheet" th:href="@{/css/notification/notification.css}"
+          href="/css/notification/notification.css">
+    <style>
+        *{box-sizing:border-box}
+        body{
+            margin:0;
+            min-height:100vh;
+            font-family:Pretendard,'Malgun Gothic',Arial,sans-serif;
+            background:#FFFFFF;
+            color:#182B3A;
+        }
+        button,input,select,textarea{font-family:inherit}
+        button{cursor:pointer}
+
+        .wrap{max-width:600px;margin:0 auto;padding:24px 28px 60px}
+
+        .panel{
+            background:#fff;
+            border:2px solid #DCEFFC;
+            border-radius:12px;
+            box-shadow:7px 7px 0 rgba(8,32,51,.06);
+            padding:24px;
+            margin-bottom:18px;
+        }
+        .panel-head{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:18px;
+            border-bottom:2px solid #F3FAFF;
+            padding-bottom:12px;
+        }
+        .panel-head h2{margin:0;font-size:20px;color:#075985}
+
+        .form{display:flex;flex-direction:column;gap:16px}
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        label{font-size:12px;font-weight:900;color:#475569;margin-bottom:6px;display:block}
+        input,select,textarea{
+            width:100%;
+            border:2px solid #DCEFFC;
+            border-radius:10px;
+            padding:11px 12px;
+            background:#fff;
+            font-size:14px;
+            transition: border-color 0.2s;
+        }
+        input:focus,select:focus,textarea:focus{
+            outline:none;
+            border-color:#38BDF8;
+        }
+        textarea{min-height:80px;resize:vertical}
+        .checkbox-row{display:flex;align-items:center;gap:8px}
+        .checkbox-row input{width:auto}
+
+        .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+        .primary,.ghost{
+            border-radius:10px;
+            padding:12px 20px;
+            font-weight:900;
+            font-size:14px;
+            border:2px solid transparent;
+            cursor:pointer;
+            transition: all 0.2s;
+        }
+        .primary{background:#075985;color:#fff;border:0}
+        .primary:hover{background:#0369a1}
+        .ghost{background:#fff;color:#182B3A;border:2px solid #DCEFFC}
+        .ghost:hover{background:#F0F9FF;border-color:#38BDF8}
+        .primary:disabled{background:#94A3B8;cursor:not-allowed}
+
+        .toast{
+            position:fixed;
+            right:26px;
+            bottom:26px;
+            padding:14px 18px;
+            background:#075985;
+            color:#fff;
+            border-radius:10px;
+            box-shadow:0 10px 30px rgba(0,0,0,.2);
+            opacity:0;
+            transform:translateY(10px);
+            pointer-events:none;
+            transition:.2s;
+            font-weight:800;
+            font-size:13px;
+            z-index:10;
+        }
+        .toast.show{opacity:1;transform:none}
+        .toast.error{background:#B91C1C}
+    </style>
+</head>
+<body>
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<div class="wrap">
+
+    <!-- 로그인 상태 안내 -->
+    <div class="panel" id="authNotice" style="display:none">
+        <div class="panel-head">
+            <h2>로그인이 필요합니다</h2>
+        </div>
+        <p style="color:#748898;font-size:13px;line-height:1.6;margin:0 0 12px">
+            일정을 수정하려면 로그인이 필요합니다. 로그인 후 이용해주세요.
+        </p>
+        <div class="btn-row">
+            <a class="primary" style="text-decoration:none;display:inline-block" href="/auth/login">로그인 페이지로 이동</a>
+            <button class="ghost" onclick="location.reload()">토큰 다시 확인</button>
+        </div>
+    </div>
+
+    <!-- 일정 수정 -->
+    <div class="panel" id="scheduleFormPanel" style="display:none">
+        <div class="panel-head">
+            <h2>일정 수정</h2>
+        </div>
+        <div class="form">
+            <div>
+                <label>제목 *</label>
+                <input id="f-title" placeholder="일정 제목 (최대 50자)">
+            </div>
+            <div>
+                <label>설명</label>
+                <textarea id="f-description" placeholder="일정 상세 설명"></textarea>
+            </div>
+            <div class="form-row">
+                <div>
+                    <label>일정 유형 *</label>
+                    <select id="f-scheduleType">
+                        <option value="DAILY">당일</option>
+                        <option value="WEEKLY">주간</option>
+                        <option value="MONTHLY">월간</option>
+                        <option value="YEARLY">연간</option>
+                    </select>
+                </div>
+                <div>
+                    <label>장소</label>
+                    <input id="f-location" placeholder="예: 대학본부 2층">
+                </div>
+            </div>
+            <div class="form-row">
+                <div>
+                    <label>시작 일시 *</label>
+                    <input id="f-startDate" type="datetime-local">
+                </div>
+                <div>
+                    <label>종료 일시</label>
+                    <input id="f-endDate" type="datetime-local">
+                </div>
+            </div>
+            <div class="form-row">
+                <div>
+                    <label>데드라인 날짜 (선택)</label>
+                    <input id="f-deadlineDate" type="date">
+                </div>
+                <div>
+                    <label>며칠 전 알림 (선택)</label>
+                    <input id="f-notifyDaysBefore" type="number" min="0" placeholder="예: 1">
+                </div>
+            </div>
+            <div class="checkbox-row">
+                <input id="f-isPublic" type="checkbox">
+                <label style="margin:0">공개 일정으로 등록</label>
+            </div>
+            <div class="btn-row">
+                <button class="primary" id="submitBtn" onclick="updateSchedule()">수정 완료</button>
+                <button class="ghost" onclick="history.back()">취소</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const API_BASE = window.location.origin;
+    let token = '';
+    let scheduleId = null;
+
+    function showToast(msg, isError) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show' + (isError ? ' error' : '');
+        setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    function checkAuth() {
+        token = localStorage.getItem('jwtToken') || '';
+        const notice = document.getElementById('authNotice');
+        const formPanel = document.getElementById('scheduleFormPanel');
+
+        if (token) {
+            notice.style.display = 'none';
+            formPanel.style.display = '';
+        } else {
+            notice.style.display = '';
+            formPanel.style.display = 'none';
+        }
+        return !!token;
+    }
+
+    function authHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + token
+        };
+    }
+
+    function buildScheduleBody() {
+        const body = {
+            title: document.getElementById('f-title').value.trim(),
+            description: document.getElementById('f-description').value.trim() || null,
+            scheduleType: document.getElementById('f-scheduleType').value,
+            startDate: document.getElementById('f-startDate').value ? document.getElementById('f-startDate').value + ':00' : null,
+            endDate: document.getElementById('f-endDate').value ? document.getElementById('f-endDate').value + ':00' : null,
+            isPublic: document.getElementById('f-isPublic').checked,
+            location: document.getElementById('f-location').value.trim() || null
+        };
+        const deadlineDate = document.getElementById('f-deadlineDate').value;
+        const notifyDaysBefore = document.getElementById('f-notifyDaysBefore').value;
+        if (deadlineDate) {
+            body.deadlineDate = deadlineDate;
+            body.notifyDaysBefore = notifyDaysBefore ? Number(notifyDaysBefore) : 0;
+        }
+        return body;
+    }
+
+    async function loadScheduleData() {
+        const parts = window.location.pathname.split('/').filter(Boolean); // ['schedule', '{scheduleId}', 'edit']
+        scheduleId = parts[1]; // scheduleId
+
+        if (!scheduleId || isNaN(scheduleId)) {
+            showToast('유효하지 않은 일정 ID입니다.', true);
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE}/schedule/${scheduleId}`, { headers: authHeaders() });
+            if (!res.ok) {
+                showToast('일정 조회 실패: ' + res.status, true);
+                return;
+            }
+            const s = await res.json();
+
+            document.getElementById('f-title').value = s.title || '';
+            document.getElementById('f-description').value = s.description || '';
+            document.getElementById('f-scheduleType').value = s.scheduleType || 'DAILY';
+            document.getElementById('f-location').value = s.location || '';
+            document.getElementById('f-startDate').value = s.startDate ? s.startDate.slice(0, 16) : '';
+            document.getElementById('f-endDate').value = s.endDate ? s.endDate.slice(0, 16) : '';
+            document.getElementById('f-deadlineDate').value = s.deadlineDate || '';
+            document.getElementById('f-notifyDaysBefore').value = s.notifyDaysBefore || '';
+            document.getElementById('f-isPublic').checked = !!s.isPublic;
+        } catch (e) {
+            console.error(e);
+            showToast('일정 데이터를 가져오는 데 실패했습니다.', true);
+        }
+    }
+
+    async function updateSchedule() {
+        if (!token) {
+            showToast('먼저 로그인해주세요.', true);
+            return;
+        }
+        const body = buildScheduleBody();
+        if (!body.title || !body.startDate) {
+            showToast('제목과 시작 일시는 필수입니다.', true);
+            return;
+        }
+
+        const url = `${API_BASE}/schedule/${scheduleId}`;
+        try {
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: authHeaders(),
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) {
+                showToast('수정 실패: ' + res.status, true);
+                return;
+            }
+            showToast('일정이 수정되었습니다. 상세 페이지로 이동합니다...');
+            setTimeout(() => {
+                window.location.href = `/schedule/${scheduleId}`;
+            }, 800);
+        } catch (e) {
+            console.error(e);
+            showToast('요청 중 오류가 발생했습니다.', true);
+        }
+    }
+
+    if (checkAuth()) {
+        loadScheduleData();
+    }
+</script>
+</body>
+</html>

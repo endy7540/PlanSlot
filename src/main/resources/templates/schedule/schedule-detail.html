@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlanSlot - 일정 상세 정보</title>
+    <link rel="stylesheet" th:href="@{/css/notification/notification.css}"
+          href="/css/notification/notification.css">
+    <style>
+        *{box-sizing:border-box}
+        body{
+            margin:0;
+            min-height:100vh;
+            font-family:Pretendard,'Malgun Gothic',Arial,sans-serif;
+            background:#FFFFFF;
+            color:#182B3A;
+        }
+        button{font-family:inherit;cursor:pointer}
+
+        .wrap{max-width:600px;margin:0 auto;padding:24px 28px 60px}
+
+        .panel{
+            background:#fff;
+            border:2px solid #DCEFFC;
+            border-radius:12px;
+            box-shadow:7px 7px 0 rgba(8,32,51,.06);
+            padding:28px;
+            margin-bottom:18px;
+        }
+        .panel-head{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:20px;
+            border-bottom:2px solid #F3FAFF;
+            padding-bottom:12px;
+        }
+        .panel-head h2{margin:0;font-size:22px;color:#075985}
+
+        .detail-info{
+            display:flex;
+            flex-direction:column;
+            gap:18px;
+        }
+        .info-row {
+            display:flex;
+            flex-direction:column;
+            gap:6px;
+        }
+        .info-label {
+            font-size:12px;
+            font-weight:900;
+            color:#748898;
+            text-transform:uppercase;
+        }
+        .info-value {
+            font-size:16px;
+            font-weight:600;
+            color:#182B3A;
+            line-height:1.5;
+        }
+        .description-box {
+            background:#F3FAFF;
+            border:2px dashed #DCEFFC;
+            border-radius:10px;
+            padding:14px;
+            white-space:pre-wrap;
+            min-height:60px;
+        }
+        .badge-row {
+            display:flex;
+            gap:8px;
+            flex-wrap:wrap;
+        }
+        .badge {
+            display:inline-block;
+            background:#E0F2FE;
+            color:#075985;
+            border-radius:999px;
+            padding:4px 10px;
+            font-size:12px;
+            font-weight:900;
+        }
+        .badge.public {
+            background:#DCFCE7;
+            color:#166534;
+        }
+        .badge.private {
+            background:#FEE2E2;
+            color:#991B1B;
+        }
+
+        .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px;border-top:2px solid #F3FAFF;padding-top:18px}
+        .primary,.ghost,.danger{
+            border-radius:10px;
+            padding:12px 20px;
+            font-weight:900;
+            font-size:14px;
+            border:2px solid transparent;
+            transition: all 0.2s;
+        }
+        .primary{background:#075985;color:#fff;border:0}
+        .primary:hover{background:#0369a1}
+        .ghost{background:#fff;color:#182B3A;border:2px solid #DCEFFC}
+        .ghost:hover{background:#F0F9FF;border-color:#38BDF8}
+        .danger{background:#fff;color:#B91C1C;border:2px solid #FECACA}
+        .danger:hover{background:#FEF2F2;border-color:#FCA5A5}
+
+        .toast{
+            position:fixed;
+            right:26px;
+            bottom:26px;
+            padding:14px 18px;
+            background:#075985;
+            color:#fff;
+            border-radius:10px;
+            box-shadow:0 10px 30px rgba(0,0,0,.2);
+            opacity:0;
+            transform:translateY(10px);
+            pointer-events:none;
+            transition:.2s;
+            font-weight:800;
+            font-size:13px;
+            z-index:10;
+        }
+        .toast.show{opacity:1;transform:none}
+        .toast.error{background:#B91C1C}
+    </style>
+</head>
+<body>
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<div class="wrap">
+
+    <!-- 로그인 상태 안내 -->
+    <div class="panel" id="authNotice" style="display:none">
+        <div class="panel-head">
+            <h2>로그인이 필요합니다</h2>
+        </div>
+        <p style="color:#748898;font-size:13px;line-height:1.6;margin:0 0 12px">
+            일정 상세 정보를 확인하려면 로그인이 필요합니다. 로그인 후 이용해주세요.
+        </p>
+        <div class="btn-row">
+            <a class="primary" style="text-decoration:none;display:inline-block" href="/auth/login">로그인 페이지로 이동</a>
+            <button class="ghost" onclick="location.reload()">토큰 다시 확인</button>
+        </div>
+    </div>
+
+    <!-- 일정 상세 정보 -->
+    <div class="panel" id="scheduleDetailPanel" style="display:none">
+        <div class="panel-head">
+            <h2 id="detail-title">일정 상세 조회</h2>
+        </div>
+        <div class="detail-info">
+            <div class="badge-row">
+                <span id="detail-type" class="badge">MONTHLY</span>
+                <span id="detail-public" class="badge public">공개</span>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">제목</div>
+                <div id="detail-title-val" class="info-value" style="font-size:20px; font-weight:800; color:#075985;">-</div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">일시</div>
+                <div id="detail-time-val" class="info-value">-</div>
+            </div>
+
+            <div class="info-row" id="location-row" style="display:none">
+                <div class="info-label">장소</div>
+                <div id="detail-location-val" class="info-value">-</div>
+            </div>
+
+            <div class="info-row" id="description-row" style="display:none">
+                <div class="info-label">설명</div>
+                <div id="detail-description-val" class="info-value description-box">-</div>
+            </div>
+
+            <div class="info-row" id="deadline-row" style="display:none">
+                <div class="info-label">데드라인</div>
+                <div id="detail-deadline-val" class="info-value">-</div>
+            </div>
+
+            <div class="info-row" id="notify-row" style="display:none">
+                <div class="info-label">알림 설정</div>
+                <div id="detail-notify-val" class="info-value">-</div>
+            </div>
+
+            <div class="btn-row">
+                <button class="primary" onclick="goToEdit()">수정</button>
+                <button class="danger" onclick="deleteCurrentSchedule()">삭제</button>
+                <button class="ghost" onclick="window.location.href='/schedule'">캘린더로</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const API_BASE = window.location.origin;
+    let token = '';
+    let scheduleId = null;
+
+    function showToast(msg, isError) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show' + (isError ? ' error' : '');
+        setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    function checkAuth() {
+        token = localStorage.getItem('jwtToken') || '';
+        const notice = document.getElementById('authNotice');
+        const detailPanel = document.getElementById('scheduleDetailPanel');
+
+        if (token) {
+            notice.style.display = 'none';
+            detailPanel.style.display = '';
+        } else {
+            notice.style.display = '';
+            detailPanel.style.display = 'none';
+        }
+        return !!token;
+    }
+
+    function authHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + token
+        };
+    }
+
+    function formatDate(iso) {
+        if (!iso) return '-';
+        return iso.replace('T', ' ').slice(0, 16);
+    }
+
+    async function loadScheduleDetail() {
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        scheduleId = parts[parts.length - 1]; // /schedule/{scheduleId}
+
+        if (!scheduleId || isNaN(scheduleId)) {
+            showToast('유효하지 않은 일정 ID입니다.', true);
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE}/schedule/${scheduleId}`, { headers: authHeaders() });
+            if (!res.ok) {
+                showToast('일정을 불러오는 데 실패했습니다: ' + res.status, true);
+                return;
+            }
+            const s = await res.json();
+            
+            document.getElementById('detail-title-val').textContent = s.title;
+            
+            const timeStr = s.endDate 
+                ? `${formatDate(s.startDate)} ~ ${formatDate(s.endDate)}`
+                : `${formatDate(s.startDate)}`;
+            document.getElementById('detail-time-val').textContent = timeStr;
+
+            document.getElementById('detail-type').textContent = s.scheduleType;
+            
+            const pubSpan = document.getElementById('detail-public');
+            if (s.isPublic) {
+                pubSpan.textContent = '공개 일정';
+                pubSpan.className = 'badge public';
+            } else {
+                pubSpan.textContent = '비공개 일정';
+                pubSpan.className = 'badge private';
+            }
+
+            if (s.location) {
+                document.getElementById('location-row').style.display = '';
+                document.getElementById('detail-location-val').textContent = s.location;
+            } else {
+                document.getElementById('location-row').style.display = 'none';
+            }
+
+            if (s.description) {
+                document.getElementById('description-row').style.display = '';
+                document.getElementById('detail-description-val').textContent = s.description;
+            } else {
+                document.getElementById('description-row').style.display = 'none';
+            }
+
+            if (s.deadlineDate) {
+                document.getElementById('deadline-row').style.display = '';
+                document.getElementById('detail-deadline-val').textContent = s.deadlineDate;
+            } else {
+                document.getElementById('deadline-row').style.display = 'none';
+            }
+
+            if (s.notifyDaysBefore !== null && s.notifyDaysBefore !== undefined) {
+                document.getElementById('notify-row').style.display = '';
+                document.getElementById('detail-notify-val').textContent = `${s.notifyDaysBefore}일 전 알림`;
+            } else {
+                document.getElementById('notify-row').style.display = 'none';
+            }
+
+        } catch (e) {
+            console.error(e);
+            showToast('일정 정보를 가져오는 중 오류가 발생했습니다.', true);
+        }
+    }
+
+    function goToEdit() {
+        if (scheduleId) {
+            window.location.href = `/schedule/${scheduleId}/edit`;
+        }
+    }
+
+    async function deleteCurrentSchedule() {
+        if (!confirm('정말 이 일정을 삭제하시겠습니까?')) return;
+        
+        try {
+            const res = await fetch(`${API_BASE}/schedule/${scheduleId}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+            if (!res.ok) {
+                showToast('삭제 실패: ' + res.status, true);
+                return;
+            }
+            showToast('일정이 성공적으로 삭제되었습니다. 캘린더로 이동합니다...');
+            setTimeout(() => {
+                window.location.href = '/schedule';
+            }, 800);
+        } catch (e) {
+            console.error(e);
+            showToast('삭제 중 오류가 발생했습니다.', true);
+        }
+    }
+
+    if (checkAuth()) {
+        loadScheduleDetail();
+    }
+</script>
+</body>
+</html>

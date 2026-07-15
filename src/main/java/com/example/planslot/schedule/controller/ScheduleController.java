@@ -106,7 +106,12 @@ public class ScheduleController {
 
     @GetMapping(value = "/{scheduleId}", produces = MediaType.TEXT_HTML_VALUE)
     public String scheduleDetailPage(@PathVariable Long scheduleId) {
-        return "schedule/schedule-register"; // templates/schedule/schedule-register.html (수정 폼)
+        return "schedule/schedule-detail"; // templates/schedule/schedule-detail.html (상세 조회 뷰)
+    }
+
+    @GetMapping(value = "/{scheduleId}/edit", produces = MediaType.TEXT_HTML_VALUE)
+    public String scheduleEditPage(@PathVariable Long scheduleId) {
+        return "schedule/schedule-modify"; // templates/schedule/schedule-modify.html (수정 폼)
     }
     private Long extractMemberId(Authentication authentication) {
         String email = authentication.getName();

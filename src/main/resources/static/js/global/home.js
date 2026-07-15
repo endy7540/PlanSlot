@@ -1,22 +1,4 @@
-window.onload = function() {
-  const token = localStorage.getItem("jwtToken");
-  const authBtn = document.getElementById("authBtn");
 
-  if (!token) {
-    authBtn.innerText = "로그인 / 회원가입";
-    authBtn.onclick = function() {
-      window.location.href = "/auth/login";
-    };
-  } else {
-    authBtn.innerText = "로그아웃";
-    authBtn.onclick = function() {
-      localStorage.removeItem("jwtToken");
-      localStorage.removeItem("memberId");
-      alert("안전하게 로그아웃 되었습니다.");
-      window.location.reload();
-    };
-  }
-};
 
 async function testApiCall() {
   const token = localStorage.getItem("jwtToken");

@@ -1,9 +1,16 @@
 package com.example.planslot.board.service;
 
 import com.example.planslot.board.dto.BoardCommentDTO;
-import com.example.planslot.board.entity.*;
+import com.example.planslot.board.entity.Board;
+import com.example.planslot.board.entity.BoardComment;
+import com.example.planslot.board.entity.BoardCommentStatus;
+import com.example.planslot.board.entity.BoardStatus;
 import com.example.planslot.board.repository.BoardCommentRepository;
 import com.example.planslot.board.repository.BoardRepository;
+import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
+import com.example.planslot.boardreport.entity.BoardReport;
+import com.example.planslot.boardreport.entity.BoardReportTargetType;
+import com.example.planslot.boardreport.repository.BoardReportRepository;
 import com.example.planslot.member.entity.Member;
 import com.example.planslot.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +19,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -23,13 +34,14 @@ public class BoardCommentServiceImpl implements BoardCommentService {
     private final BoardCommentRepository boardCommentRepository;
     private final BoardRepository boardRepository;
     private final MemberRepository memberRepository;
+    private final BoardReportRepository boardReportRepository;
 
     // 댓글 및 대댓글 등록
     @Override
     @Transactional
-    public Long createComment(Long boardId, BoardCommentDTO commentDTO, Long memberId) {
+    public Long createComment(Long boardId, BoardCommentDTO commentDTO, String memberEmail) {
         Board board = findBoard(boardId);
-        Member writer = findMember(memberId);
+        Member writer = findMember(memberEmail);
 
         validateCommentDTO(commentDTO);
 
@@ -66,8 +78,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
                 .toList();
 
         List<BoardComment> replies = boardCommentRepository.findActiveReplies(
-                rootCommentIds,
-                BoardCommentStatus.ACTIVE
+                rootCommentIds, BoardCommentStatus.ACTIVE
         );
 
         Map<Long, List<BoardCommentDTO>> repliesByParentId = new LinkedHashMap<>();
@@ -75,8 +86,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
         for (BoardComment reply : replies) {
             Long parentCommentId = reply.getParentComment().getCommentId();
 
-            repliesByParentId
-                    .computeIfAbsent(parentCommentId, key -> new ArrayList<>())
+            repliesByParentId.computeIfAbsent(parentCommentId, key -> new ArrayList<>())
                     .add(toDTO(reply, List.of()));
         }
 
@@ -84,8 +94,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
 
         for (BoardComment rootComment : rootComments) {
             List<BoardCommentDTO> commentReplies = repliesByParentId.getOrDefault(
-                    rootComment.getCommentId(),
-                    List.of()
+                    rootComment.getCommentId(), List.of()
             );
 
             if (rootComment.getCommentStatus() == BoardCommentStatus.DELETED) {
@@ -106,10 +115,11 @@ public class BoardCommentServiceImpl implements BoardCommentService {
     // 댓글 및 대댓글 수정
     @Override
     @Transactional
-    public BoardCommentDTO updateComment(Long commentId, BoardCommentDTO commentDTO, Long memberId) {
+    public BoardCommentDTO updateComment(Long commentId, BoardCommentDTO commentDTO, String memberEmail) {
         BoardComment comment = findActiveComment(commentId);
+        Member member = findMember(memberEmail);
 
-        validateWriter(comment, memberId);
+        validateWriter(comment, member);
         validateCommentDTO(commentDTO);
 
         comment.update(commentDTO.getContent().trim());
@@ -120,12 +130,45 @@ public class BoardCommentServiceImpl implements BoardCommentService {
     // 댓글 및 대댓글 삭제
     @Override
     @Transactional
-    public void deleteComment(Long commentId, Long memberId) {
+    public void deleteComment(Long commentId, String memberEmail) {
         BoardComment comment = findActiveComment(commentId);
+        Member member = findMember(memberEmail);
 
-        validateWriter(comment, memberId);
+        validateWriter(comment, member);
 
         comment.delete();
+    }
+
+    // 댓글 및 대댓글 신고
+    @Override
+    @Transactional
+    public Long reportComment(Long commentId, BoardReportRequestDTO reportRequestDTO, String reporterEmail) {
+        BoardComment comment = findActiveComment(commentId);
+        Member reporter = findMember(reporterEmail);
+
+        if (Objects.equals(comment.getWriter().getId(), reporter.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인이 작성한 댓글은 신고할 수 없습니다.");
+        }
+
+        validateBoardReportRequest(reportRequestDTO);
+
+        boolean duplicated = boardReportRepository.existsByReporter_IdAndTargetTypeAndTargetId(
+                reporter.getId(), BoardReportTargetType.COMMENT, commentId
+        );
+
+        if (duplicated) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 신고한 댓글입니다.");
+        }
+
+        BoardReport boardReport = BoardReport.builder()
+                .reporter(reporter)
+                .targetType(BoardReportTargetType.COMMENT)
+                .targetId(commentId)
+                .reasonCode(reportRequestDTO.getReasonCode())
+                .reasonDetail(reportRequestDTO.getReasonDetail().trim())
+                .build();
+
+        return boardReportRepository.save(boardReport).getReportId();
     }
 
     // 활성 게시글 조회
@@ -134,19 +177,22 @@ public class BoardCommentServiceImpl implements BoardCommentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "게시글 ID가 필요합니다.");
         }
 
-        return boardRepository
-                .findByBoardIdAndBoardStatus(boardId, BoardStatus.ACTIVE)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        return boardRepository.findByBoardIdAndBoardStatus(boardId, BoardStatus.ACTIVE)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."
+                ));
     }
 
-    // 회원 조회
-    private Member findMember(Long memberId) {
-        if (memberId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "회원 ID가 필요합니다.");
+    // 로그인 회원 조회
+    private Member findMember(String memberEmail) {
+        if (memberEmail == null || memberEmail.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
         }
 
-        return memberRepository.findById(memberId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
+        return memberRepository.findByEmail(memberEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "로그인 회원을 찾을 수 없습니다."
+                ));
     }
 
     // 활성 댓글 조회
@@ -155,12 +201,12 @@ public class BoardCommentServiceImpl implements BoardCommentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "댓글 ID가 필요합니다.");
         }
 
-        BoardComment comment = boardCommentRepository
-                .findByCommentIdAndCommentStatus(
-                        commentId,
-                        BoardCommentStatus.ACTIVE
+        BoardComment comment = boardCommentRepository.findByCommentIdAndCommentStatus(
+                        commentId, BoardCommentStatus.ACTIVE
                 )
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."
+                ));
 
         if (comment.getBoard().getBoardStatus() != BoardStatus.ACTIVE) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
@@ -181,12 +227,8 @@ public class BoardCommentServiceImpl implements BoardCommentService {
     }
 
     // 댓글 작성자 확인
-    private void validateWriter(BoardComment comment, Long memberId) {
-        if (memberId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "회원 ID가 필요합니다.");
-        }
-
-        if (!Objects.equals(comment.getWriter().getId(), memberId)) {
+    private void validateWriter(BoardComment comment, Member member) {
+        if (!Objects.equals(comment.getWriter().getId(), member.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 작성자만 수정하거나 삭제할 수 있습니다.");
         }
     }
@@ -206,9 +248,32 @@ public class BoardCommentServiceImpl implements BoardCommentService {
         }
     }
 
+    // 댓글 신고 입력값 확인
+    private void validateBoardReportRequest(BoardReportRequestDTO reportRequestDTO) {
+        if (reportRequestDTO == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 정보를 입력해 주세요.");
+        }
+
+        if (reportRequestDTO.getReasonCode() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 사유를 선택해 주세요.");
+        }
+
+        String reasonDetail = reportRequestDTO.getReasonDetail();
+
+        if (reasonDetail == null || reasonDetail.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용을 입력해 주세요.");
+        }
+
+        if (reasonDetail.trim().length() > 500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용은 500자 이하로 입력해 주세요.");
+        }
+    }
+
     // 활성 댓글 DTO 변환
     private BoardCommentDTO toDTO(BoardComment comment, List<BoardCommentDTO> replies) {
-        Long parentCommentId = comment.getParentComment() == null ? null : comment.getParentComment().getCommentId();
+        Long parentCommentId = comment.getParentComment() == null
+                ? null
+                : comment.getParentComment().getCommentId();
 
         return BoardCommentDTO.builder()
                 .commentId(comment.getCommentId())

@@ -144,6 +144,10 @@
                     <input id="f-location" placeholder="예: 대학본부 2층">
                 </div>
             </div>
+            <div class="checkbox-row" style="margin-bottom: 8px;">
+                <input id="f-allDay" type="checkbox" onchange="toggleAllDay(this.checked)">
+                <label style="margin:0; font-weight: 700; color: #075985;">하루종일</label>
+            </div>
             <div class="form-row">
                 <div>
                     <label>시작 일시 *</label>
@@ -214,13 +218,47 @@
         };
     }
 
+    function toggleAllDay(isAllDay) {
+        const startInput = document.getElementById('f-startDate');
+        const endInput = document.getElementById('f-endDate');
+
+        const startVal = startInput.value;
+        const endVal = endInput.value;
+
+        if (isAllDay) {
+            startInput.type = 'date';
+            endInput.type = 'date';
+            if (startVal) startInput.value = startVal.slice(0, 10);
+            if (endVal) endInput.value = endVal.slice(0, 10);
+        } else {
+            startInput.type = 'datetime-local';
+            endInput.type = 'datetime-local';
+            if (startVal && startVal.length === 10) startInput.value = startVal + 'T09:00';
+            if (endVal && endVal.length === 10) endInput.value = endVal + 'T18:00';
+        }
+    }
+
     function buildScheduleBody() {
+        const isAllDay = document.getElementById('f-allDay').checked;
+        const startVal = document.getElementById('f-startDate').value;
+        const endVal = document.getElementById('f-endDate').value;
+
+        let startDate = null;
+        let endDate = null;
+
+        if (startVal) {
+            startDate = isAllDay ? startVal + 'T00:00:00' : (startVal.length === 16 ? startVal + ':00' : startVal);
+        }
+        if (endVal) {
+            endDate = isAllDay ? endVal + 'T23:59:59' : (endVal.length === 16 ? endVal + ':00' : endVal);
+        }
+
         const body = {
             title: document.getElementById('f-title').value.trim(),
             description: document.getElementById('f-description').value.trim() || null,
             scheduleType: document.getElementById('f-scheduleType').value,
-            startDate: document.getElementById('f-startDate').value ? document.getElementById('f-startDate').value + ':00' : null,
-            endDate: document.getElementById('f-endDate').value ? document.getElementById('f-endDate').value + ':00' : null,
+            startDate: startDate,
+            endDate: endDate,
             isPublic: document.getElementById('f-isPublic').checked,
             location: document.getElementById('f-location').value.trim() || null
         };
@@ -250,12 +288,26 @@
             }
             const s = await res.json();
 
+            const isAllDay = s.startDate && (s.startDate.includes('T00:00') || s.startDate.includes(' 00:00')) && s.endDate && (s.endDate.includes('T23:59') || s.endDate.includes(' 23:59'));
+            document.getElementById('f-allDay').checked = isAllDay;
+
             document.getElementById('f-title').value = s.title || '';
             document.getElementById('f-description').value = s.description || '';
             document.getElementById('f-scheduleType').value = s.scheduleType || 'DAILY';
             document.getElementById('f-location').value = s.location || '';
-            document.getElementById('f-startDate').value = s.startDate ? s.startDate.slice(0, 16) : '';
-            document.getElementById('f-endDate').value = s.endDate ? s.endDate.slice(0, 16) : '';
+            
+            if (isAllDay) {
+                document.getElementById('f-startDate').type = 'date';
+                document.getElementById('f-endDate').type = 'date';
+                document.getElementById('f-startDate').value = s.startDate ? s.startDate.slice(0, 10) : '';
+                document.getElementById('f-endDate').value = s.endDate ? s.endDate.slice(0, 10) : '';
+            } else {
+                document.getElementById('f-startDate').type = 'datetime-local';
+                document.getElementById('f-endDate').type = 'datetime-local';
+                document.getElementById('f-startDate').value = s.startDate ? s.startDate.slice(0, 16) : '';
+                document.getElementById('f-endDate').value = s.endDate ? s.endDate.slice(0, 16) : '';
+            }
+
             document.getElementById('f-deadlineDate').value = s.deadlineDate || '';
             document.getElementById('f-notifyDaysBefore').value = s.notifyDaysBefore || '';
             document.getElementById('f-isPublic').checked = !!s.isPublic;

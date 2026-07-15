@@ -152,6 +152,12 @@ function bindNotificationDropdown() {
 
     bell.addEventListener('click', event => {
         event.stopPropagation();
+        
+        // 프로필 드롭다운이 열려있다면 닫기
+        const profileDropdown = document.getElementById('profileDropdown');
+        if (profileDropdown) {
+            profileDropdown.style.display = 'none';
+        }
 
         const opened =
             dropdown.classList.toggle('open');

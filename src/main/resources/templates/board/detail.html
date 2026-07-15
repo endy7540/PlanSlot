@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlanSlot - 게시글</title>
+  <link rel="stylesheet" th:href="@{/css/board/board.css}" href="/css/board/board.css">
+</head>
+<body data-board-page="detail" data-board-type="FREE">
+
+<header class="board-header">
+  <div class="board-brand">
+    <a class="board-logo" th:href="@{/home}" href="/home">
+      <b>PlanSlot</b>
+      <span>AI가 함께하는 대학생 일정 플랫폼</span>
+    </a>
+    <nav class="board-nav" aria-label="게시판 메뉴">
+      <a data-board-nav="NOTICE" th:href="@{/board/notice}" href="/board/notice">공지사항</a>
+      <a data-board-nav="STUDY" th:href="@{/board/study}" href="/board/study">스터디</a>
+      <a data-board-nav="CLUB" th:href="@{/board/club}" href="/board/club">소모임</a>
+      <a data-board-nav="FREE" th:href="@{/board/free}" href="/board/free">자유게시판</a>
+    </nav>
+  </div>
+  <div class="board-header-actions">
+    <button class="board-auth-state" id="boardMemberState" type="button">로그인 확인 중</button>
+    <button class="board-btn board-btn-ghost board-btn-small" id="boardAuthButton" type="button">로그인</button>
+  </div>
+</header>
+
+<main class="board-main">
+  <section class="board-card board-auth-panel" id="boardLoginPanel" hidden>
+    <h2>로그인이 필요합니다</h2>
+    <p>게시글과 댓글을 확인하려면 먼저 로그인해 주세요.</p>
+    <a class="board-btn board-btn-primary" th:href="@{/auth/login}" href="/auth/login">로그인 페이지로 이동</a>
+  </section>
+
+  <div data-board-auth-content>
+    <div class="board-breadcrumb">
+      <a th:href="@{/home}" href="/home">홈</a><span>›</span>
+      <a id="boardListLink" href="/board/free">게시판</a><span>›</span>
+      <span>상세</span>
+    </div>
+
+    <div class="board-card board-auth-panel" id="boardDetailLoading">
+      게시글을 불러오는 중...
+    </div>
+
+    <article class="board-card board-article" id="boardArticle" hidden>
+      <header class="board-article-head">
+        <span class="board-type-badge" id="boardDetailCategory">게시판</span>
+        <h1 id="boardDetailTitle"></h1>
+        <div class="board-meta">
+          <span id="boardDetailWriter"></span>
+          <span id="boardDetailDate"></span>
+          <span id="boardDetailViews"></span>
+        </div>
+      </header>
+
+      <div class="board-article-body">
+        <img class="board-article-image" id="boardDetailImage" hidden>
+        <div class="board-article-content" id="boardDetailContent"></div>
+      </div>
+
+      <footer class="board-article-actions" id="boardDetailActions"></footer>
+    </article>
+
+    <section class="board-card board-comments">
+      <div class="board-section-title">
+        <h2>댓글 <span id="boardDetailCommentCount">0</span></h2>
+      </div>
+
+      <div class="board-comment-form">
+        <textarea id="boardCommentContent" maxlength="1000" placeholder="댓글을 입력해 주세요."></textarea>
+        <button class="board-btn board-btn-primary" id="boardCommentSubmit" type="button">댓글 등록</button>
+      </div>
+
+      <div class="board-comment-list" id="boardCommentList">
+        <div class="board-loading">댓글을 불러오는 중...</div>
+      </div>
+    </section>
+  </div>
+</main>
+
+
+<div class="board-modal-overlay" id="boardReportModal">
+  <div class="board-modal">
+    <h3 id="boardReportTitle">신고</h3>
+    <p>신고 내용은 관리자 확인을 위해 저장되며, 같은 대상을 중복 신고할 수 없습니다.</p>
+    <div class="board-field">
+      <label for="boardReportReason">신고 사유 <span class="board-required">*</span></label>
+      <select class="board-select" id="boardReportReason">
+        <option value="">신고 사유 선택</option>
+        <option value="ABUSE">욕설·비방</option>
+        <option value="SPAM">스팸·광고</option>
+        <option value="INAPPROPRIATE">음란·부적절한 내용</option>
+        <option value="PERSONAL_INFORMATION">개인정보 노출</option>
+        <option value="OTHER">기타</option>
+      </select>
+    </div>
+    <div class="board-field">
+      <label for="boardReportDetail">세부내용 <span class="board-required">*</span></label>
+      <textarea class="board-textarea" id="boardReportDetail" maxlength="500" style="min-height:130px" placeholder="신고 이유를 구체적으로 입력해 주세요."></textarea>
+    </div>
+    <div class="board-modal-actions">
+      <button class="board-btn board-btn-ghost" id="boardReportCancel" type="button">취소</button>
+      <button class="board-btn board-btn-danger" id="boardReportSubmit" type="button">신고 접수</button>
+    </div>
+  </div>
+</div>
+
+<div class="board-toast" id="boardToast"></div>
+<script th:src="@{/js/board/board.js}" src="/js/board/board.js"></script>
+</body>
+</html>

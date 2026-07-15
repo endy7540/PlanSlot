@@ -1,16 +1,38 @@
 window.addEventListener("DOMContentLoaded", function() {
     const token = localStorage.getItem("jwtToken");
-    const authBtn = document.getElementById("authBtn");
+    const loginBtn = document.getElementById("loginBtn");
+    const profileWrap = document.getElementById("profileWrap");
+    const profileBtn = document.getElementById("profileBtn");
+    const profileDropdown = document.getElementById("profileDropdown");
+    const logoutBtn = document.getElementById("logoutBtn");
     
-    if (authBtn) {
-        if (!token) {
-            authBtn.innerText = "로그인 / 회원가입";
-            authBtn.onclick = function() {
-                window.location.href = "/auth/login";
-            };
-        } else {
-            authBtn.innerText = "로그아웃";
-            authBtn.onclick = function() {
+    if (!token) {
+        if (loginBtn) loginBtn.style.display = "block";
+        if (profileWrap) profileWrap.style.display = "none";
+    } else {
+        if (loginBtn) loginBtn.style.display = "none";
+        if (profileWrap) profileWrap.style.display = "block";
+
+        if (profileBtn) {
+            profileBtn.addEventListener("click", function(e) {
+                e.stopPropagation();
+                if (profileDropdown.style.display === "none" || profileDropdown.style.display === "") {
+                    profileDropdown.style.display = "flex";
+                } else {
+                    profileDropdown.style.display = "none";
+                }
+            });
+        }
+
+        // 외부 클릭 시 드롭다운 닫기
+        document.addEventListener("click", function(e) {
+            if (profileWrap && !profileWrap.contains(e.target)) {
+                if (profileDropdown) profileDropdown.style.display = "none";
+            }
+        });
+
+        if (logoutBtn) {
+            logoutBtn.addEventListener("click", function() {
                 if (confirm("정말 로그아웃 하시겠습니까?")) {
                     localStorage.removeItem("jwtToken");
                     localStorage.removeItem("memberId");
@@ -18,7 +40,7 @@ window.addEventListener("DOMContentLoaded", function() {
                     alert("안전하게 로그아웃 되었습니다.");
                     window.location.reload();
                 }
-            };
+            });
         }
     }
 });

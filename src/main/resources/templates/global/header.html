@@ -1,29 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head>
-</head>
 <body>
 <div th:fragment="headerFragment">
-  <style>
-    .header-nav{
-      height:78px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
-      padding:0 28px;background:#F3FAFF;border-bottom:2px solid #DCEFFC;
-      box-shadow:0 6px 18px rgba(8,32,51,.05);
-    }
-    .header-brand{cursor:pointer;}
-    .header-brand .logo{font-size:28px;font-weight:950;color:#38BDF8!important}
-    .header-brand .tagline{margin-top:4px;font-size:11px;color:#748898!important}
-    .header-menu {display:flex;gap:30px;font-weight:bold;align-items:center;margin:0 auto;}
-    .header-menu a {text-decoration:none;color:#075985;font-size:17px;transition:color 0.2s;}
-    .header-menu a:hover {color:#38BDF8;}
-    .header-actions{display:flex;align-items:center;gap:10px}
-    .btn-logout{
-      padding:8px 16px;border:2px solid #DCEFFC;background:#fff;border-radius:8px;
-      font-weight:bold;color:#075985;transition:.2s;
-    }
-    .btn-logout:hover{background:#E0F2FE}
-    .notification-bell svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; }
-  </style>
+  <link rel="stylesheet" th:href="@{/css/notification/notification.css}">
+
+  <link rel="stylesheet" th:href="@{/css/global/header.css}">
 
   <header class="header-nav">
     <div class="header-brand" onclick="location.href='/'">
@@ -33,12 +14,11 @@
       </div>
     </div>
 
-    <!-- 4가지 카테고리 -->
     <nav class="header-menu">
       <a th:href="@{/schedule}">개인 캘린더</a>
       <a th:href="@{/group}">모임 캘린더</a>
       <a th:href="@{/board}">모임 게시판</a>
-      <a th:href="@{/groupChat}">모임 채팅방</a>
+      <a th:href="@{/chat}">모임 채팅방</a>
     </nav>
 
     <div class="header-actions">
@@ -73,36 +53,8 @@
       <button id="authBtn" class="btn-logout">로딩중...</button>
     </div>
   </header>
-  
-  <script>
-    (function() {
-      function initAuthBtn() {
-        const token = localStorage.getItem("jwtToken");
-        const authBtn = document.getElementById("authBtn");
-        if (authBtn) {
-          if (!token) {
-            authBtn.innerText = "로그인 / 회원가입";
-            authBtn.onclick = function() {
-              window.location.href = "/auth/login";
-            };
-          } else {
-            authBtn.innerText = "로그아웃";
-            authBtn.onclick = function() {
-              localStorage.removeItem("jwtToken");
-              localStorage.removeItem("memberId");
-              alert("안전하게 로그아웃 되었습니다.");
-              window.location.href = "/";
-            };
-          }
-        }
-      }
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initAuthBtn);
-      } else {
-        initAuthBtn();
-      }
-    })();
-  </script>
+
+  <script th:src="@{/js/notification/notification.js}"></script>
 </div>
 </body>
 </html>

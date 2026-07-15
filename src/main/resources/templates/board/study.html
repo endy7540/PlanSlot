@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlanSlot - 스터디</title>
+  <link rel="stylesheet" th:href="@{/css/notification/notification.css}" href="/css/notification/notification.css">
+  <link rel="stylesheet" th:href="@{/css/board/board.css}" href="/css/board/board.css">
+</head>
+<body data-board-page="list" data-board-type="STUDY">
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<nav class="board-subnav" aria-label="게시판 메뉴">
+  <div class="board-subnav-inner">
+    <a data-board-nav="NOTICE" th:href="@{/board/notice}" href="/board/notice">공지사항</a>
+    <a data-board-nav="STUDY" th:href="@{/board/study}" href="/board/study">스터디</a>
+    <a data-board-nav="CLUB" th:href="@{/board/club}" href="/board/club">소모임</a>
+    <a data-board-nav="FREE" th:href="@{/board/free}" href="/board/free">자유게시판</a>
+  </div>
+</nav>
+
+<main class="board-main">
+  <div class="board-page-head">
+    <div>
+      <div class="board-label">COMMUNITY</div>
+      <h1>스터디</h1>
+      <p>함께 공부할 팀원을 찾고 스터디 소식을 나눠보세요.</p>
+    </div>
+    <div class="board-head-actions">
+      <button class="board-btn board-btn-primary" id="boardWriteButton" type="button">+ 글쓰기</button>
+    </div>
+  </div>
+
+  <section class="board-card board-auth-panel" id="boardLoginPanel" hidden>
+    <h2>로그인이 필요합니다</h2>
+    <p>게시판의 글과 댓글을 확인하려면 먼저 로그인해 주세요.</p>
+    <a class="board-btn board-btn-primary" th:href="@{/auth/login}" href="/auth/login">로그인 페이지로 이동</a>
+  </section>
+
+  <section data-board-auth-content>
+    <div class="board-card board-toolbar">
+      <div class="board-search">
+        <input id="boardSearchInput" type="search" maxlength="100" placeholder="제목 또는 내용 검색">
+        <button class="board-btn board-btn-sky" id="boardSearchButton" type="button">검색</button>
+      </div>
+      <div class="board-result-count" id="boardResultCount">총 0개</div>
+    </div>
+
+    <section class="board-card board-list-card">
+      <div class="board-list-head">
+        <div>구분</div><div>제목</div><div>작성자</div><div>조회</div><div>작성일</div>
+      </div>
+      <div id="boardList"><div class="board-loading">게시글을 불러오는 중...</div></div>
+    </section>
+
+    <nav class="board-pagination" id="boardPagination" aria-label="게시글 페이지"></nav>
+  </section>
+</main>
+
+<div class="board-toast" id="boardToast"></div>
+<script th:src="@{/js/notification/notification.js}" src="/js/notification/notification.js"></script>
+<script th:src="@{/js/board/board.js}" src="/js/board/board.js"></script>
+</body>
+</html>

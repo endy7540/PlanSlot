@@ -43,4 +43,19 @@ public interface GroupService {
 
     // 모임 캘린더에 일정 추가
     void addGroupSchedule(Long groupId, Long memberId, String title, String dateStr, String timeStr, String visibility);
+
+    // 타인에게 내 일정 공유하기
+    void shareSchedulesWithPeers(Long groupId, Long sharerId, List<Long> scheduleIds, List<Long> targetMemberIds);
+
+    // 나에게 공유된 타인의 일정 조회
+    List<GroupDTO.SharedPeerSchedule> getSharedPeerSchedules(Long groupId, Long targetMemberId);
+
+    // 내가 타인에게 공유한 일정 조회
+    List<GroupDTO.SharedPeerSchedule> getSchedulesSharedByMe(Long groupId, Long sharerId);
+
+    // 내가 공유한 일정 공유 중지(삭제)
+    void deleteSharedPeerSchedule(Long shareId, Long sharerId);
+
+    // 타인이 공유해준 일정 내 캘린더로 가져오기 (겹침 확인)
+    GroupDTO.ImportResult importSharedPeerSchedule(Long shareId, Long memberId, boolean overwrite, String isPublic);
 }

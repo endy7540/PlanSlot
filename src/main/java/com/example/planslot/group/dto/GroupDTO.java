@@ -62,6 +62,7 @@ public class GroupDTO {
     public record ScheduleInfo(String id, String title, String date, String time, String visibility) {}
     public record HeatInfo(String name, List<String> row) {}
     public record CalendarScheduleInfo(String id, String nickname, String title, String startDate, String time, String isPublic) {}
+    public record SharedPeerSchedule(String shareId, String scheduleId, String title, String date, String time, String sharerName, String isPublic) {}
 
     public record DetailResponse(
             String id,
@@ -75,4 +76,6 @@ public class GroupDTO {
             List<HeatInfo> heat,
             List<Object> recs
     ) {}
+
+    public record ImportResult(boolean success, String overlappingTitle, String overlappingTime, String importedDate) {}
 }

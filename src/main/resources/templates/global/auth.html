@@ -465,6 +465,7 @@
 
                 const tokenStr = result.replace("Bearer ", "").trim();
                 localStorage.setItem("jwtToken", tokenStr);
+                document.cookie = "jwtToken=" + tokenStr + "; path=/;";
 
                 window.location.href = "/home";
             } else {

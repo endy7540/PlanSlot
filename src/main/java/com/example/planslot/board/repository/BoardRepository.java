@@ -19,20 +19,26 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     Page<Board> findByBoardTypeAndBoardStatus(BoardType boardType, BoardStatus boardStatus, Pageable pageable);
 
     @EntityGraph(attributePaths = {"writer"})
-    @Query("""
-        SELECT b
-        FROM Board b
-        WHERE b.boardType = :boardType
-          AND b.boardStatus = :boardStatus
-          AND (
-                LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR LOWER(b.content) LIKE LOWER(CONCAT('%', :keyword, '%'))
-          )
-        """)
-    Page<Board> searchBoards(@Param("boardType") BoardType boardType,
-                             @Param("boardStatus") BoardStatus boardStatus,
-                             @Param("keyword") String keyword,
-                             Pageable pageable);
+    Page<Board> findByBoardTypeAndBoardStatusAndTitleContainingIgnoreCase(
+            BoardType boardType, BoardStatus boardStatus, String keyword, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndContentContainingIgnoreCase(
+            BoardType boardType, BoardStatus boardStatus, String keyword, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndWriter_NicknameContainingIgnoreCase(
+            BoardType boardType, BoardStatus boardStatus, String keyword, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndContentContainingIgnoreCase(
+            BoardType titleBoardType, BoardStatus titleBoardStatus, String titleKeyword,
+            BoardType contentBoardType, BoardStatus contentBoardStatus, String contentKeyword,
+            Pageable pageable
+    );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""

@@ -180,16 +180,40 @@ public class GroupController {
         return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
     }
 
+    // 이메일 검색 (초대 시 자동완성 용도)
+    @GetMapping("/search-email")
+    @ResponseBody
+    public ResponseEntity<List<String>> searchEmail(@RequestParam("prefix") String prefix) {
+        List<String> emails = memberRepository.findAll().stream()
+                .map(member -> member.getEmail())
+                .filter(email -> email != null && email.toLowerCase().startsWith(prefix.toLowerCase()))
+                .limit(5)
+                .toList();
+        return ResponseEntity.ok(emails);
+    }
+
+    // 모임 캘린더에 일정 추가 및 공유
+    @PostMapping("/{groupId}/schedules")
+    @ResponseBody
+    public ResponseEntity<Void> addGroupSchedule(
+            @PathVariable("groupId") Long groupId,
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.addGroupSchedule(groupId, memberId, body.get("title"), body.get("date"), body.get("time"), body.get("visibility"));
+        return ResponseEntity.ok().build();
+    }
+
     // 모임 캘린더용 일정 전체 조회
     @GetMapping("/{groupId}/schedules")
     @ResponseBody
-    public ResponseEntity<List<ScheduleDTO>> getGroupSchedules(
+    public ResponseEntity<List<GroupDTO.CalendarScheduleInfo>> getGroupSchedules(
             @PathVariable("groupId") Long groupId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        List<ScheduleDTO> schedules = groupService.getGroupSchedules(groupId, memberId, start, end);
+        List<GroupDTO.CalendarScheduleInfo> schedules = groupService.getGroupSchedules(groupId, memberId, start, end);
         return ResponseEntity.ok(schedules);
     }
 }

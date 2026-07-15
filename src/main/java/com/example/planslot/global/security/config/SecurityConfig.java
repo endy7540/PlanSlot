@@ -12,6 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -33,7 +34,8 @@ public class SecurityConfig {
                                 "/css/**", "/js/**", "/images/**", "/group/**", "/notification/list", "/board", "/board/notice",
                                 "/board/study", "/board/club", "/board/free", "/board/detail/**", "/board/write/**").permitAll()
                         .requestMatchers("/", "/api/members/signup", "/api/auth/login", "/error", "/auth", "/home", "/favicon.ico",
-                                "/api/test/**", "/css/**", "/js/**", "/images/**", "/group/**", "/schedule/test", "/schedule/calendar", "/schedule/schedule").permitAll()
+                                "/api/test/**", "/css/**", "/js/**", "/images/**", "/group/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/schedule", "/schedule/*").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

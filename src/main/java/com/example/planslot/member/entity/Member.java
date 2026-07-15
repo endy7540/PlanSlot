@@ -58,4 +58,16 @@ public class Member {
     public enum Status {
         ACTIVE, BANNED, SUSPENDED
     }
+
+    public void updateInfo(String nickname, String password, String address) {
+        if (nickname != null && !nickname.trim().isEmpty()) {
+            this.nickname = nickname;
+        }
+        if (password != null && !password.trim().isEmpty()) {
+            this.password = password;
+        }
+        if (address != null) {
+            this.address = address;
+        }
+    }
 }

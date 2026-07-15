@@ -4,28 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PlanSlot - 게시글</title>
+  <link rel="stylesheet" th:href="@{/css/notification/notification.css}" href="/css/notification/notification.css">
   <link rel="stylesheet" th:href="@{/css/board/board.css}" href="/css/board/board.css">
 </head>
 <body data-board-page="detail" data-board-type="FREE">
 
-<header class="board-header">
-  <div class="board-brand">
-    <a class="board-logo" th:href="@{/home}" href="/home">
-      <b>PlanSlot</b>
-      <span>AI가 함께하는 대학생 일정 플랫폼</span>
-    </a>
-    <nav class="board-nav" aria-label="게시판 메뉴">
-      <a data-board-nav="NOTICE" th:href="@{/board/notice}" href="/board/notice">공지사항</a>
-      <a data-board-nav="STUDY" th:href="@{/board/study}" href="/board/study">스터디</a>
-      <a data-board-nav="CLUB" th:href="@{/board/club}" href="/board/club">소모임</a>
-      <a data-board-nav="FREE" th:href="@{/board/free}" href="/board/free">자유게시판</a>
-    </nav>
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<nav class="board-subnav" aria-label="게시판 메뉴">
+  <div class="board-subnav-inner">
+    <a data-board-nav="NOTICE" th:href="@{/board/notice}" href="/board/notice">공지사항</a>
+    <a data-board-nav="STUDY" th:href="@{/board/study}" href="/board/study">스터디</a>
+    <a data-board-nav="CLUB" th:href="@{/board/club}" href="/board/club">소모임</a>
+    <a data-board-nav="FREE" th:href="@{/board/free}" href="/board/free">자유게시판</a>
   </div>
-  <div class="board-header-actions">
-    <button class="board-auth-state" id="boardMemberState" type="button">로그인 확인 중</button>
-    <button class="board-btn board-btn-ghost board-btn-small" id="boardAuthButton" type="button">로그인</button>
-  </div>
-</header>
+</nav>
 
 <main class="board-main">
   <section class="board-card board-auth-panel" id="boardLoginPanel" hidden>
@@ -109,6 +102,7 @@
 </div>
 
 <div class="board-toast" id="boardToast"></div>
+<script th:src="@{/js/notification/notification.js}" src="/js/notification/notification.js"></script>
 <script th:src="@{/js/board/board.js}" src="/js/board/board.js"></script>
 </body>
 </html>

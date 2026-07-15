@@ -36,7 +36,10 @@ function initializeBoardHeader() {
     link.classList.toggle('active', link.dataset.boardNav === type);
   });
 
-  document.getElementById('boardAuthButton')?.addEventListener('click', () => {
+  const authButton = document.getElementById('authBtn');
+  if (!authButton) return;
+
+  authButton.addEventListener('click', () => {
     if (!getBoardToken()) {
       location.href = '/auth/login';
       return;
@@ -59,26 +62,8 @@ async function loadCurrentBoardMember() {
 }
 
 function updateBoardHeaderState() {
-  const token = getBoardToken();
-  const authButton = document.getElementById('boardAuthButton');
-  const memberState = document.getElementById('boardMemberState');
-
-  if (authButton) authButton.textContent = token ? '로그아웃' : '로그인';
-
-  if (!memberState) return;
-  if (!token) {
-    memberState.textContent = '로그인 필요';
-    memberState.className = 'board-auth-state';
-    return;
-  }
-  if (currentBoardMember) {
-    memberState.textContent = currentBoardMember.nickname;
-    memberState.className = 'board-auth-state ready';
-    return;
-  }
-
-  memberState.textContent = '로그인 정보 확인 실패';
-  memberState.className = 'board-auth-state';
+  const authButton = document.getElementById('authBtn');
+  if (authButton) authButton.textContent = getBoardToken() ? '로그아웃' : '로그인 / 회원가입';
 }
 
 function initializeReportModal() {

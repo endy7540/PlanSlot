@@ -15,19 +15,7 @@
       display:flex;flex-direction:column;
     }
     button{cursor:pointer;font-family:inherit}
-    .header-nav{
-      height:78px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
-      padding:0 28px;background:#F3FAFF;border-bottom:2px solid #DCEFFC;
-      box-shadow:0 6px 18px rgba(8,32,51,.05);
-    }
-    .header-brand .logo{font-size:28px;font-weight:950;color:#38BDF8!important}
-    .header-brand .tagline{margin-top:4px;font-size:11px;color:#748898!important}
-    .header-actions{display:flex;align-items:center;gap:10px}
-    .btn-logout{
-      padding:8px 16px;border:2px solid #DCEFFC;background:#fff;border-radius:8px;
-      font-weight:bold;color:#075985;transition:.2s;
-    }
-    .btn-logout:hover{background:#E0F2FE}
+
     .main{flex:1;padding:24px 28px;overflow:auto}
     .hero-row{display:grid;grid-template-columns:1.6fr repeat(3,1fr);gap:14px;margin-bottom:16px}
     .hero-card,.stat-card{
@@ -52,44 +40,7 @@
 </head>
 <body>
 
-<header class="header-nav">
-  <div class="header-brand">
-    <div class="logo">PlanSlot</div>
-    <div class="tagline">AI가 함께하는 대학생 일정 플랫폼</div>
-  </div>
-
-  <div class="header-actions">
-    <div class="notification-wrap">
-      <button class="notification-bell" id="notificationBell" type="button" aria-label="알림 열기">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
-          <path d="M10 21h4"></path>
-        </svg>
-        <span class="notification-badge" id="notificationBadge">0</span>
-      </button>
-
-      <div class="notification-dropdown" id="notificationDropdown">
-        <div class="notification-dropdown-head">
-          <div>
-            <b>알림</b>
-            <span id="dropdownUnreadText">읽지 않은 알림 0개</span>
-          </div>
-          <button class="notification-text-button" id="dropdownReadAll" type="button">전체 읽음</button>
-        </div>
-
-        <div class="notification-dropdown-list" id="notificationDropdownList">
-          <div class="notification-loading">알림을 불러오는 중...</div>
-        </div>
-
-        <a class="notification-view-all" th:href="@{/notification/list}" href="/notification/list">
-          알림 전체 보기 →
-        </a>
-      </div>
-    </div>
-
-    <button id="authBtn" class="btn-logout">로딩중...</button>
-  </div>
-</header>
+<div th:replace="~{global/header :: headerFragment}"></div>
 
 <main class="main">
   <div class="hero-row">
@@ -97,10 +48,7 @@
       <div style="color:#8B5CF6;font-weight:900;font-size:12px;">PLAN YOUR TIME</div>
       <h1>환영합니다!</h1>
       <p>개인 일정과 모임 일정을 한 곳에서 관리하고, AI가 더 나은 시간을 추천해줘요.</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <a class="primary" href="/schedule/calendar" style="text-decoration:none;display:inline-block">개인 캘린더 바로가기</a>
-        <button class="primary" style="background:#fff!important;color:#075985!important;border:2px solid #DCEFFC!important" onclick="testApiCall()">내 정보 불러오기 테스트</button>
-      </div>
+      <button class="primary" onclick="testApiCall()">내 정보 불러오기 테스트</button>
     </div>
 
     <div class="stat-card" style="border-left:10px solid #A78BFA;">

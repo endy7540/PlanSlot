@@ -7,6 +7,8 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.LocalDateTime;
 
@@ -30,7 +32,8 @@ public class GroupMember {
     private Member member;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "inviter_id", nullable = false)
+    @JoinColumn(name = "inviter_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     private Member inviter;
 
     @Column(name = "nickname", length = 30, nullable = false)

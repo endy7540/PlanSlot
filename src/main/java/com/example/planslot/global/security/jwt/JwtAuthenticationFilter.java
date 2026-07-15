@@ -41,10 +41,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return bearerToken.substring(7);
         }
         
-        // SSE(Server-Sent Events) 연결을 위한 URL 파라미터 토큰 추출 (3번 방식)
+        // SSE(Server-Sent Events) 등 파라미터로 오는 경우
         String paramToken = request.getParameter("token");
         if (StringUtils.hasText(paramToken)) {
             return paramToken;
+        }
+        
+        // 쿠키에서 토큰 추출 추가 (웹 페이지 이동 시 권한 유지용)
+        if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                if ("jwtToken".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
         }
         
         return null;

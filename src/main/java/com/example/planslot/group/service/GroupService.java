@@ -39,5 +39,8 @@ public interface GroupService {
     void rejectInvite(Long groupId, Long memberId);
 
     // 모임 캘린더용 일정 조회
-    List<ScheduleDTO> getGroupSchedules(Long groupId, Long memberId, LocalDateTime start, LocalDateTime end);
+    List<GroupDTO.CalendarScheduleInfo> getGroupSchedules(Long groupId, Long memberId, LocalDateTime start, LocalDateTime end);
+
+    // 모임 캘린더에 일정 추가
+    void addGroupSchedule(Long groupId, Long memberId, String title, String dateStr, String timeStr, String visibility);
 }

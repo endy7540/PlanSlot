@@ -50,6 +50,7 @@ import java.util.UUID;
 public class BoardServiceImpl implements BoardService {
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
     private static final Set<String> IMAGE_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+    private static final Set<String> SEARCH_TYPES = Set.of("TITLE_CONTENT", "TITLE", "CONTENT", "WRITER");
 
     private final BoardRepository boardRepository;
     private final BoardImageRepository boardImageRepository;
@@ -81,20 +82,38 @@ public class BoardServiceImpl implements BoardService {
 
     // 게시판 종류별 목록 및 검색
     @Override
-    public Page<BoardDTO> getBoardList(BoardType boardType, String keyword, Pageable pageable) {
+    public Page<BoardDTO> getBoardList(BoardType boardType, String searchType, String keyword, Pageable pageable) {
         String searchKeyword = normalizeKeyword(keyword);
         Page<Board> boardPage;
 
         if (searchKeyword == null) {
-            boardPage = boardRepository.findByBoardTypeAndBoardStatus(boardType, BoardStatus.ACTIVE, pageable);
+            boardPage = boardRepository.findByBoardTypeAndBoardStatus(
+                    boardType, BoardStatus.ACTIVE, pageable
+            );
         } else {
-            boardPage = boardRepository.searchBoards(boardType, BoardStatus.ACTIVE, searchKeyword, pageable);
+            String normalizedSearchType = normalizeSearchType(searchType);
+
+            boardPage = switch (normalizedSearchType) {
+                case "TITLE" -> boardRepository
+                        .findByBoardTypeAndBoardStatusAndTitleContainingIgnoreCase(
+                                boardType, BoardStatus.ACTIVE, searchKeyword, pageable);
+                case "CONTENT" -> boardRepository
+                        .findByBoardTypeAndBoardStatusAndContentContainingIgnoreCase(
+                                boardType, BoardStatus.ACTIVE, searchKeyword, pageable);
+                case "WRITER" -> boardRepository
+                        .findByBoardTypeAndBoardStatusAndWriter_NicknameContainingIgnoreCase(
+                                boardType, BoardStatus.ACTIVE, searchKeyword, pageable);
+                default -> boardRepository
+                        .findByBoardTypeAndBoardStatusAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndContentContainingIgnoreCase(
+                                boardType, BoardStatus.ACTIVE, searchKeyword,
+                                boardType, BoardStatus.ACTIVE, searchKeyword, pageable);
+            };
         }
 
         Map<Long, Long> commentCountMap = getCommentCountMap(boardPage.getContent());
 
-        return boardPage.map(board -> toListDTO(
-                board, commentCountMap.getOrDefault(board.getBoardId(), 0L)
+        return boardPage.map(board ->
+                toListDTO(board, commentCountMap.getOrDefault(board.getBoardId(), 0L)
         ));
     }
 
@@ -311,6 +330,17 @@ public class BoardServiceImpl implements BoardService {
         if (reasonDetail.trim().length() > 500) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용은 500자 이하로 입력해 주세요.");
         }
+    }
+
+    // 검색 조건 확인
+    private String normalizeSearchType(String searchType) {
+        String normalizedSearchType = searchType == null || searchType.isBlank() ? "TITLE_CONTENT" : searchType.trim().toUpperCase(Locale.ROOT);
+
+        if (!SEARCH_TYPES.contains(normalizedSearchType)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 검색 조건입니다.");
+        }
+
+        return normalizedSearchType;
     }
 
     // 검색어 확인 및 공백 제거

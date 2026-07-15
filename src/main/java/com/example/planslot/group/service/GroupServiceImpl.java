@@ -13,6 +13,8 @@ import com.example.planslot.member.repository.MemberRepository;
 import com.example.planslot.schedule.repository.ScheduleRepository;
 import com.example.planslot.schedule.dto.ScheduleDTO;
 import com.example.planslot.schedule.entity.Schedule;
+import com.example.planslot.schedule.entity.ScheduleType;
+import com.example.planslot.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,7 @@ public class GroupServiceImpl implements GroupService {
     private final MemberRepository memberRepository;
     private final GroupScheduleRepository groupScheduleRepository;
     private final ScheduleRepository scheduleRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -172,6 +175,17 @@ public class GroupServiceImpl implements GroupService {
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
         if (!group.getOwner().getId().equals(memberId)) throw new IllegalArgumentException("권한이 없습니다.");
         GroupMember target = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, targetMemberId).orElseThrow(() -> new IllegalArgumentException("대상을 찾을 수 없습니다."));
+
+        // 추방 알림 전송 (그룹 멤버에서 삭제되기 전에 전송해야 알림 설정 필터를 통과함)
+        notificationService.sendGroupMessage(
+                targetMemberId,
+                groupId,
+                "모임 추방 안내",
+                group.getGroupName() + " 모임에서 추방되었습니다.",
+                "group_kick",
+                groupId
+        );
+
         groupMemberRepository.delete(target);
     }
 
@@ -188,6 +202,15 @@ public class GroupServiceImpl implements GroupService {
                 .orElseThrow(() -> new IllegalArgumentException("초대자를 찾을 수 없습니다."));
         GroupMember membership = GroupMember.createInvited(group, targetMember, inviterMember);
         groupMemberRepository.save(membership);
+
+        // 초대 알림 전송
+        notificationService.sendGroupInvitation(
+                targetMember.getId(),
+                "새로운 모임 초대",
+                group.getGroupName() + " 모임에 초대되었습니다.",
+                "GROUP",
+                groupId
+        );
     }
 
     @Override
@@ -199,7 +222,7 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    public List<ScheduleDTO> getGroupSchedules(Long groupId, Long memberId, LocalDateTime start, LocalDateTime end) {
+    public List<GroupDTO.CalendarScheduleInfo> getGroupSchedules(Long groupId, Long memberId, LocalDateTime start, LocalDateTime end) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
 
@@ -214,10 +237,11 @@ public class GroupServiceImpl implements GroupService {
             throw new IllegalArgumentException("모임원이 아닙니다.");
         }
 
-        List<ScheduleDTO> result = new ArrayList<>();
+        List<GroupDTO.CalendarScheduleInfo> result = new ArrayList<>();
         for (GroupMember gm : groupMembers) {
             if (gm.getMemberStatus() == GroupMemberStatus.ACTIVE) {
                 Long targetMemberId = gm.getMember().getId();
+                String nickname = gm.getMember().getNickname();
                 List<Schedule> schedules;
                 if (start != null && end != null) {
                     schedules = scheduleRepository.findAllByMemberIdAndPeriod(targetMemberId, start, end);
@@ -226,9 +250,18 @@ public class GroupServiceImpl implements GroupService {
                 }
 
                 for (Schedule s : schedules) {
-                    // 자신의 일정이거나, 다른 사람의 공개 일정인 경우 포함
-                    if (targetMemberId.equals(memberId) || "Y".equals(s.getIsPublic())) {
-                        result.add(ScheduleDTO.from(s));
+                    // 모임 캘린더에는 공개(Y) 일정과 자신의 비공개(N) 일정 표시
+                    if ("Y".equals(s.getIsPublic()) || targetMemberId.equals(memberId)) {
+                        String dateStr = s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : "";
+                        String timeStr = s.getStartDate() != null ? s.getStartDate().toLocalTime().toString() : "";
+                        result.add(new GroupDTO.CalendarScheduleInfo(
+                                s.getScheduleId().toString(),
+                                nickname,
+                                s.getTitle(),
+                                dateStr,
+                                timeStr,
+                                s.getIsPublic()
+                        ));
                     }
                 }
             }
@@ -242,5 +275,43 @@ public class GroupServiceImpl implements GroupService {
         GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId).orElseThrow(() -> new IllegalArgumentException("초대 내역이 없습니다."));
         if (membership.getMemberStatus() != GroupMemberStatus.WAITING) throw new IllegalArgumentException("대기 중인 초대가 아닙니다.");
         groupMemberRepository.delete(membership);
+    }
+
+    @Override
+    @Transactional
+    public void addGroupSchedule(Long groupId, Long memberId, String title, String dateStr, String timeStr, String visibility) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
+
+        boolean isMember = groupMemberRepository.findByGroup_Id(groupId).stream()
+                .anyMatch(gm -> gm.getMember().getId().equals(memberId) &&
+                        gm.getMemberStatus() == GroupMemberStatus.ACTIVE);
+        if (!isMember) {
+            throw new IllegalArgumentException("모임원이 아닙니다.");
+        }
+
+        LocalDateTime startDateTime = LocalDateTime.parse(dateStr + "T" + (timeStr.length() == 5 ? timeStr + ":00" : timeStr));
+        boolean isPublic = "public".equals(visibility);
+
+        Schedule schedule = Schedule.builder()
+                .member(member)
+                .title(title)
+                .startDate(startDateTime)
+                .scheduleType(ScheduleType.DAILY)
+                .isPublic(isPublic ? "Y" : "N")
+                .build();
+
+        schedule = scheduleRepository.save(schedule);
+
+        GroupSchedule groupSchedule = GroupSchedule.builder()
+                .group(group)
+                .sharer(member)
+                .schedule(schedule)
+                .isVisible(isPublic)
+                .build();
+
+        groupScheduleRepository.save(groupSchedule);
     }
 }

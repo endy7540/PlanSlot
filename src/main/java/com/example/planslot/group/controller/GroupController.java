@@ -2,15 +2,18 @@ package com.example.planslot.group.controller;
 
 import com.example.planslot.group.dto.GroupDTO;
 import com.example.planslot.group.service.GroupService;
+import com.example.planslot.member.repository.MemberRepository;
+import com.example.planslot.schedule.dto.ScheduleDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import com.example.planslot.member.repository.MemberRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -32,7 +35,7 @@ public class GroupController {
     }
 
     // 목록 조회 화면 반환
-    @GetMapping("/list")
+    @GetMapping(value = {"", "/list"})
     public String groupList() {
         return "group/group-list";
     }
@@ -175,5 +178,18 @@ public class GroupController {
         Long memberId = getAuthenticatedMemberId(authentication);
         // groupService.updateMemberDisplayName(groupId, memberId, targetMemberId, body.get("displayName"));
         return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
+    }
+
+    // 모임 캘린더용 일정 전체 조회
+    @GetMapping("/{groupId}/schedules")
+    @ResponseBody
+    public ResponseEntity<List<ScheduleDTO>> getGroupSchedules(
+            @PathVariable("groupId") Long groupId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        List<ScheduleDTO> schedules = groupService.getGroupSchedules(groupId, memberId, start, end);
+        return ResponseEntity.ok(schedules);
     }
 }

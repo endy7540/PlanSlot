@@ -25,11 +25,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         
-        String providerId = String.valueOf(oAuth2User.getAttributes().get("sub"));
-        String loginId = "google_" + providerId;
+        String email = String.valueOf(oAuth2User.getAttributes().get("normalized_email"));
         
-        Member member = memberRepository.findByLoginId(loginId)
-                .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 소셜 계정입니다."));
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 계정입니다."));
 
         String token = jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().name(), false);
         String redirectUrl = "/auth/oauth2-callback?token=" + token;

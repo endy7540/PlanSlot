@@ -61,6 +61,7 @@ public class GroupDTO {
     public record WaitingInfo(String id, String email, String inviterName, boolean isMe) {}
     public record ScheduleInfo(String id, String title, String date, String time, String visibility) {}
     public record HeatInfo(String name, List<String> row) {}
+    public record CalendarScheduleInfo(String id, String nickname, String title, String startDate, String time, String isPublic) {}
 
     public record DetailResponse(
             String id,

@@ -216,4 +216,69 @@ public class GroupController {
         List<GroupDTO.CalendarScheduleInfo> schedules = groupService.getGroupSchedules(groupId, memberId, start, end);
         return ResponseEntity.ok(schedules);
     }
+    // 타인에게 내 일정 공유하기
+    @PostMapping("/{groupId}/peer-schedules")
+    @ResponseBody
+    public ResponseEntity<Void> shareSchedulesWithPeers(
+            @PathVariable("groupId") Long groupId,
+            @RequestBody Map<String, Object> body,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        List<Integer> scheduleIdsInt = (List<Integer>) body.get("scheduleIds");
+        List<Integer> targetMemberIdsInt = (List<Integer>) body.get("targetMemberIds");
+        
+        List<Long> scheduleIds = scheduleIdsInt.stream().map(Integer::longValue).toList();
+        List<Long> targetMemberIds = targetMemberIdsInt.stream().map(Integer::longValue).toList();
+        
+        groupService.shareSchedulesWithPeers(groupId, memberId, scheduleIds, targetMemberIds);
+        return ResponseEntity.ok().build();
+    }
+
+    // 나에게 공유된 타인의 일정 조회
+    @GetMapping("/{groupId}/peer-schedules")
+    @ResponseBody
+    public ResponseEntity<List<GroupDTO.SharedPeerSchedule>> getSharedPeerSchedules(
+            @PathVariable("groupId") Long groupId,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        List<GroupDTO.SharedPeerSchedule> schedules = groupService.getSharedPeerSchedules(groupId, memberId);
+        return ResponseEntity.ok(schedules);
+    }
+
+    // 내가 타인에게 공유한 일정 조회
+    @GetMapping("/{groupId}/my-shared-schedules")
+    @ResponseBody
+    public ResponseEntity<List<GroupDTO.SharedPeerSchedule>> getSchedulesSharedByMe(
+            @PathVariable("groupId") Long groupId,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        List<GroupDTO.SharedPeerSchedule> schedules = groupService.getSchedulesSharedByMe(groupId, memberId);
+        return ResponseEntity.ok(schedules);
+    }
+
+    // 내가 공유한 일정 공유 중지(삭제)
+    @DeleteMapping("/{groupId}/peer-schedules/{shareId}")
+    @ResponseBody
+    public ResponseEntity<Void> deleteSharedPeerSchedule(
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("shareId") Long shareId,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.deleteSharedPeerSchedule(shareId, memberId);
+        return ResponseEntity.ok().build();
+    }
+
+    // 공유된 타인의 일정 내 캘린더로 가져오기
+    @PostMapping("/{groupId}/peer-schedules/{shareId}/import")
+    @ResponseBody
+    public ResponseEntity<GroupDTO.ImportResult> importSharedPeerSchedule(
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("shareId") Long shareId,
+            @RequestParam(value = "overwrite", defaultValue = "false") boolean overwrite,
+            @RequestParam(value = "isPublic", defaultValue = "N") String isPublic,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        GroupDTO.ImportResult result = groupService.importSharedPeerSchedule(shareId, memberId, overwrite, isPublic);
+        return ResponseEntity.ok(result);
+    }
 }

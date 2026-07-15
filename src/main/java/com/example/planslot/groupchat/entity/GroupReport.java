@@ -1,4 +1,4 @@
-package com.example.planslot.global.security.groupchat;
+package com.example.planslot.groupchat.entity;
 
 import com.example.planslot.group.entity.Group;
 import com.example.planslot.group.entity.ReportStatus;

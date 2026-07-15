@@ -2,14 +2,19 @@ package com.example.planslot.board.service;
 
 import com.example.planslot.board.dto.BoardDTO;
 import com.example.planslot.board.dto.BoardImageDTO;
+import com.example.planslot.board.dto.BoardMemberDTO;
 import com.example.planslot.board.entity.Board;
+import com.example.planslot.board.entity.BoardCommentStatus;
 import com.example.planslot.board.entity.BoardImage;
 import com.example.planslot.board.entity.BoardStatus;
 import com.example.planslot.board.entity.BoardType;
-import com.example.planslot.board.entity.BoardCommentStatus;
 import com.example.planslot.board.repository.BoardCommentRepository;
 import com.example.planslot.board.repository.BoardImageRepository;
 import com.example.planslot.board.repository.BoardRepository;
+import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
+import com.example.planslot.boardreport.entity.BoardReport;
+import com.example.planslot.boardreport.entity.BoardReportTargetType;
+import com.example.planslot.boardreport.repository.BoardReportRepository;
 import com.example.planslot.member.entity.Member;
 import com.example.planslot.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +55,7 @@ public class BoardServiceImpl implements BoardService {
     private final BoardImageRepository boardImageRepository;
     private final MemberRepository memberRepository;
     private final BoardCommentRepository boardCommentRepository;
+    private final BoardReportRepository boardReportRepository;
 
     @Value("${file.upload.board-path:./uploads/board}")
     private String boardUploadPath;
@@ -57,8 +63,8 @@ public class BoardServiceImpl implements BoardService {
     // 게시글 등록
     @Override
     @Transactional
-    public Long createBoard(BoardType boardType, BoardDTO boardDTO, Long memberId) {
-        Member writer = findMember(memberId);
+    public Long createBoard(BoardType boardType, BoardDTO boardDTO, String memberEmail) {
+        Member writer = findMember(memberEmail);
 
         validateBoardDTO(boardDTO);
         validateNoticeWriter(boardType, writer);
@@ -77,26 +83,18 @@ public class BoardServiceImpl implements BoardService {
     @Override
     public Page<BoardDTO> getBoardList(BoardType boardType, String keyword, Pageable pageable) {
         String searchKeyword = normalizeKeyword(keyword);
-
         Page<Board> boardPage;
 
         if (searchKeyword == null) {
-            boardPage = boardRepository
-                    .findByBoardTypeAndBoardStatus(boardType, BoardStatus.ACTIVE, pageable);
+            boardPage = boardRepository.findByBoardTypeAndBoardStatus(boardType, BoardStatus.ACTIVE, pageable);
         } else {
-            boardPage = boardRepository.searchBoards(
-                    boardType,
-                    BoardStatus.ACTIVE,
-                    searchKeyword,
-                    pageable
-            );
+            boardPage = boardRepository.searchBoards(boardType, BoardStatus.ACTIVE, searchKeyword, pageable);
         }
 
         Map<Long, Long> commentCountMap = getCommentCountMap(boardPage.getContent());
 
         return boardPage.map(board -> toListDTO(
-                board,
-                commentCountMap.getOrDefault(board.getBoardId(), 0L)
+                board, commentCountMap.getOrDefault(board.getBoardId(), 0L)
         ));
     }
 
@@ -105,6 +103,7 @@ public class BoardServiceImpl implements BoardService {
     @Transactional
     public BoardDTO getBoardDetail(Long boardId) {
         int updatedCount = boardRepository.increaseViewCount(boardId, BoardStatus.ACTIVE);
+
         if (updatedCount == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
         }
@@ -114,19 +113,29 @@ public class BoardServiceImpl implements BoardService {
         return toDetailDTO(board);
     }
 
+    // 로그인 회원 조회
+    @Override
+    public BoardMemberDTO getLoginMember(String memberEmail) {
+        Member member = findMember(memberEmail);
+
+        return BoardMemberDTO.builder()
+                .memberId(member.getId())
+                .nickname(member.getNickname())
+                .role(member.getRole())
+                .build();
+    }
+
     // 게시글 수정
     @Override
     @Transactional
-    public BoardDTO updateBoard(Long boardId, BoardDTO boardDTO, Long memberId) {
+    public BoardDTO updateBoard(Long boardId, BoardDTO boardDTO, String memberEmail) {
         Board board = findBoard(boardId);
+        Member member = findMember(memberEmail);
 
-        validateWriter(board, memberId);
+        validateWriter(board, member);
         validateBoardDTO(boardDTO);
 
-        board.update(
-                boardDTO.getTitle().trim(),
-                boardDTO.getContent().trim()
-        );
+        board.update(boardDTO.getTitle().trim(), boardDTO.getContent().trim());
 
         return toDetailDTO(board);
     }
@@ -134,21 +143,55 @@ public class BoardServiceImpl implements BoardService {
     // 게시글 삭제
     @Override
     @Transactional
-    public void deleteBoard(Long boardId, Long memberId) {
+    public void deleteBoard(Long boardId, String memberEmail) {
         Board board = findBoard(boardId);
+        Member member = findMember(memberEmail);
 
-        validateWriter(board, memberId);
+        validateWriter(board, member);
 
         board.delete();
+    }
+
+    // 게시글 신고
+    @Override
+    @Transactional
+    public Long reportBoard(Long boardId, BoardReportRequestDTO reportRequestDTO, String reporterEmail) {
+        Board board = findBoard(boardId);
+        Member reporter = findMember(reporterEmail);
+
+        if (Objects.equals(board.getWriter().getId(), reporter.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인이 작성한 게시글은 신고할 수 없습니다.");
+        }
+
+        validateBoardReportRequest(reportRequestDTO);
+
+        boolean duplicated = boardReportRepository.existsByReporter_IdAndTargetTypeAndTargetId(
+                reporter.getId(), BoardReportTargetType.POST, boardId
+        );
+
+        if (duplicated) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 신고한 게시글입니다.");
+        }
+
+        BoardReport boardReport = BoardReport.builder()
+                .reporter(reporter)
+                .targetType(BoardReportTargetType.POST)
+                .targetId(boardId)
+                .reasonCode(reportRequestDTO.getReasonCode())
+                .reasonDetail(reportRequestDTO.getReasonDetail().trim())
+                .build();
+
+        return boardReportRepository.save(boardReport).getReportId();
     }
 
     // 게시글 이미지 등록, 교체 및 실제 파일 삭제
     @Override
     @Transactional
-    public BoardImageDTO uploadBoardImage(Long boardId, MultipartFile image, Long memberId) {
+    public BoardImageDTO uploadBoardImage(Long boardId, MultipartFile image, String memberEmail) {
         Board board = findBoard(boardId);
+        Member member = findMember(memberEmail);
 
-        validateWriter(board, memberId);
+        validateWriter(board, member);
         validateImage(image);
 
         String fileUrl = saveImageFile(image);
@@ -172,28 +215,32 @@ public class BoardServiceImpl implements BoardService {
     // 게시글 이미지 정보 및 실제 파일 삭제
     @Override
     @Transactional
-    public void deleteBoardImage(Long boardId, Long imageId, Long memberId) {
+    public void deleteBoardImage(Long boardId, Long imageId, String memberEmail) {
         Board board = findBoard(boardId);
+        Member member = findMember(memberEmail);
 
-        validateWriter(board, memberId);
+        validateWriter(board, member);
 
-        BoardImage boardImage = boardImageRepository
-                .findByFileIdAndBoardBoardId(imageId, boardId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글 이미지를 찾을 수 없습니다."));
+        BoardImage boardImage = boardImageRepository.findByFileIdAndBoardBoardId(imageId, boardId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "게시글 이미지를 찾을 수 없습니다."
+                ));
 
         String fileUrl = boardImage.getFileUrl();
         boardImageRepository.delete(boardImage);
         deletePhysicalFileAfterCommit(fileUrl);
     }
 
-    // 회원 조회
-    private Member findMember(Long memberId) {
-        if (memberId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "회원 ID가 필요합니다.");
+    // 로그인 회원 조회
+    private Member findMember(String memberEmail) {
+        if (memberEmail == null || memberEmail.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
         }
 
-        return memberRepository.findById(memberId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
+        return memberRepository.findByEmail(memberEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "로그인 회원을 찾을 수 없습니다."
+                ));
     }
 
     // 활성 상태 게시글 조회
@@ -202,9 +249,10 @@ public class BoardServiceImpl implements BoardService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "게시글 ID가 필요합니다.");
         }
 
-        return boardRepository
-                .findByBoardIdAndBoardStatus(boardId, BoardStatus.ACTIVE)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        return boardRepository.findByBoardIdAndBoardStatus(boardId, BoardStatus.ACTIVE)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."
+                ));
     }
 
     // 공지사항 작성 권한 확인
@@ -215,12 +263,8 @@ public class BoardServiceImpl implements BoardService {
     }
 
     // 게시글 작성자 확인
-    private void validateWriter(Board board, Long memberId) {
-        if (memberId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "회원 ID가 필요합니다.");
-        }
-
-        if (!Objects.equals(board.getWriter().getId(), memberId)) {
+    private void validateWriter(Board board, Member member) {
+        if (!Objects.equals(board.getWriter().getId(), member.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자만 수정하거나 삭제할 수 있습니다.");
         }
     }
@@ -248,6 +292,27 @@ public class BoardServiceImpl implements BoardService {
         }
     }
 
+    // 게시글 신고 입력값 확인
+    private void validateBoardReportRequest(BoardReportRequestDTO reportRequestDTO) {
+        if (reportRequestDTO == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 정보를 입력해 주세요.");
+        }
+
+        if (reportRequestDTO.getReasonCode() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 사유를 선택해 주세요.");
+        }
+
+        String reasonDetail = reportRequestDTO.getReasonDetail();
+
+        if (reasonDetail == null || reasonDetail.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용을 입력해 주세요.");
+        }
+
+        if (reasonDetail.trim().length() > 500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용은 500자 이하로 입력해 주세요.");
+        }
+    }
+
     // 검색어 확인 및 공백 제거
     private String normalizeKeyword(String keyword) {
         if (keyword == null || keyword.isBlank()) {
@@ -272,7 +337,9 @@ public class BoardServiceImpl implements BoardService {
         String extension = getExtension(image.getOriginalFilename());
 
         if (!IMAGE_EXTENSIONS.contains(extension)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "JPG, JPEG, PNG, WEBP 이미지만 업로드할 수 있습니다.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "JPG, JPEG, PNG, WEBP 이미지만 업로드할 수 있습니다."
+            );
         }
 
         String contentType = image.getContentType();
@@ -297,14 +364,12 @@ public class BoardServiceImpl implements BoardService {
             Files.createDirectories(uploadDirectory);
 
             try (InputStream inputStream = image.getInputStream()) {
-                Files.copy(
-                        inputStream,
-                        savedFilePath,
-                        StandardCopyOption.REPLACE_EXISTING
-                );
+                Files.copy(inputStream, savedFilePath, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 저장에 실패했습니다.", exception);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "이미지 저장에 실패했습니다.", exception
+            );
         }
 
         return "/uploads/board/" + savedFileName;
@@ -322,9 +387,7 @@ public class BoardServiceImpl implements BoardService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일 확장자가 필요합니다.");
         }
 
-        return originalFilename
-                .substring(dotIndex + 1)
-                .toLowerCase(Locale.ROOT);
+        return originalFilename.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
     }
 
     // 게시글 목록의 댓글 수를 게시글별로 한 번에 조회
@@ -339,11 +402,9 @@ public class BoardServiceImpl implements BoardService {
 
         Map<Long, Long> commentCountMap = new HashMap<>();
 
-        boardCommentRepository
-                .countByBoardIdsAndCommentStatus(boardIds, BoardCommentStatus.ACTIVE)
+        boardCommentRepository.countByBoardIdsAndCommentStatus(boardIds, BoardCommentStatus.ACTIVE)
                 .forEach(commentCount -> commentCountMap.put(
-                        commentCount.getBoardId(),
-                        commentCount.getCommentCount()
+                        commentCount.getBoardId(), commentCount.getCommentCount()
                 ));
 
         return commentCountMap;
@@ -370,8 +431,7 @@ public class BoardServiceImpl implements BoardService {
                 .orElse(null);
 
         long commentCount = boardCommentRepository.countByBoardIdAndCommentStatus(
-                board.getBoardId(),
-                BoardCommentStatus.ACTIVE
+                board.getBoardId(), BoardCommentStatus.ACTIVE
         );
 
         return BoardDTO.builder()
@@ -405,8 +465,10 @@ public class BoardServiceImpl implements BoardService {
         if (fileUrl == null || fileUrl.isBlank()) {
             return;
         }
+
         try {
             int lastSlashIndex = fileUrl.lastIndexOf('/');
+
             if (lastSlashIndex >= 0) {
                 String fileName = fileUrl.substring(lastSlashIndex + 1);
                 Path uploadDirectory = Path.of(boardUploadPath).toAbsolutePath().normalize();
@@ -417,7 +479,10 @@ public class BoardServiceImpl implements BoardService {
                 }
             }
         } catch (IOException exception) {
-            log.error("물리 이미지 파일 삭제 중 오류가 발생했습니다. fileUrl: {}, error: {}", fileUrl, exception.getMessage());
+            log.error(
+                    "물리 이미지 파일 삭제 중 오류가 발생했습니다. fileUrl: {}, error: {}",
+                    fileUrl, exception.getMessage()
+            );
         }
     }
 

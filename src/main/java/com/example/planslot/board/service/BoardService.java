@@ -2,14 +2,16 @@ package com.example.planslot.board.service;
 
 import com.example.planslot.board.dto.BoardDTO;
 import com.example.planslot.board.dto.BoardImageDTO;
+import com.example.planslot.board.dto.BoardMemberDTO;
 import com.example.planslot.board.entity.BoardType;
+import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface BoardService {
     // 게시글 등록
-    Long createBoard(BoardType boardType, BoardDTO boardDTO, Long memberId);
+    Long createBoard(BoardType boardType, BoardDTO boardDTO, String memberEmail);
 
     // 게시판 종류별 목록 및 검색
     Page<BoardDTO> getBoardList(BoardType boardType, String keyword, Pageable pageable);
@@ -17,15 +19,21 @@ public interface BoardService {
     // 게시글 상세 조회
     BoardDTO getBoardDetail(Long boardId);
 
+    // 로그인 회원 조회
+    BoardMemberDTO getLoginMember(String memberEmail);
+
     // 게시글 수정
-    BoardDTO updateBoard(Long boardId, BoardDTO boardDTO, Long memberId);
+    BoardDTO updateBoard(Long boardId, BoardDTO boardDTO, String memberEmail);
 
     // 게시글 삭제
-    void deleteBoard(Long boardId, Long memberId);
+    void deleteBoard(Long boardId, String memberEmail);
+
+    // 게시글 신고
+    Long reportBoard(Long boardId, BoardReportRequestDTO reportRequestDTO, String reporterEmail);
 
     // 게시글 이미지 등록 및 교체
-    BoardImageDTO uploadBoardImage(Long boardId, MultipartFile image, Long memberId);
+    BoardImageDTO uploadBoardImage(Long boardId, MultipartFile image, String memberEmail);
 
     // 게시글 이미지 정보 및 실제 파일 삭제
-    void deleteBoardImage(Long boardId, Long imageId, Long memberId);
+    void deleteBoardImage(Long boardId, Long imageId, String memberEmail);
 }

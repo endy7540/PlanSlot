@@ -2,11 +2,14 @@ package com.example.planslot.board.controller;
 
 import com.example.planslot.board.dto.BoardCommentDTO;
 import com.example.planslot.board.service.BoardCommentService;
+import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -18,9 +21,9 @@ public class BoardCommentController {
     // 댓글 및 대댓글 등록
     @PostMapping("/board/{postId}/comment")
     public ResponseEntity<Long> createComment(@PathVariable Long postId,
-                                              @RequestParam Long memberId,
-                                              @RequestBody BoardCommentDTO commentDTO) {
-        Long commentId = boardCommentService.createComment(postId, commentDTO, memberId);
+                                              @RequestBody BoardCommentDTO commentDTO,
+                                              Principal principal) {
+        Long commentId = boardCommentService.createComment(postId, commentDTO, getLoginEmail(principal));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(commentId);
     }
@@ -28,26 +31,44 @@ public class BoardCommentController {
     // 게시글 댓글 목록 조회
     @GetMapping("/board/{postId}/comments")
     public ResponseEntity<List<BoardCommentDTO>> getCommentList(@PathVariable Long postId) {
-        return ResponseEntity.ok(
-                boardCommentService.getCommentList(postId)
-        );
+        return ResponseEntity.ok(boardCommentService.getCommentList(postId));
     }
 
     // 댓글 및 대댓글 수정
     @PutMapping("/comment/{commentId}")
     public ResponseEntity<BoardCommentDTO> updateComment(@PathVariable Long commentId,
-                                                         @RequestParam Long memberId,
-                                                         @RequestBody BoardCommentDTO commentDTO) {
-        BoardCommentDTO updatedComment = boardCommentService.updateComment(commentId, commentDTO, memberId);
+                                                         @RequestBody BoardCommentDTO commentDTO,
+                                                         Principal principal) {
+        BoardCommentDTO updatedComment =
+                boardCommentService.updateComment(commentId, commentDTO, getLoginEmail(principal));
 
         return ResponseEntity.ok(updatedComment);
     }
 
     // 댓글 및 대댓글 삭제
     @DeleteMapping("/comment/{commentId}")
-    public ResponseEntity<Void> deleteComment(@PathVariable Long commentId, @RequestParam Long memberId) {
-        boardCommentService.deleteComment(commentId, memberId);
+    public ResponseEntity<Void> deleteComment(@PathVariable Long commentId, Principal principal) {
+        boardCommentService.deleteComment(commentId, getLoginEmail(principal));
 
         return ResponseEntity.noContent().build();
+    }
+
+    // 댓글 및 대댓글 신고
+    @PostMapping("/comment/{commentId}/report")
+    public ResponseEntity<Long> reportComment(@PathVariable Long commentId,
+                                              @RequestBody BoardReportRequestDTO reportRequestDTO,
+                                              Principal principal) {
+        Long reportId = boardCommentService.reportComment(commentId, reportRequestDTO, getLoginEmail(principal));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(reportId);
+    }
+
+    // 로그인 이메일 조회
+    private String getLoginEmail(Principal principal) {
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+
+        return principal.getName();
     }
 }

@@ -41,7 +41,14 @@
   <section data-board-auth-content>
     <div class="board-card board-toolbar">
       <div class="board-search">
-        <input id="boardSearchInput" type="search" maxlength="100" placeholder="제목 또는 내용 검색">
+        <select id="boardSearchType" class="board-search-select" aria-label="검색 조건">
+          <option value="TITLE_CONTENT" selected>제목+내용</option>
+          <option value="TITLE">제목</option>
+          <option value="CONTENT">내용</option>
+          <option value="WRITER">작성자</option>
+        </select>
+
+        <input id="boardSearchInput" type="search" maxlength="100" placeholder="검색어를 입력하세요">
         <button class="board-btn board-btn-sky" id="boardSearchButton" type="button">검색</button>
       </div>
       <div class="board-result-count" id="boardResultCount">총 0개</div>

@@ -32,7 +32,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/auth/signup", "/auth/login", "/error", "/auth", "/home", "/favicon.ico",
                                 "/members/checkDuplicate", "/api/test/**","/auth/email/send", "/auth/email/verify", "/auth/oauth2-callback",
                                 "/css/**", "/js/**", "/images/**", "/group/**", "/notification/list", "/board", "/board/notice",
-                                "/board/study", "/board/club", "/board/free", "/board/detail/**", "/board/write/**").permitAll()
+                                "/board/study", "/board/club", "/board/free", "/board/detail/**", "/board/write/**", "/uploads/board/**").permitAll()
                         .requestMatchers("/", "/api/members/signup", "/api/auth/login", "/error", "/auth", "/home", "/favicon.ico",
                                 "/api/test/**", "/css/**", "/js/**", "/images/**", "/group/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/schedule", "/schedule/**").permitAll()

@@ -15,4 +15,13 @@ public class MemberRequestDTO {
         private String nickname;
         private String address;
     }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class UpdateInfo {
+        private String nickname;
+        private String password;
+        private String address;
+    }
 }

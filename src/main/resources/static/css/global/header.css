@@ -1,4 +1,4 @@
-.header-nav{
+﻿.header-nav{
   height:78px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
   padding:0 28px;background:#F3FAFF;border-bottom:2px solid #DCEFFC;
   box-shadow:0 6px 18px rgba(8,32,51,.05);
@@ -16,3 +16,32 @@
 }
 .btn-logout:hover{background:#E0F2FE}
 .notification-bell svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; }
+
+/* 프로필 드롭다운 (Google 스타일) */
+.profile-dropdown-wrap { position: relative; }
+.profile-btn { 
+  background: none; border: none; cursor: pointer; padding: 0; 
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; outline: none;
+}
+.profile-img {
+  width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+  border: 2px solid transparent; transition: border-color 0.2s;
+}
+.profile-btn:hover .profile-img { border-color: #38BDF8; }
+.profile-dropdown {
+  position: absolute; top: 52px; right: 0; background: #fff;
+  border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  width: 160px; display: flex; flex-direction: column; overflow: hidden;
+  z-index: 100;
+}
+.profile-dropdown a, .profile-dropdown button {
+  padding: 12px 16px; text-decoration: none; color: #075985; font-size: 15px;
+  background: none; border: none; text-align: center; cursor: pointer;
+  transition: background 0.2s, color 0.2s; font-family: inherit; font-weight: bold;
+}
+.profile-dropdown a:hover {
+  background: #f8fafc; color: #38BDF8;
+}
+.profile-dropdown button { border-top: 1px solid #f1f5f9; color: #ef4444; }
+.profile-dropdown button:hover { background: #fef2f2; color: #dc2626; }

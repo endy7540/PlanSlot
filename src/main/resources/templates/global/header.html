@@ -51,7 +51,16 @@
         </div>
       </div>
 
-      <button id="authBtn" class="btn-logout">로딩중...</button>
+      <div class="profile-dropdown-wrap" id="profileWrap" style="display: none;">
+        <button class="profile-btn" id="profileBtn" type="button" aria-label="프로필 메뉴">
+          <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" alt="Profile" class="profile-img">
+        </button>
+        <div class="profile-dropdown" id="profileDropdown" style="display: none;">
+          <a th:href="@{/mypage}">마이페이지</a>
+          <button id="logoutBtn" type="button">로그아웃</button>
+        </div>
+      </div>
+      <button id="loginBtn" class="btn-logout" style="display: none;" onclick="window.location.href='/auth/login'">로그인</button>
     </div>
   </header>
 

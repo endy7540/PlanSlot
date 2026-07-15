@@ -44,4 +44,29 @@ public class MemberServiceImpl implements MemberService{
     public boolean checkDuplicateId(String loginId) {
         return memberRepository.existsByLoginId(loginId);
     }
+
+    @Override
+    public com.example.planslot.member.dto.MemberResponseDTO.MyPage getMyPage(String email) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        return com.example.planslot.member.dto.MemberResponseDTO.MyPage.builder()
+                .email(member.getEmail())
+                .nickname(member.getNickname())
+                .address(member.getAddress())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void updateMyInfo(String email, MemberRequestDTO.UpdateInfo request) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        
+        String encodedPassword = null;
+        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
+            encodedPassword = passwordEncoder.encode(request.getPassword());
+        }
+        
+        member.updateInfo(request.getNickname(), encodedPassword, request.getAddress());
+    }
 }

@@ -35,7 +35,7 @@ public class GroupController {
     }
 
     // 목록 조회 화면 반환
-    @GetMapping("/list")
+    @GetMapping(value = {"", "/list"})
     public String groupList() {
         return "group/group-list";
     }

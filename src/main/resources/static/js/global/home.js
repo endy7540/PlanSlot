@@ -1,4 +1,3 @@
-// 헤더의 로그인/로그아웃 버튼 로직은 js/global/header.js 로 분리되었습니다.
 
 async function testApiCall() {
   const token = localStorage.getItem("jwtToken");

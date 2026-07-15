@@ -42,8 +42,21 @@
             justify-content:space-between;
             margin-bottom:16px;
         }
-        .cal-nav h2{margin:0;font-size:20px}
-        .cal-nav .btn-row{display:flex;gap:8px}
+        .cal-nav-left{
+            flex:1;
+            display:flex;
+            justify-content:flex-start;
+        }
+        .cal-nav-center{
+            display:flex;
+            align-items:center;
+            gap:16px;
+        }
+        .cal-nav-right{
+            flex:1;
+            display:flex;
+            justify-content:flex-end;
+        }
 
         .cal-grid{
             display:grid;
@@ -152,13 +165,17 @@
     <!-- 캘린더 -->
     <div class="panel" id="calendarPanel" style="display:none">
         <div class="cal-nav">
-            <div class="btn-row">
-                <button class="ghost" onclick="moveMonth(-1)">◀ 이전달</button>
+            <div class="cal-nav-left">
                 <button class="ghost" onclick="goToday()">오늘</button>
-                <button class="ghost" onclick="moveMonth(1)">다음달 ▶</button>
             </div>
-            <h2 id="monthLabel"></h2>
-            <a class="primary" id="newScheduleBtn" href="/schedule/new">+ 새 일정 등록</a>
+            <div class="cal-nav-center">
+                <button class="ghost" onclick="moveMonth(-1)">◀</button>
+                <h2 id="monthLabel" style="margin:0; font-size: 22px; font-weight: 800; color: #075985;"></h2>
+                <button class="ghost" onclick="moveMonth(1)">▶</button>
+            </div>
+            <div class="cal-nav-right">
+                <a class="primary" id="newScheduleBtn" href="/schedule/new">+ 새 일정 등록</a>
+            </div>
         </div>
         <div class="cal-grid" id="dowRow">
             <div class="cal-dow" style="color:#DC2626">일</div>

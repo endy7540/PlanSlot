@@ -35,7 +35,7 @@ public class SecurityConfig {
                                 "/board/study", "/board/club", "/board/free", "/board/detail/**", "/board/write/**").permitAll()
                         .requestMatchers("/", "/api/members/signup", "/api/auth/login", "/error", "/auth", "/home", "/favicon.ico",
                                 "/api/test/**", "/css/**", "/js/**", "/images/**", "/group/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/schedule", "/schedule/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/schedule", "/schedule/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

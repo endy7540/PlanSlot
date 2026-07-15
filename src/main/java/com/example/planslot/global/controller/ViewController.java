@@ -16,7 +16,7 @@ public class ViewController {
         return "global/auth";
     }
 
-    @GetMapping("/home")
+    @GetMapping({"/", "/home"})
     public String home() {
         return "global/home";
     }

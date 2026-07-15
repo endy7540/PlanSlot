@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PlanSlot - 캘린더</title>
+    <link rel="stylesheet" th:href="@{/css/notification/notification.css}"
+          href="/css/notification/notification.css">
     <style>
         *{box-sizing:border-box}
         body{
@@ -14,30 +16,6 @@
             color:#182B3A;
         }
         button{cursor:pointer;font-family:inherit}
-
-        .header-nav{
-            height:78px;
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            gap:18px;
-            padding:0 28px;
-            background:#F3FAFF;
-            border-bottom:2px solid #DCEFFC;
-        }
-        .logo{font-size:26px;font-weight:950;color:#38BDF8;letter-spacing:-.5px}
-        .tagline{font-size:12px;color:#748898;margin-top:2px}
-
-        .token-badge{
-            display:inline-block;
-            background:#F0F9FF;
-            color:#075985;
-            border-radius:999px;
-            padding:6px 12px;
-            font-size:12px;
-            font-weight:900;
-        }
-        .token-badge.off{background:#FEE2E2;color:#991B1B}
 
         .wrap{max-width:1100px;margin:0 auto;padding:24px 28px 60px}
 
@@ -155,13 +133,7 @@
 </head>
 <body>
 
-<header class="header-nav">
-    <div>
-        <div class="logo">PlanSlot</div>
-        <div class="tagline">개인 캘린더 (월간 뷰) — 날짜를 클릭해 일정을 등록/조회하세요</div>
-    </div>
-    <div id="tokenBadge" class="token-badge off">로그인 필요</div>
-</header>
+<div th:replace="~{global/header :: headerFragment}"></div>
 
 <div class="wrap">
 
@@ -233,13 +205,17 @@
         const calPanel = document.getElementById('calendarPanel');
 
         if (token) {
-            badge.textContent = '로그인됨 (토큰 보유)';
-            badge.classList.remove('off');
+            if (badge) {
+                badge.textContent = '로그인됨 (토큰 보유)';
+                badge.classList.remove('off');
+            }
             notice.style.display = 'none';
             calPanel.style.display = '';
         } else {
-            badge.textContent = '로그인 필요';
-            badge.classList.add('off');
+            if (badge) {
+                badge.textContent = '로그인 필요';
+                badge.classList.add('off');
+            }
             notice.style.display = '';
             calPanel.style.display = 'none';
         }
@@ -274,8 +250,11 @@
                 if (res.status === 401 || res.status === 403) {
                     showToast('로그인이 만료되었습니다. 다시 로그인해주세요.', true);
                     localStorage.removeItem('jwtToken');
-                    document.getElementById('tokenBadge').textContent = '로그인 필요';
-                    document.getElementById('tokenBadge').classList.add('off');
+                    const badge = document.getElementById('tokenBadge');
+                    if (badge) {
+                        badge.textContent = '로그인 필요';
+                        badge.classList.add('off');
+                    }
                     document.getElementById('authNotice').style.display = '';
                     document.getElementById('calendarPanel').style.display = 'none';
                     return;
@@ -396,5 +375,7 @@
         setTimeout(() => el.classList.remove('just-added'), 2500);
     }
 </script>
+<script th:src="@{/js/notification/notification.js}"
+        src="/js/notification/notification.js"></script>
 </body>
 </html>

@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PlanSlot - 일정 등록/수정</title>
+    <link rel="stylesheet" th:href="@{/css/notification/notification.css}"
+          href="/css/notification/notification.css">
     <style>
         *{box-sizing:border-box}
         body{
@@ -15,19 +17,6 @@
         }
         button,input,select,textarea{font-family:inherit}
         button{cursor:pointer}
-
-        .header-nav{
-            height:78px;
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            gap:18px;
-            padding:0 28px;
-            background:#F3FAFF;
-            border-bottom:2px solid #DCEFFC;
-        }
-        .logo{font-size:26px;font-weight:950;color:#38BDF8;letter-spacing:-.5px}
-        .tagline{font-size:12px;color:#748898;margin-top:2px}
 
         .wrap{max-width:1100px;margin:0 auto;padding:24px 28px 60px}
 
@@ -54,16 +43,6 @@
             gap:10px;
             flex-wrap:wrap;
         }
-        .token-badge{
-            display:inline-block;
-            background:#F0F9FF;
-            color:#075985;
-            border-radius:999px;
-            padding:6px 12px;
-            font-size:12px;
-            font-weight:900;
-        }
-        .token-badge.off{background:#FEE2E2;color:#991B1B}
 
         .form{display:flex;flex-direction:column;gap:12px}
         .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -157,16 +136,7 @@
 </head>
 <body>
 
-<header class="header-nav">
-    <div>
-        <div class="logo">PlanSlot</div>
-        <div class="tagline">일정 등록 / 수정 페이지 (캘린더에서 날짜를 클릭하면 여기로 넘어옵니다)</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:12px">
-        <a href="/schedule" style="text-decoration:none;color:#075985;font-size:13px;font-weight:900;display:flex;align-items:center;gap:4px">← 캘린더로 돌아가기</a>
-        <div id="tokenBadge" class="token-badge off">로그인 필요</div>
-    </div>
-</header>
+<div th:replace="~{global/header :: headerFragment}"></div>
 
 <div class="wrap">
 
@@ -289,14 +259,18 @@
         const listPanel = document.getElementById('scheduleListPanel');
 
         if (token) {
-            badge.textContent = '로그인됨 (토큰 보유)';
-            badge.classList.remove('off');
+            if (badge) {
+                badge.textContent = '로그인됨 (토큰 보유)';
+                badge.classList.remove('off');
+            }
             notice.style.display = 'none';
             formPanel.style.display = '';
             listPanel.style.display = '';
         } else {
-            badge.textContent = '로그인 필요';
-            badge.classList.add('off');
+            if (badge) {
+                badge.textContent = '로그인 필요';
+                badge.classList.add('off');
+            }
             notice.style.display = '';
             formPanel.style.display = 'none';
             listPanel.style.display = 'none';
@@ -506,5 +480,7 @@
         applyUrlParams();
     }
 </script>
+<script th:src="@{/js/notification/notification.js}"
+        src="/js/notification/notification.js"></script>
 </body>
 </html>

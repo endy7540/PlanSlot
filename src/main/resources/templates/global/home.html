@@ -4,39 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PlanSlot - 홈</title>
-  <link rel="stylesheet" th:href="@{/css/notification/notification.css}"
-        href="/css/notification/notification.css">
-  <style>
-    *{box-sizing:border-box}
-    body{
-      margin:0;height:100vh;overflow:hidden;
-      font-family:Pretendard,'Malgun Gothic',Arial,sans-serif;
-      background:#FFFFFF!important;color:#182B3A!important;
-      display:flex;flex-direction:column;
-    }
-    button{cursor:pointer;font-family:inherit}
 
-    .main{flex:1;padding:24px 28px;overflow:auto}
-    .hero-row{display:grid;grid-template-columns:1.6fr repeat(3,1fr);gap:14px;margin-bottom:16px}
-    .hero-card,.stat-card{
-      background:#fff;border:2px solid #DCEFFC!important;border-radius:12px;padding:24px;
-      box-shadow:7px 7px 0 rgba(8,32,51,.05);
-    }
-    .hero-card{border-left:12px solid #38BDF8!important}
-    .hero-card h1{font-size:30px;margin:8px 0}
-    .hero-card p{color:#748898;margin-bottom:20px}
-    .stat-card{display:flex;flex-direction:column;justify-content:center;text-align:center}
-    .stat-card b{font-size:38px;color:#075985;margin-bottom:6px}
-    .stat-card span{color:#748898;font-weight:700}
-    .primary{
-      padding:12px 20px;border-radius:10px;font-weight:900;border:0;
-      background:#075985!important;color:#fff;
-    }
-    @media(max-width:900px){
-      .hero-row{grid-template-columns:1fr 1fr}
-      .hero-card{grid-column:1/-1}
-    }
-  </style>
+  <link rel="stylesheet" th:href="@{/css/global/home.css}">
 </head>
 <body>
 
@@ -70,41 +39,8 @@
 
 <div class="notification-toast" id="notificationToast"></div>
 
-<script>
-  window.onload = function() {
-    const token = localStorage.getItem("jwtToken");
-    const authBtn = document.getElementById("authBtn");
+<script th:src="@{/js/global/home.js}"></script>
 
-    if (!token) {
-      authBtn.innerText = "로그인 / 회원가입";
-      authBtn.onclick = function() {
-        window.location.href = "/auth/login";
-      };
-    } else {
-      authBtn.innerText = "로그아웃";
-      authBtn.onclick = function() {
-        localStorage.removeItem("jwtToken");
-        localStorage.removeItem("memberId");
-        alert("안전하게 로그아웃 되었습니다.");
-        window.location.reload();
-      };
-    }
-  };
 
-  async function testApiCall() {
-    const token = localStorage.getItem("jwtToken");
-
-    if (!token) {
-      alert("로그인 후 이용할 수 있는 기능입니다.");
-      return;
-    }
-
-    alert("현재 브라우저에 저장된 토큰:\n" + token.substring(0, 30)
-            + "... \n\n이 토큰을 백엔드로 보내면 유저 정보를 알 수 있습니다!");
-  }
-</script>
-
-<script th:src="@{/js/notification/notification.js}"
-        src="/js/notification/notification.js"></script>
 </body>
 </html>

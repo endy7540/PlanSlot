@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PlanSlot - 모임 상세</title>
-<link rel="stylesheet" th:href="@{/css/group/group-shared.css}" href="../../static/css/group/group-shared.css">
+<link rel="stylesheet" th:href="@{/css/group/group-shared.css}">
 </head>
 <body>
+
+<div th:replace="~{global/header :: headerFragment}"></div>
 
 <div class="app">
   <div class="breadcrumb"><a th:href="@{/group/list}" href="group-list.html">← 내 모임</a></div>

@@ -16,6 +16,13 @@ window.addEventListener("DOMContentLoaded", function() {
         if (profileBtn) {
             profileBtn.addEventListener("click", function(e) {
                 e.stopPropagation();
+                
+                // 알림 드롭다운이 열려있다면 닫기
+                const notiDropdown = document.getElementById('notificationDropdown');
+                const notiBell = document.getElementById('notificationBell');
+                if (notiDropdown) notiDropdown.classList.remove('open');
+                if (notiBell) notiBell.classList.remove('active');
+
                 if (profileDropdown.style.display === "none" || profileDropdown.style.display === "") {
                     profileDropdown.style.display = "flex";
                 } else {

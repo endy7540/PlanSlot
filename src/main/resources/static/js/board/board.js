@@ -9,6 +9,7 @@ let boardToastTimer;
 let reportTarget = null;
 let currentListPage = 0;
 let currentListKeyword = '';
+let currentListSearchType = 'TITLE_CONTENT';
 let currentDetailBoard = null;
 let existingWriteImage = null;
 let removeExistingWriteImage = false;
@@ -136,6 +137,7 @@ async function submitBoardReport() {
 async function initializeBoardList() {
   const type = document.body.dataset.boardType;
   const writeButton = document.getElementById('boardWriteButton');
+  const searchTypeSelect = document.getElementById('boardSearchType');
   const searchInput = document.getElementById('boardSearchInput');
   const searchButton = document.getElementById('boardSearchButton');
 
@@ -148,13 +150,20 @@ async function initializeBoardList() {
     });
   }
 
+  updateBoardSearchPlaceholder(searchTypeSelect, searchInput);
+
+  searchTypeSelect?.addEventListener('change', () => {
+    updateBoardSearchPlaceholder(searchTypeSelect, searchInput);
+  });
+
   searchButton?.addEventListener('click', () => {
     currentListPage = 0;
-    currentListKeyword = searchInput.value.trim();
+    currentListSearchType = searchTypeSelect?.value || 'TITLE_CONTENT';
+    currentListKeyword = searchInput?.value.trim() || '';
     loadBoardList();
   });
   searchInput?.addEventListener('keydown', event => {
-    if (event.key === 'Enter') searchButton.click();
+    if (event.key === 'Enter') searchButton?.click();
   });
 
   if (!currentBoardMember) {
@@ -163,6 +172,20 @@ async function initializeBoardList() {
   }
 
   await loadBoardList();
+}
+
+function updateBoardSearchPlaceholder(searchTypeSelect, searchInput) {
+  if (!searchInput) return;
+
+  const placeholders = {
+    TITLE_CONTENT: '제목 또는 내용 검색',
+    TITLE: '제목 검색',
+    CONTENT: '내용 검색',
+    WRITER: '작성자 검색'
+  };
+
+  const searchType = searchTypeSelect?.value || 'TITLE_CONTENT';
+  searchInput.placeholder = placeholders[searchType] || placeholders.TITLE_CONTENT;
 }
 
 async function loadBoardList() {
@@ -175,7 +198,10 @@ async function loadBoardList() {
   pagination.innerHTML = '';
 
   const params = new URLSearchParams({ page: currentListPage, size: 10 });
-  if (currentListKeyword) params.set('keyword', currentListKeyword);
+  if (currentListKeyword) {
+    params.set('searchType', currentListSearchType);
+    params.set('keyword', currentListKeyword);
+  }
 
   try {
     const page = await fetchBoardJson(`/board/type/${type.toLowerCase()}?${params}`);

@@ -1,5 +1,4 @@
 
-
 async function testApiCall() {
   const token = localStorage.getItem("jwtToken");
 

@@ -75,4 +75,12 @@ public class MemberServiceImpl implements MemberService{
         
         member.updateInfo(request.getNickname(), encodedPassword, request.getAddress());
     }
+
+    @Override
+    @Transactional
+    public void withdraw(String email) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        member.withdraw();
+    }
 }

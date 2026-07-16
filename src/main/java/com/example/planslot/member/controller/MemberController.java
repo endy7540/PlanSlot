@@ -40,4 +40,21 @@ public class MemberController {
             return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
         }
     }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/me")
+    public ResponseEntity<?> withdraw(org.springframework.security.core.Authentication authentication, jakarta.servlet.http.HttpServletResponse response) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        memberService.withdraw(authentication.getName());
+
+        // 쿠키에 있는 jwt 토큰 삭제
+        jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("jwt", null);
+        cookie.setPath("/");
+        cookie.setHttpOnly(true);
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+
+        return ResponseEntity.ok().build();
+    }
 }

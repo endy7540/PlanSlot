@@ -46,7 +46,7 @@ function initializeBoardHeader() {
     }
 
     localStorage.removeItem('jwtToken');
-    location.href = '/home';
+    location.href = '/planslot';
   });
 }
 

@@ -41,7 +41,10 @@ window.addEventListener("DOMContentLoaded", function() {
         const headerNickname = document.getElementById("headerNickname");
         if (headerNickname) {
             fetch('/members/me', {
-                headers: { 'Authorization': 'Bearer ' + token }
+                headers: { 
+                    'Authorization': 'Bearer ' + token,
+                    'Accept': 'application/json'
+                }
             })
             .then(res => {
                 if (res.ok) return res.json();

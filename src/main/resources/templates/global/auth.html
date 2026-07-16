@@ -474,7 +474,7 @@
                 localStorage.setItem("jwtToken", tokenStr);
                 document.cookie = "jwtToken=" + tokenStr + "; path=/;";
 
-                window.location.href = "/home";
+                window.location.href = "/planslot";
             } else {
                 msgBox.style.color = "#B91C1C";
                 msgBox.innerText = '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.';

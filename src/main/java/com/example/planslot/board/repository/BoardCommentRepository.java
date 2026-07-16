@@ -2,6 +2,7 @@ package com.example.planslot.board.repository;
 
 import com.example.planslot.board.entity.BoardComment;
 import com.example.planslot.board.entity.BoardCommentStatus;
+import com.example.planslot.member.entity.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -51,6 +52,17 @@ public interface BoardCommentRepository extends JpaRepository<BoardComment, Long
 
         long getCommentCount();
     }
+
+    @Query("""
+            SELECT DISTINCT c.writer
+            FROM BoardComment c
+            WHERE c.board.boardId = :boardId
+              AND c.commentStatus = :commentStatus
+              AND c.writer.id <> :writerId
+            """)
+    List<Member> findDistinctActiveCommentWriters(@Param("boardId") Long boardId,
+                                                   @Param("commentStatus") BoardCommentStatus commentStatus,
+                                                   @Param("writerId") Long writerId);
 
     @Query("""
             SELECT COUNT(c)

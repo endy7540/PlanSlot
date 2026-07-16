@@ -24,6 +24,45 @@
     margin: 0;
 }
 
+/* View Mode */
+.profile-info-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.info-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.info-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.info-group:first-child {
+    padding-top: 0;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.info-value {
+    color: #0f172a;
+    font-weight: 500;
+    font-size: 16px;
+}
+
+/* Edit Mode */
 .form-group {
     margin-bottom: 24px;
 }
@@ -62,7 +101,37 @@
     border-color: #e2e8f0;
 }
 
-.btn-update {
+.divider {
+    border: 0;
+    height: 1px;
+    background: #e2e8f0;
+    margin: 32px 0 24px 0;
+}
+
+.password-section-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+
+.password-desc {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 0;
+    margin-bottom: 24px;
+}
+
+.error-msg {
+    display: block;
+    color: #ef4444;
+    font-size: 13px;
+    margin-top: 8px;
+    font-weight: 500;
+}
+
+/* Buttons */
+.btn-primary {
     width: 100%;
     padding: 16px;
     background: #0ea5e9;
@@ -73,17 +142,39 @@
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
-    margin-top: 20px;
 }
 
-.btn-update:hover {
+.btn-primary:hover {
     background: #0284c7;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);
 }
 
-.btn-update:active {
+.btn-primary:active {
     transform: translateY(0);
+}
+
+.btn-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+}
+
+.btn-secondary {
+    width: 100%;
+    padding: 16px;
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: #e2e8f0;
 }
 
 .toast-message {

@@ -63,8 +63,14 @@ public class MemberServiceImpl implements MemberService{
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
         
         String encodedPassword = null;
-        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
-            encodedPassword = passwordEncoder.encode(request.getPassword());
+        if (request.getNewPassword() != null && !request.getNewPassword().trim().isEmpty()) {
+            if (request.getCurrentPassword() == null || request.getCurrentPassword().trim().isEmpty()) {
+                throw new IllegalArgumentException("현재 비밀번호를 입력해주세요.");
+            }
+            if (!passwordEncoder.matches(request.getCurrentPassword(), member.getPassword())) {
+                throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+            }
+            encodedPassword = passwordEncoder.encode(request.getNewPassword());
         }
         
         member.updateInfo(request.getNickname(), encodedPassword, request.getAddress());

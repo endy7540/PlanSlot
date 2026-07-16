@@ -71,6 +71,21 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update Form
             emailInput.value = maskedEmail;
             nicknameInput.value = data.nickname || '';
+
+            // Update Profile Image
+            if (data.profileImageUrl) {
+                document.getElementById('profileImagePreview').src = data.profileImageUrl;
+            } else {
+                document.getElementById('profileImagePreview').src = "/images/default-avatar.png";
+            }
+
+            // Update Notifications
+            if (document.getElementById('toggleActivityNoti')) {
+                document.getElementById('toggleActivityNoti').checked = data.allowActivityNoti;
+            }
+            if (document.getElementById('toggleMarketingNoti')) {
+                document.getElementById('toggleMarketingNoti').checked = data.allowMarketingNoti;
+            }
             
             if (data.address) {
                 const parts = data.address.split(' ');
@@ -227,6 +242,127 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
+    // Profile Image Upload with Cropper.js
+    const profileImageInput = document.getElementById('profileImageInput');
+    const profileImagePreview = document.getElementById('profileImagePreview');
+    const cropModal = document.getElementById('cropModal');
+    const cropImageTarget = document.getElementById('cropImageTarget');
+    const btnCancelCrop = document.getElementById('btnCancelCrop');
+    const btnConfirmCrop = document.getElementById('btnConfirmCrop');
+    let cropper = null;
+
+    if (profileImageInput) {
+        profileImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Validate file size
+            if (file.size > 5 * 1024 * 1024) {
+                alert('파일 크기는 5MB 이하여야 합니다.');
+                profileImageInput.value = '';
+                return;
+            }
+
+            // Validate file type
+            const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!validImageTypes.includes(file.type)) {
+                alert('이미지 파일(jpg, png, gif, webp)만 업로드 가능합니다.');
+                profileImageInput.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                cropImageTarget.src = event.target.result;
+                cropModal.style.display = 'flex';
+                
+                if (cropper) {
+                    cropper.destroy();
+                }
+                
+                cropper = new Cropper(cropImageTarget, {
+                    aspectRatio: 1, // 1:1 ratio
+                    viewMode: 1,
+                    autoCropArea: 1,
+                    dragMode: 'move',
+                    background: false
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (btnCancelCrop) {
+        btnCancelCrop.addEventListener('click', () => {
+            cropModal.style.display = 'none';
+            profileImageInput.value = '';
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        });
+    }
+
+    if (btnConfirmCrop) {
+        btnConfirmCrop.addEventListener('click', () => {
+            if (!cropper) return;
+            
+            btnConfirmCrop.innerText = '업로드 중...';
+            btnConfirmCrop.disabled = true;
+
+            cropper.getCroppedCanvas({
+                width: 300,
+                height: 300
+            }).toBlob((blob) => {
+                if (!blob) {
+                    alert('이미지 크롭에 실패했습니다.');
+                    btnConfirmCrop.innerText = '적용 및 업로드';
+                    btnConfirmCrop.disabled = false;
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('file', blob, 'profile.png');
+
+                fetch('/members/profile-image', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: formData
+                })
+                .then(async res => {
+                    if (res.ok) {
+                        const data = await res.json();
+                        profileImagePreview.src = data.imageUrl;
+                        
+                        // Update header image immediately
+                        const headerProfileImg = document.getElementById("headerProfileImage");
+                        if (headerProfileImg) {
+                            headerProfileImg.src = data.imageUrl;
+                        }
+                        
+                        showToast("프로필 이미지가 변경되었습니다.");
+                        cropModal.style.display = 'none';
+                        profileImageInput.value = '';
+                        cropper.destroy();
+                        cropper = null;
+                    } else {
+                        const errorData = await res.json();
+                        throw new Error(errorData.message || "이미지 업로드에 실패했습니다.");
+                    }
+                })
+                .catch(err => {
+                    alert(err.message);
+                })
+                .finally(() => {
+                    btnConfirmCrop.innerText = '적용 및 업로드';
+                    btnConfirmCrop.disabled = false;
+                });
+            }, 'image/png');
+        });
+    }
+
     // Withdraw Modal Logic
     const btnShowWithdraw = document.getElementById('btnShowWithdraw');
     const withdrawModal = document.getElementById('withdrawModal');
@@ -279,4 +415,44 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    // Tab Switching
+    window.switchTab = function(tabId) {
+        // Update sidebar active state
+        document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active'));
+        document.querySelector(`.sidebar-menu a[href="#${tabId}"]`).parentElement.classList.add('active');
+
+        // Show selected section
+        document.querySelectorAll('.mypage-section').forEach(sec => sec.style.display = 'none');
+        document.getElementById(`section-${tabId}`).style.display = 'block';
+    };
+
+    // Save Notifications
+    window.saveNotificationSettings = function() {
+        const allowActivityNoti = document.getElementById('toggleActivityNoti').checked;
+        const allowMarketingNoti = document.getElementById('toggleMarketingNoti').checked;
+
+        fetch('/members/notifications', {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                allowActivityNoti,
+                allowMarketingNoti
+            })
+        })
+        .then(async res => {
+            if (res.ok) {
+                showToast("알림 설정이 저장되었습니다.");
+            } else {
+                throw new Error("설정 저장에 실패했습니다.");
+            }
+        })
+        .catch(err => {
+            alert(err.message);
+        });
+    };
 });

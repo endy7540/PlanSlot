@@ -29,7 +29,27 @@
             <p>개인 정보를 확인하고 수정할 수 있습니다.</p>
         </div>
 
-        <form id="updateForm">
+        <!-- 보기 모드 (기본 화면) -->
+        <div id="viewMode">
+            <div class="profile-info-card">
+                <div class="info-group">
+                    <span class="info-label">이메일 (아이디)</span>
+                    <span class="info-value" id="viewEmail">로딩중...</span>
+                </div>
+                <div class="info-group">
+                    <span class="info-label">닉네임</span>
+                    <span class="info-value" id="viewNickname">로딩중...</span>
+                </div>
+                <div class="info-group">
+                    <span class="info-label">주소</span>
+                    <span class="info-value" id="viewAddress">로딩중...</span>
+                </div>
+            </div>
+            <button type="button" class="btn-primary" id="btnEditMode">정보 수정하기</button>
+        </div>
+
+        <!-- 수정 모드 -->
+        <form id="updateForm" style="display: none;">
             <div class="form-group">
                 <label for="email">이메일 (아이디)</label>
                 <input type="text" id="email" disabled>
@@ -41,16 +61,39 @@
             </div>
             
             <div class="form-group">
-                <label for="password">새 비밀번호</label>
-                <input type="password" id="password" placeholder="변경하려면 입력 (그대로 두면 유지)">
+                <label>주소</label>
+                <div style="display:flex; gap:12px;">
+                    <select id="addressSido" style="flex:1; padding:14px 16px; border:2px solid #e2e8f0; border-radius:12px; outline:none; font-size:15px; color:#0f172a; background:#f8fafc;">
+                        <option value="">시/도 선택</option>
+                    </select>
+                    <select id="addressSigungu" style="flex:1; padding:14px 16px; border:2px solid #e2e8f0; border-radius:12px; outline:none; font-size:15px; color:#0f172a; background:#f8fafc;">
+                        <option value="">시/군/구 선택</option>
+                    </select>
+                </div>
             </div>
+
+            <hr class="divider">
+            <div class="password-section-title">비밀번호 변경 (선택사항)</div>
+            <p class="password-desc">비밀번호를 변경하시려면 현재 비밀번호와 새 비밀번호를 모두 입력해 주세요.</p>
             
             <div class="form-group">
-                <label for="address">주소</label>
-                <input type="text" id="address" placeholder="주소를 입력하세요 (선택사항)">
+                <label for="currentPassword">현재 비밀번호</label>
+                <input type="password" id="currentPassword" placeholder="현재 비밀번호">
+            </div>
+            <div class="form-group">
+                <label for="newPassword">새 비밀번호</label>
+                <input type="password" id="newPassword" placeholder="새 비밀번호">
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">새 비밀번호 확인</label>
+                <input type="password" id="confirmPassword" placeholder="새 비밀번호를 다시 입력하세요">
+                <span class="error-msg" id="passwordError"></span>
             </div>
             
-            <button type="submit" class="btn-update">저장하기</button>
+            <div class="btn-group">
+                <button type="button" class="btn-secondary" id="btnCancelEdit">취소</button>
+                <button type="submit" class="btn-primary">저장하기</button>
+            </div>
         </form>
     </div>
 
@@ -58,6 +101,7 @@
     <div id="toastMsg" class="toast-message"></div>
 
     <!-- Custom JS -->
+    <script th:src="@{/js/global/region.js}"></script>
     <script th:src="@{/js/member/mypage.js}"></script>
 </body>
 </html>

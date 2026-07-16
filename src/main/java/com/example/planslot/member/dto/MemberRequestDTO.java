@@ -21,7 +21,8 @@ public class MemberRequestDTO {
     @NoArgsConstructor
     public static class UpdateInfo {
         private String nickname;
-        private String password;
         private String address;
+        private String currentPassword;
+        private String newPassword;
     }
 }

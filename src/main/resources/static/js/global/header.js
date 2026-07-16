@@ -38,6 +38,23 @@ window.addEventListener("DOMContentLoaded", function() {
             }
         });
 
+        const headerNickname = document.getElementById("headerNickname");
+        if (headerNickname) {
+            fetch('/members/me', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(res => {
+                if (res.ok) return res.json();
+                throw new Error();
+            })
+            .then(data => {
+                headerNickname.innerText = data.nickname + '님';
+            })
+            .catch(() => {
+                headerNickname.innerText = '회원님';
+            });
+        }
+
         if (logoutBtn) {
             logoutBtn.addEventListener("click", function() {
                 if (confirm("정말 로그아웃 하시겠습니까?")) {

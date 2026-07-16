@@ -51,7 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch user info
     function loadUserInfo() {
         fetch('/members/me', {
-            headers: { 'Authorization': 'Bearer ' + token }
+            headers: { 
+                'Authorization': 'Bearer ' + token,
+                'Accept': 'application/json'
+            }
         })
         .then(res => {
             if (res.status === 401) throw new Error("unauthorized");
@@ -189,7 +192,8 @@ document.addEventListener('DOMContentLoaded', () => {
             method: 'PUT',
             headers: {
                 'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify(body)
         })

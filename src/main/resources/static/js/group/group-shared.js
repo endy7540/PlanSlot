@@ -79,6 +79,7 @@ function fetchApi(url, options = {}) {
   if (!options.headers) {
     options.headers = {};
   }
+  options.headers['Accept'] = 'application/json';
   if (token) {
     options.headers['Authorization'] = 'Bearer ' + token;
   }

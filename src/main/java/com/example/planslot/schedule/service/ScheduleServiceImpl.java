@@ -15,7 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -44,6 +47,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .googleSyncYn("N")
                 .sourceType(SourceType.MANUAL)
                 .location(requestDTO.getLocation())
+                .recurrenceEndDate(requestDTO.getRecurrenceEndDate())
                 .build();
 
         Schedule saved = scheduleRepository.save(schedule);
@@ -78,7 +82,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                 requestDTO.getStartDate(),
                 requestDTO.getEndDate(),
                 Boolean.TRUE.equals(requestDTO.getIsPublic()) ? "Y" : "N",
-                requestDTO.getLocation()
+                requestDTO.getLocation(),
+                requestDTO.getRecurrenceEndDate()
         );
 
         if (requestDTO.getDeadlineDate() != null) {
@@ -100,9 +105,64 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     @Override
     public List<ScheduleDTO> getScheduleListByPeriod(Long memberId, LocalDateTime start, LocalDateTime end) {
-        return scheduleRepository.findAllByMemberIdAndPeriod(memberId, start, end).stream()
-                .map(ScheduleDTO::from)
-                .toList();
+        List<Schedule> candidates = scheduleRepository.findAllByMemberIdAndPeriodCandidate(memberId, start, end);
+        List<ScheduleDTO> result = new ArrayList<>();
+
+        for (Schedule s : candidates) {
+            if (s.getScheduleType() == null || s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.DAILY) {
+                result.add(ScheduleDTO.from(s));
+                continue;
+            }
+
+            ScheduleDTO baseDto = ScheduleDTO.from(s);
+            LocalDateTime eventStart = s.getStartDate();
+            LocalDateTime eventEnd = s.getEndDate();
+            Duration duration = (eventStart != null && eventEnd != null) ? Duration.between(eventStart, eventEnd) : null;
+
+            LocalDate searchStart = start.toLocalDate();
+            LocalDate searchEnd = end.toLocalDate();
+            LocalDate limitStart = eventStart.toLocalDate();
+            LocalDate limitEnd = s.getRecurrenceEndDate();
+
+            for (LocalDate date = searchStart; !date.isAfter(searchEnd); date = date.plusDays(1)) {
+                if (date.isBefore(limitStart)) {
+                    continue;
+                }
+                if (limitEnd != null && date.isAfter(limitEnd)) {
+                    continue;
+                }
+
+                boolean matches = false;
+                if (s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.WEEKLY) {
+                    matches = (date.getDayOfWeek() == limitStart.getDayOfWeek());
+                } else if (s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.MONTHLY) {
+                    int targetDay = limitStart.getDayOfMonth();
+                    int maxDayInMonth = date.lengthOfMonth();
+                    int actualDay = Math.min(targetDay, maxDayInMonth);
+                    matches = (date.getDayOfMonth() == actualDay);
+                } else if (s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.YEARLY) {
+                    int targetMonth = limitStart.getMonthValue();
+                    int targetDay = limitStart.getDayOfMonth();
+                    if (date.getMonthValue() == targetMonth) {
+                        if (targetMonth == 2 && targetDay == 29 && !date.isLeapYear()) {
+                            matches = (date.getDayOfMonth() == 28);
+                        } else {
+                            matches = (date.getDayOfMonth() == targetDay);
+                        }
+                    }
+                }
+
+                if (matches) {
+                    LocalDateTime newStart = date.atTime(eventStart.toLocalTime());
+                    LocalDateTime newEnd = (duration != null) ? newStart.plus(duration) : null;
+                    result.add(baseDto.toBuilder()
+                            .startDate(newStart)
+                            .endDate(newEnd)
+                            .build());
+                }
+            }
+        }
+        return result;
     }
 
     @Override

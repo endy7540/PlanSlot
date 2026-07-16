@@ -340,7 +340,7 @@
             const dayEvents = schedulesByDate[dateKey] || [];
             const isToday = dateKey === todayKey;
             const chips = dayEvents.slice(0, 3).map(s =>
-                `<div class="event-chip${s.isPublic ? ' public' : ''}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId})">${escapeHtml(s.title)}</div>`
+                `<div class="event-chip${s.isPublic ? ' public' : ''}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${escapeHtml(s.title)}</div>`
             ).join('');
             const more = dayEvents.length > 3 ? `<div class="event-more">+${dayEvents.length - 3}개 더보기</div>` : '';
 
@@ -357,8 +357,8 @@
         window.location.href = `/schedule/new?date=${dateKey}`;
     }
 
-    function openSchedule(scheduleId) {
-        window.location.href = `/schedule/${scheduleId}`;
+    function openSchedule(scheduleId, dateKey) {
+        window.location.href = `/schedule/${scheduleId}?date=${dateKey}`;
     }
 
     function escapeHtml(str) {

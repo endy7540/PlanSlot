@@ -132,7 +132,7 @@
             <div class="form-row">
                 <div>
                     <label>일정 유형 *</label>
-                    <select id="f-scheduleType">
+                    <select id="f-scheduleType" onchange="toggleRecurrenceRow(this.value)">
                         <option value="DAILY">당일</option>
                         <option value="WEEKLY">주간</option>
                         <option value="MONTHLY">월간</option>
@@ -142,6 +142,14 @@
                 <div>
                     <label>장소</label>
                     <input id="f-location" placeholder="예: 대학본부 2층">
+                </div>
+            </div>
+            <div class="form-row" id="recurrenceEndDateRow" style="display: none;">
+                <div>
+                    <label>반복 종료일 (선택)</label>
+                    <input id="f-recurrenceEndDate" type="date">
+                </div>
+                <div>
                 </div>
             </div>
             <div class="checkbox-row" style="margin-bottom: 8px;">
@@ -238,10 +246,22 @@
         }
     }
 
+    function toggleRecurrenceRow(type) {
+        const row = document.getElementById('recurrenceEndDateRow');
+        const input = document.getElementById('f-recurrenceEndDate');
+        if (type !== 'DAILY') {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+            input.value = '';
+        }
+    }
+
     function buildScheduleBody() {
         const isAllDay = document.getElementById('f-allDay').checked;
         const startVal = document.getElementById('f-startDate').value;
         const endVal = document.getElementById('f-endDate').value;
+        const recurrenceEndDate = document.getElementById('f-recurrenceEndDate').value;
 
         let startDate = null;
         let endDate = null;
@@ -260,7 +280,8 @@
             startDate: startDate,
             endDate: endDate,
             isPublic: document.getElementById('f-isPublic').checked,
-            location: document.getElementById('f-location').value.trim() || null
+            location: document.getElementById('f-location').value.trim() || null,
+            recurrenceEndDate: recurrenceEndDate || null
         };
         const deadlineDate = document.getElementById('f-deadlineDate').value;
         const notifyDaysBefore = document.getElementById('f-notifyDaysBefore').value;
@@ -288,6 +309,23 @@
             }
             const s = await res.json();
 
+            const params = new URLSearchParams(window.location.search);
+            const dateParam = params.get('date');
+            if (dateParam && s.startDate) {
+                const timePart = s.startDate.includes('T') ? s.startDate.split('T')[1] : s.startDate.split(' ')[1] || '09:00:00';
+                const origStart = new Date(s.startDate);
+                
+                s.startDate = `${dateParam}T${timePart}`;
+                
+                if (s.endDate) {
+                    const origEnd = new Date(s.endDate);
+                    const newStart = new Date(`${dateParam}T${timePart}`);
+                    const newEnd = new Date(newStart.getTime() + (origEnd.getTime() - origStart.getTime()));
+                    const pad = (n) => String(n).padStart(2, '0');
+                    s.endDate = `${newEnd.getFullYear()}-${pad(newEnd.getMonth()+1)}-${pad(newEnd.getDate())}T${pad(newEnd.getHours())}:${pad(newEnd.getMinutes())}:${pad(newEnd.getSeconds())}`;
+                }
+            }
+
             const isAllDay = s.startDate && (s.startDate.includes('T00:00') || s.startDate.includes(' 00:00')) && s.endDate && (s.endDate.includes('T23:59') || s.endDate.includes(' 23:59'));
             document.getElementById('f-allDay').checked = isAllDay;
 
@@ -311,6 +349,9 @@
             document.getElementById('f-deadlineDate').value = s.deadlineDate || '';
             document.getElementById('f-notifyDaysBefore').value = s.notifyDaysBefore || '';
             document.getElementById('f-isPublic').checked = !!s.isPublic;
+            
+            document.getElementById('f-recurrenceEndDate').value = s.recurrenceEndDate || '';
+            toggleRecurrenceRow(s.scheduleType || 'DAILY');
         } catch (e) {
             console.error(e);
             showToast('일정 데이터를 가져오는 데 실패했습니다.', true);
@@ -339,9 +380,10 @@
                 showToast('수정 실패: ' + res.status, true);
                 return;
             }
-            showToast('일정이 수정되었습니다. 상세 페이지로 이동합니다...');
+            showToast('일정이 수정되었습니다. 캘린더로 이동합니다...');
+            const dateKey = body.startDate.slice(0, 10); // YYYY-MM-DD
             setTimeout(() => {
-                window.location.href = `/schedule/${scheduleId}`;
+                window.location.href = `/schedule?date=${dateKey}`;
             }, 800);
         } catch (e) {
             console.error(e);

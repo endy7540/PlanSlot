@@ -259,9 +259,28 @@
             
             document.getElementById('detail-title-val').textContent = s.title;
             
-            const timeStr = s.endDate 
-                ? `${formatDate(s.startDate)} ~ ${formatDate(s.endDate)}`
-                : `${formatDate(s.startDate)}`;
+            const params = new URLSearchParams(window.location.search);
+            const dateParam = params.get('date');
+            let displayStart = s.startDate;
+            let displayEnd = s.endDate;
+            
+            if (dateParam && s.startDate) {
+                const timePart = s.startDate.includes('T') ? s.startDate.split('T')[1] : s.startDate.split(' ')[1] || '09:00:00';
+                const origStart = new Date(s.startDate);
+                displayStart = `${dateParam}T${timePart}`;
+                
+                if (s.endDate) {
+                    const origEnd = new Date(s.endDate);
+                    const newStart = new Date(`${dateParam}T${timePart}`);
+                    const newEnd = new Date(newStart.getTime() + (origEnd.getTime() - origStart.getTime()));
+                    const pad = (n) => String(n).padStart(2, '0');
+                    displayEnd = `${newEnd.getFullYear()}-${pad(newEnd.getMonth()+1)}-${pad(newEnd.getDate())}T${pad(newEnd.getHours())}:${pad(newEnd.getMinutes())}:${pad(newEnd.getSeconds())}`;
+                }
+            }
+            
+            const timeStr = displayEnd 
+                ? `${formatDate(displayStart)} ~ ${formatDate(displayEnd)}`
+                : `${formatDate(displayStart)}`;
             document.getElementById('detail-time-val').textContent = timeStr;
 
             document.getElementById('detail-type').textContent = s.scheduleType;
@@ -311,7 +330,13 @@
 
     function goToEdit() {
         if (scheduleId) {
-            window.location.href = `/schedule/${scheduleId}/edit`;
+            const params = new URLSearchParams(window.location.search);
+            const dateParam = params.get('date');
+            if (dateParam) {
+                window.location.href = `/schedule/${scheduleId}/edit?date=${dateParam}`;
+            } else {
+                window.location.href = `/schedule/${scheduleId}/edit`;
+            }
         }
     }
 

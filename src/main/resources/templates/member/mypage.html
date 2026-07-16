@@ -23,78 +23,110 @@
     <!-- 헤더 포함 -->
     <div th:replace="~{global/header :: headerFragment}"></div>
 
-    <div class="mypage-container">
-        <div class="mypage-header">
-            <h1>내 프로필</h1>
-            <p>개인 정보를 확인하고 수정할 수 있습니다.</p>
+    <div class="mypage-layout">
+        <!-- 왼쪽 사이드바 메뉴 -->
+        <aside class="mypage-sidebar">
+            <h2 class="sidebar-title">마이페이지</h2>
+            <ul class="sidebar-menu">
+                <li class="active"><a href="#profile">내 프로필</a></li>
+                <li><a href="#notification-settings" onclick="alert('준비 중인 기능입니다.'); return false;">알림 설정</a></li>
+                <li><a href="#manage-group" onclick="alert('준비 중인 기능입니다.'); return false;">모임 관리</a></li>
+                <li><a href="#withdraw" id="btnShowWithdraw" class="text-danger">회원 탈퇴</a></li>
+            </ul>
+        </aside>
+
+        <!-- 오른쪽 컨텐츠 영역 -->
+        <main class="mypage-content">
+            <div class="mypage-container">
+                <div class="mypage-header">
+                    <h1>내 프로필</h1>
+                    <p>개인 정보를 확인하고 수정할 수 있습니다.</p>
+                </div>
+
+                <!-- 보기 모드 (기본 화면) -->
+                <div id="viewMode">
+                    <div class="profile-info-card">
+                        <div class="info-group">
+                            <span class="info-label">이메일 (아이디)</span>
+                            <span class="info-value" id="viewEmail">로딩중...</span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">닉네임</span>
+                            <span class="info-value" id="viewNickname">로딩중...</span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">주소</span>
+                            <span class="info-value" id="viewAddress">로딩중...</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-primary" id="btnEditMode">정보 수정하기</button>
+                </div>
+
+                <!-- 수정 모드 -->
+                <form id="updateForm" style="display: none;">
+                    <div class="form-group">
+                        <label for="email">이메일 (아이디)</label>
+                        <input type="text" id="email" disabled>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="nickname">닉네임</label>
+                        <input type="text" id="nickname" placeholder="새로운 닉네임을 입력하세요">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>주소</label>
+                        <div style="display:flex; gap:12px;">
+                            <select id="addressSido" style="flex:1; padding:14px 16px; border:2px solid #e2e8f0; border-radius:12px; outline:none; font-size:15px; color:#0f172a; background:#f8fafc;">
+                                <option value="">시/도 선택</option>
+                            </select>
+                            <select id="addressSigungu" style="flex:1; padding:14px 16px; border:2px solid #e2e8f0; border-radius:12px; outline:none; font-size:15px; color:#0f172a; background:#f8fafc;">
+                                <option value="">시/군/구 선택</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr class="divider">
+                    <div class="password-section-title">비밀번호 변경 (선택사항)</div>
+                    <p class="password-desc">비밀번호를 변경하시려면 현재 비밀번호와 새 비밀번호를 모두 입력해 주세요.</p>
+                    
+                    <div class="form-group">
+                        <label for="currentPassword">현재 비밀번호</label>
+                        <input type="password" id="currentPassword" placeholder="현재 비밀번호">
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">새 비밀번호</label>
+                        <input type="password" id="newPassword" placeholder="새 비밀번호">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">새 비밀번호 확인</label>
+                        <input type="password" id="confirmPassword" placeholder="새 비밀번호를 다시 입력하세요">
+                        <span class="error-msg" id="passwordError"></span>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button type="button" class="btn-secondary" id="btnCancelEdit">취소</button>
+                        <button type="submit" class="btn-primary">저장하기</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- 회원 탈퇴 모달 -->
+    <div id="withdrawModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3 class="modal-title text-danger">회원 탈퇴</h3>
+            <p class="modal-desc">정말로 탈퇴하시겠습니까? 탈퇴 시 등록된 개인정보는 안전하게 파기되나, 서비스 이용 기록은 정책에 따라 일부 보관될 수 있습니다.</p>
+            <div class="modal-input-group">
+                <label for="withdrawConfirmText">탈퇴를 원하시면 아래 입력창에 <strong>회원 탈퇴</strong> 라고 입력해주세요.</label>
+                <input type="text" id="withdrawConfirmText" placeholder="회원 탈퇴">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" id="btnCancelWithdraw">취소</button>
+                <button type="button" class="btn-primary btn-danger" id="btnSubmitWithdraw" disabled>탈퇴하기</button>
+            </div>
         </div>
-
-        <!-- 보기 모드 (기본 화면) -->
-        <div id="viewMode">
-            <div class="profile-info-card">
-                <div class="info-group">
-                    <span class="info-label">이메일 (아이디)</span>
-                    <span class="info-value" id="viewEmail">로딩중...</span>
-                </div>
-                <div class="info-group">
-                    <span class="info-label">닉네임</span>
-                    <span class="info-value" id="viewNickname">로딩중...</span>
-                </div>
-                <div class="info-group">
-                    <span class="info-label">주소</span>
-                    <span class="info-value" id="viewAddress">로딩중...</span>
-                </div>
-            </div>
-            <button type="button" class="btn-primary" id="btnEditMode">정보 수정하기</button>
-        </div>
-
-        <!-- 수정 모드 -->
-        <form id="updateForm" style="display: none;">
-            <div class="form-group">
-                <label for="email">이메일 (아이디)</label>
-                <input type="text" id="email" disabled>
-            </div>
-            
-            <div class="form-group">
-                <label for="nickname">닉네임</label>
-                <input type="text" id="nickname" placeholder="새로운 닉네임을 입력하세요">
-            </div>
-            
-            <div class="form-group">
-                <label>주소</label>
-                <div style="display:flex; gap:12px;">
-                    <select id="addressSido" style="flex:1; padding:14px 16px; border:2px solid #e2e8f0; border-radius:12px; outline:none; font-size:15px; color:#0f172a; background:#f8fafc;">
-                        <option value="">시/도 선택</option>
-                    </select>
-                    <select id="addressSigungu" style="flex:1; padding:14px 16px; border:2px solid #e2e8f0; border-radius:12px; outline:none; font-size:15px; color:#0f172a; background:#f8fafc;">
-                        <option value="">시/군/구 선택</option>
-                    </select>
-                </div>
-            </div>
-
-            <hr class="divider">
-            <div class="password-section-title">비밀번호 변경 (선택사항)</div>
-            <p class="password-desc">비밀번호를 변경하시려면 현재 비밀번호와 새 비밀번호를 모두 입력해 주세요.</p>
-            
-            <div class="form-group">
-                <label for="currentPassword">현재 비밀번호</label>
-                <input type="password" id="currentPassword" placeholder="현재 비밀번호">
-            </div>
-            <div class="form-group">
-                <label for="newPassword">새 비밀번호</label>
-                <input type="password" id="newPassword" placeholder="새 비밀번호">
-            </div>
-            <div class="form-group">
-                <label for="confirmPassword">새 비밀번호 확인</label>
-                <input type="password" id="confirmPassword" placeholder="새 비밀번호를 다시 입력하세요">
-                <span class="error-msg" id="passwordError"></span>
-            </div>
-            
-            <div class="btn-group">
-                <button type="button" class="btn-secondary" id="btnCancelEdit">취소</button>
-                <button type="submit" class="btn-primary">저장하기</button>
-            </div>
-        </form>
     </div>
 
     <!-- 토스트 알림창 -->

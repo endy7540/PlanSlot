@@ -226,4 +226,57 @@ document.addEventListener('DOMContentLoaded', () => {
             toast.classList.remove('show');
         }, 3000);
     }
+
+    // Withdraw Modal Logic
+    const btnShowWithdraw = document.getElementById('btnShowWithdraw');
+    const withdrawModal = document.getElementById('withdrawModal');
+    const btnCancelWithdraw = document.getElementById('btnCancelWithdraw');
+    const btnSubmitWithdraw = document.getElementById('btnSubmitWithdraw');
+    const withdrawConfirmText = document.getElementById('withdrawConfirmText');
+
+    if (btnShowWithdraw && withdrawModal) {
+        btnShowWithdraw.addEventListener('click', (e) => {
+            e.preventDefault();
+            withdrawModal.style.display = 'flex';
+            withdrawConfirmText.value = '';
+            btnSubmitWithdraw.disabled = true;
+        });
+
+        btnCancelWithdraw.addEventListener('click', () => {
+            withdrawModal.style.display = 'none';
+        });
+
+        withdrawConfirmText.addEventListener('input', (e) => {
+            if (e.target.value === '회원 탈퇴') {
+                btnSubmitWithdraw.disabled = false;
+            } else {
+                btnSubmitWithdraw.disabled = true;
+            }
+        });
+
+        btnSubmitWithdraw.addEventListener('click', () => {
+            if (withdrawConfirmText.value !== '회원 탈퇴') return;
+
+            fetch('/members/me', {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(res => {
+                if (res.ok) {
+                    alert('회원 탈퇴가 완료되었습니다. 그동안 이용해 주셔서 감사합니다.');
+                    localStorage.removeItem('jwtToken');
+                    window.location.href = '/planslot';
+                } else {
+                    alert('회원 탈퇴 처리에 실패했습니다. 다시 시도해 주세요.');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('회원 탈퇴 중 오류가 발생했습니다.');
+            });
+        });
+    }
 });

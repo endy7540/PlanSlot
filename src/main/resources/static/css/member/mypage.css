@@ -1,6 +1,84 @@
+/* Layout Wrapper */
+.mypage-layout {
+    display: flex;
+    width: 50%;
+    margin: 24px auto;
+    padding: 0 28px;
+    gap: 40px;
+    align-items: flex-start;
+}
+
+/* 반응형: 브라우저 창 크기가 1280px 이하로 작아지면 화면을 100% 꽉 채웁니다 */
+@media (max-width: 1280px) {
+    .mypage-layout {
+        width: 100%;
+    }
+}
+
+/* Sidebar Styling */
+.mypage-sidebar {
+    flex: 0 0 180px;
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 28px 0;
+    box-shadow: 0 10px 40px rgba(8, 32, 51, 0.08);
+}
+
+.sidebar-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #0f172a;
+    padding: 0 28px;
+    margin: 0 0 24px 0;
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sidebar-menu li a {
+    display: flex;
+    align-items: center;
+    padding: 14px 28px;
+    color: #64748b;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.sidebar-menu li:hover a {
+    background: #f8fafc;
+    color: #0ea5e9;
+}
+
+.sidebar-menu li.active a {
+    background: #f0f9ff;
+    color: #0284c7;
+    border-left: 3px solid #0ea5e9;
+    font-weight: 600;
+}
+
+.sidebar-menu li a.text-danger:hover {
+    color: #ef4444;
+    background: #fef2f2;
+}
+
+/* Main Content Area */
+.mypage-content {
+    flex: 1;
+    min-width: 0;
+}
+
 .mypage-container {
-    max-width: 600px;
-    margin: 60px auto;
+    width: 100%;
+    box-sizing: border-box;
     padding: 40px;
     background: #ffffff;
     border-radius: 20px;
@@ -194,4 +272,85 @@
 
 .toast-message.show {
     transform: translateX(-50%) translateY(0);
+}
+
+/* Modal Styling */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(8, 32, 51, 0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1050;
+}
+
+.modal-content {
+    background: #ffffff;
+    padding: 32px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(8, 32, 51, 0.15);
+    width: 400px;
+    max-width: 90%;
+    text-align: center;
+}
+
+.modal-title {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 20px;
+}
+
+.modal-title.text-danger {
+    color: #e11d48;
+}
+
+.modal-desc {
+    font-size: 14px;
+    color: #475569;
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+.modal-input-group label {
+    display: block;
+    font-size: 13px;
+    color: #334155;
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.modal-input-group input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 15px;
+    margin-bottom: 24px;
+    box-sizing: border-box;
+}
+
+.modal-input-group input:focus {
+    border-color: #e11d48;
+    outline: none;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.btn-danger {
+    background: #e11d48 !important;
+}
+
+.btn-danger:hover {
+    background: #be123c !important;
+}
+
+.btn-danger:disabled {
+    background: #fda4af !important;
+    cursor: not-allowed;
 }

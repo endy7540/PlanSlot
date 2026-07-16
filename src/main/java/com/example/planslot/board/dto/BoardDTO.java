@@ -1,7 +1,10 @@
 package com.example.planslot.board.dto;
 
+import com.example.planslot.board.entity.BoardApplicationStatus;
+import com.example.planslot.board.entity.BoardRecruitmentStatus;
 import com.example.planslot.board.entity.BoardStatus;
 import com.example.planslot.board.entity.BoardType;
+import com.example.planslot.group.entity.GroupMemberStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,6 +27,11 @@ public class BoardDTO {
     private Integer viewCount;
     private BoardType boardType;
     private BoardStatus boardStatus;
+    private BoardRecruitmentStatus recruitmentStatus;
+    private Long groupId;
+    private Boolean groupCreated;
+    private BoardApplicationStatus myApplicationStatus;
+    private GroupMemberStatus myGroupMemberStatus;
     private BoardImageDTO boardImage;
     private Long commentCount;
     private LocalDateTime createdAt;

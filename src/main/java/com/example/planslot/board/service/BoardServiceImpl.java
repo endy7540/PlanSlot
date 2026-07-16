@@ -4,14 +4,19 @@ import com.example.planslot.board.dto.BoardDTO;
 import com.example.planslot.board.dto.BoardImageDTO;
 import com.example.planslot.board.dto.BoardMemberDTO;
 import com.example.planslot.board.entity.Board;
+import com.example.planslot.board.entity.BoardApplicationStatus;
 import com.example.planslot.board.entity.BoardCommentStatus;
 import com.example.planslot.board.entity.BoardImage;
 import com.example.planslot.board.entity.BoardStatus;
 import com.example.planslot.board.entity.BoardType;
+import com.example.planslot.board.repository.BoardApplicationRepository;
 import com.example.planslot.board.repository.BoardCommentRepository;
 import com.example.planslot.board.repository.BoardImageRepository;
 import com.example.planslot.board.repository.BoardRepository;
 import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
+import com.example.planslot.group.entity.GroupMemberStatus;
+import com.example.planslot.group.repository.GroupMemberRepository;
+import com.example.planslot.group.repository.GroupRepository;
 import com.example.planslot.boardreport.entity.BoardReport;
 import com.example.planslot.boardreport.entity.BoardReportTargetType;
 import com.example.planslot.boardreport.repository.BoardReportRepository;
@@ -57,6 +62,9 @@ public class BoardServiceImpl implements BoardService {
     private final MemberRepository memberRepository;
     private final BoardCommentRepository boardCommentRepository;
     private final BoardReportRepository boardReportRepository;
+    private final BoardApplicationRepository boardApplicationRepository;
+    private final GroupMemberRepository groupMemberRepository;
+    private final GroupRepository groupRepository;
 
     @Value("${file.upload.board-path:./uploads/board}")
     private String boardUploadPath;
@@ -111,16 +119,20 @@ public class BoardServiceImpl implements BoardService {
         }
 
         Map<Long, Long> commentCountMap = getCommentCountMap(boardPage.getContent());
+        Map<Long, Long> groupIdMap = getGroupIdMap(boardPage.getContent());
 
-        return boardPage.map(board ->
-                toListDTO(board, commentCountMap.getOrDefault(board.getBoardId(), 0L)
+        return boardPage.map(board -> toListDTO(
+                board,
+                commentCountMap.getOrDefault(board.getBoardId(), 0L),
+                groupIdMap.get(board.getBoardId())
         ));
     }
 
     // 게시글 상세 조회 및 조회수 증가
     @Override
     @Transactional
-    public BoardDTO getBoardDetail(Long boardId) {
+    public BoardDTO getBoardDetail(Long boardId, String memberEmail) {
+        Member member = findMember(memberEmail);
         int updatedCount = boardRepository.increaseViewCount(boardId, BoardStatus.ACTIVE);
 
         if (updatedCount == 0) {
@@ -129,7 +141,7 @@ public class BoardServiceImpl implements BoardService {
 
         Board board = findBoard(boardId);
 
-        return toDetailDTO(board);
+        return toDetailDTO(board, member);
     }
 
     // 로그인 회원 조회
@@ -156,7 +168,7 @@ public class BoardServiceImpl implements BoardService {
 
         board.update(boardDTO.getTitle().trim(), boardDTO.getContent().trim());
 
-        return toDetailDTO(board);
+        return toDetailDTO(board, member);
     }
 
     // 게시글 삭제
@@ -440,8 +452,37 @@ public class BoardServiceImpl implements BoardService {
         return commentCountMap;
     }
 
+    // 게시글별 실제 존재하는 모임 ID 조회
+    private Map<Long, Long> getGroupIdMap(List<Board> boards) {
+        if (boards.isEmpty()) {
+            return Map.of();
+        }
+
+        Set<Long> groupIds = boards.stream()
+                .map(Board::getGroupId)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+
+        if (groupIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Set<Long> existingGroupIds = groupRepository.findAllById(groupIds).stream()
+                .map(group -> group.getId())
+                .collect(java.util.stream.Collectors.toSet());
+        Map<Long, Long> groupIdMap = new HashMap<>();
+
+        for (Board board : boards) {
+            if (board.getGroupId() != null && existingGroupIds.contains(board.getGroupId())) {
+                groupIdMap.put(board.getBoardId(), board.getGroupId());
+            }
+        }
+
+        return groupIdMap;
+    }
+
     // 게시글 목록 DTO 변환
-    private BoardDTO toListDTO(Board board, long commentCount) {
+    private BoardDTO toListDTO(Board board, long commentCount, Long groupId) {
         return BoardDTO.builder()
                 .boardId(board.getBoardId())
                 .writerId(board.getWriter().getId())
@@ -449,13 +490,16 @@ public class BoardServiceImpl implements BoardService {
                 .title(board.getTitle())
                 .viewCount(board.getViewCount())
                 .boardType(board.getBoardType())
+                .recruitmentStatus(board.getEffectiveRecruitmentStatus())
+                .groupId(groupId)
+                .groupCreated(groupId != null)
                 .commentCount(commentCount)
                 .createdAt(board.getCreatedAt())
                 .build();
     }
 
     // 게시글 상세 DTO 변환
-    private BoardDTO toDetailDTO(Board board) {
+    private BoardDTO toDetailDTO(Board board, Member member) {
         BoardImageDTO boardImage = boardImageRepository.findByBoardBoardId(board.getBoardId())
                 .map(this::toImageDTO)
                 .orElse(null);
@@ -463,6 +507,17 @@ public class BoardServiceImpl implements BoardService {
         long commentCount = boardCommentRepository.countByBoardIdAndCommentStatus(
                 board.getBoardId(), BoardCommentStatus.ACTIVE
         );
+
+        Long groupId = resolveExistingGroupId(board);
+        BoardApplicationStatus myApplicationStatus = boardApplicationRepository
+                .findByBoard_BoardIdAndApplicant_Id(board.getBoardId(), member.getId())
+                .map(application -> application.getApplicationStatus())
+                .orElse(null);
+        GroupMemberStatus myGroupMemberStatus = groupId == null
+                ? null
+                : groupMemberRepository.findByGroup_IdAndMember_Id(groupId, member.getId())
+                .map(groupMember -> groupMember.getMemberStatus())
+                .orElse(null);
 
         return BoardDTO.builder()
                 .boardId(board.getBoardId())
@@ -473,11 +528,32 @@ public class BoardServiceImpl implements BoardService {
                 .viewCount(board.getViewCount())
                 .boardType(board.getBoardType())
                 .boardStatus(board.getBoardStatus())
+                .recruitmentStatus(board.getEffectiveRecruitmentStatus())
+                .groupId(groupId)
+                .groupCreated(groupId != null)
+                .myApplicationStatus(myApplicationStatus)
+                .myGroupMemberStatus(myGroupMemberStatus)
                 .boardImage(boardImage)
                 .commentCount(commentCount)
                 .createdAt(board.getCreatedAt())
                 .updatedAt(board.getUpdatedAt())
                 .build();
+    }
+
+    // 삭제된 모임을 가리키는 ID는 게시글에서 정리하고 모집 마감 상태는 유지
+    private Long resolveExistingGroupId(Board board) {
+        Long groupId = board.getGroupId();
+
+        if (groupId == null) {
+            return null;
+        }
+
+        if (groupRepository.existsById(groupId)) {
+            return groupId;
+        }
+
+        boardRepository.clearGroupId(board.getBoardId(), groupId);
+        return null;
     }
 
     // 게시글 이미지 DTO 변환

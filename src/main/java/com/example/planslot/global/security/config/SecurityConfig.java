@@ -29,13 +29,21 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/auth/signup", "/auth/login", "/error", "/auth", "/home", "/favicon.ico",
-                                "/members/checkDuplicate", "/api/test/**","/auth/email/send", "/auth/email/verify", "/auth/oauth2-callback",
-                                "/css/**", "/js/**", "/images/**", "/group/**", "/notification/list", "/board", "/board/notice",
-                                "/board/study", "/board/club", "/board/free", "/board/detail/**", "/board/write/**", "/uploads/board/**").permitAll()
-                        .requestMatchers("/", "/api/members/signup", "/api/auth/login", "/error", "/auth", "/home", "/favicon.ico",
-                                "/api/test/**", "/css/**", "/js/**", "/images/**", "/group/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/schedule", "/schedule/**").permitAll()
+                        .requestMatchers(
+                                // 공통 및 정적 리소스
+                                "/", "/planslot", "/error", "/favicon.ico",
+                                "/css/**", "/js/**", "/images/**",
+
+                                // 인증 및 회원가입 관련
+                                "/auth", "/auth/signup", "/auth/login", "/auth/email/send", "/auth/email/verify", "/auth/oauth2-callback",
+                                "/members/checkDuplicate",
+
+                                // 도메인 화면 및 기타
+                                "/group/**", "/notification/list",
+                                "/board", "/board/notice", "/board/study", "/board/club", "/board/free",
+                                "/board/detail/**", "/board/write/**"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/schedule", "/schedule/*").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

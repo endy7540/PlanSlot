@@ -8,4 +8,7 @@ public interface MemberService {
     
     com.example.planslot.member.dto.MemberResponseDTO.MyPage getMyPage(String email);
     void updateMyInfo(String email, MemberRequestDTO.UpdateInfo request);
+    void updateNotification(String email, MemberRequestDTO.UpdateNotification request);
+    void updateProfileImage(String email, String imageUrl);
+    void withdraw(String email);
 }

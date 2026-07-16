@@ -19,13 +19,19 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     @Query("SELECT s FROM Schedule s WHERE s.scheduleId = :scheduleId AND s.deletedAt IS NULL")
     Optional<Schedule> findByIdAndNotDeleted(@Param("scheduleId") Long scheduleId);
 
-    // 특정 기간 내 일정 조회 (캘린더 화면에서 월/주 단위 조회 시 사용)
+    // 특정 기간 내 일정 조회를 위한 후보 일정 조회 (반복 일정 처리 목적)
     @Query("SELECT s FROM Schedule s WHERE s.member.id = :memberId " +
             "AND s.deletedAt IS NULL " +
-            "AND s.startDate BETWEEN :start AND :end")
-    List<Schedule> findAllByMemberIdAndPeriod(@Param("memberId") Long memberId,
-                                              @Param("start") LocalDateTime start,
-                                              @Param("end") LocalDateTime end);
+            "AND (" +
+            "  (s.scheduleType = com.example.planslot.schedule.entity.ScheduleType.DAILY AND (" +
+            "     (s.endDate IS NOT NULL AND s.startDate <= :end AND s.endDate >= :start) OR " +
+            "     (s.endDate IS NULL AND s.startDate BETWEEN :start AND :end)" +
+            "  )) OR " +
+            "  (s.scheduleType != com.example.planslot.schedule.entity.ScheduleType.DAILY AND s.startDate <= :end)" +
+            ")")
+    List<Schedule> findAllByMemberIdAndPeriodCandidate(@Param("memberId") Long memberId,
+                                                       @Param("start") LocalDateTime start,
+                                                       @Param("end") LocalDateTime end);
 
     // 요청한 일정이 실제로 해당 회원 소유인지 확인 (수정/삭제 권한 체크용)
     boolean existsByScheduleIdAndMember_Id(Long scheduleId, Long memberId);

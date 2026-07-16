@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class ScheduleDTO {
 
     private Long scheduleId;
@@ -53,6 +53,7 @@ public class ScheduleDTO {
 
     private java.time.LocalDate deadlineDate;
     private Integer notifyDaysBefore;
+    private java.time.LocalDate recurrenceEndDate;
 
     // ===== 변환 메서드 =====
 
@@ -71,6 +72,7 @@ public class ScheduleDTO {
                 .location(schedule.getLocation())
                 .createdAt(schedule.getCreatedAt())
                 .updatedAt(schedule.getUpdatedAt())
+                .recurrenceEndDate(schedule.getRecurrenceEndDate())
                 .build();
     }
     public static ScheduleDTO fromWithDeadline(Schedule schedule, Deadline deadline) {

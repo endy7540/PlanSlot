@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -246,24 +247,88 @@ public class GroupServiceImpl implements GroupService {
                 String nickname = gm.getMember().getNickname();
                 List<Schedule> schedules;
                 if (start != null && end != null) {
-                    schedules = scheduleRepository.findAllByMemberIdAndPeriod(targetMemberId, start, end);
+                    schedules = scheduleRepository.findAllByMemberIdAndPeriodCandidate(targetMemberId, start, end);
+                    for (Schedule s : schedules) {
+                        if ("Y".equals(s.getIsPublic()) || targetMemberId.equals(memberId)) {
+                            if (s.getScheduleType() == null || s.getScheduleType() == ScheduleType.DAILY) {
+                                String dateStr = s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : "";
+                                String timeStr = s.getStartDate() != null ? s.getStartDate().toLocalTime().toString() : "";
+                                result.add(new GroupDTO.CalendarScheduleInfo(
+                                        s.getScheduleId().toString(),
+                                        nickname,
+                                        s.getTitle(),
+                                        dateStr,
+                                        timeStr,
+                                        s.getIsPublic()
+                                ));
+                            } else {
+                                 LocalDateTime eventStart = s.getStartDate();
+                                 LocalDateTime eventEnd = s.getEndDate();
+                                 LocalDate searchStart = start.toLocalDate();
+                                 LocalDate searchEnd = end.toLocalDate();
+                                 LocalDate limitStart = eventStart.toLocalDate();
+                                 LocalDate limitEnd = s.getRecurrenceEndDate();
+
+                                 for (LocalDate date = searchStart; !date.isAfter(searchEnd); date = date.plusDays(1)) {
+                                     if (date.isBefore(limitStart)) {
+                                         continue;
+                                     }
+                                     if (limitEnd != null && date.isAfter(limitEnd)) {
+                                         continue;
+                                     }
+
+
+                                    boolean matches = false;
+                                    if (s.getScheduleType() == ScheduleType.WEEKLY) {
+                                        matches = (date.getDayOfWeek() == limitStart.getDayOfWeek());
+                                    } else if (s.getScheduleType() == ScheduleType.MONTHLY) {
+                                        int targetDay = limitStart.getDayOfMonth();
+                                        int maxDayInMonth = date.lengthOfMonth();
+                                        int actualDay = Math.min(targetDay, maxDayInMonth);
+                                        matches = (date.getDayOfMonth() == actualDay);
+                                    } else if (s.getScheduleType() == ScheduleType.YEARLY) {
+                                        int targetMonth = limitStart.getMonthValue();
+                                        int targetDay = limitStart.getDayOfMonth();
+                                        if (date.getMonthValue() == targetMonth) {
+                                            if (targetMonth == 2 && targetDay == 29 && !date.isLeapYear()) {
+                                                matches = (date.getDayOfMonth() == 28);
+                                            } else {
+                                                matches = (date.getDayOfMonth() == targetDay);
+                                            }
+                                        }
+                                    }
+
+                                    if (matches) {
+                                        String dateStr = date.toString();
+                                        String timeStr = eventStart.toLocalTime().toString();
+                                        result.add(new GroupDTO.CalendarScheduleInfo(
+                                                s.getScheduleId().toString(),
+                                                nickname,
+                                                s.getTitle(),
+                                                dateStr,
+                                                timeStr,
+                                                s.getIsPublic()
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
                 } else {
                     schedules = scheduleRepository.findAllByMemberId(targetMemberId);
-                }
-
-                for (Schedule s : schedules) {
-                    // 모임 캘린더에는 공개(Y) 일정과 자신의 비공개(N) 일정 표시
-                    if ("Y".equals(s.getIsPublic()) || targetMemberId.equals(memberId)) {
-                        String dateStr = s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : "";
-                        String timeStr = s.getStartDate() != null ? s.getStartDate().toLocalTime().toString() : "";
-                        result.add(new GroupDTO.CalendarScheduleInfo(
-                                s.getScheduleId().toString(),
-                                nickname,
-                                s.getTitle(),
-                                dateStr,
-                                timeStr,
-                                s.getIsPublic()
-                        ));
+                    for (Schedule s : schedules) {
+                        if ("Y".equals(s.getIsPublic()) || targetMemberId.equals(memberId)) {
+                            String dateStr = s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : "";
+                            String timeStr = s.getStartDate() != null ? s.getStartDate().toLocalTime().toString() : "";
+                            result.add(new GroupDTO.CalendarScheduleInfo(
+                                    s.getScheduleId().toString(),
+                                    nickname,
+                                    s.getTitle(),
+                                    dateStr,
+                                    timeStr,
+                                    s.getIsPublic()
+                            ));
+                        }
                     }
                 }
             }

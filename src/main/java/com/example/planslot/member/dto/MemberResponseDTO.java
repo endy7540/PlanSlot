@@ -11,5 +11,8 @@ public class MemberResponseDTO {
         private String email;
         private String nickname;
         private String address;
+        private String profileImageUrl;
+        private boolean allowActivityNoti;
+        private boolean allowMarketingNoti;
     }
 }

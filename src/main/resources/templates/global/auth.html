@@ -208,6 +208,23 @@
                 </select>
             </div>
 
+            <!-- 알림 수신 동의 -->
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px; background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                <div style="font-size:13px; color:#475569; margin-bottom:4px; font-weight:bold;">알림 수신 동의</div>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" id="agreeSystemNoti" style="width:16px; height:16px; margin:0; cursor:pointer;">
+                    [필수] 시스템 및 보안 중요 알림 수신 동의
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" id="allowActivityNoti" checked style="width:16px; height:16px; margin:0; cursor:pointer;">
+                    [선택] 모임 및 일정 활동 알림 수신 동의
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                    <input type="checkbox" id="allowMarketingNoti" style="width:16px; height:16px; margin:0; cursor:pointer;">
+                    [선택] 혜택 및 이벤트 알림 수신 동의
+                </label>
+            </div>
+
             <div id="signupMsg" class="msg-box"></div>
 
             <div class="btn-row" style="margin-top:10px;">
@@ -474,7 +491,7 @@
                 localStorage.setItem("jwtToken", tokenStr);
                 document.cookie = "jwtToken=" + tokenStr + "; path=/;";
 
-                window.location.href = "/home";
+                window.location.href = "/planslot";
             } else {
                 msgBox.style.color = "#B91C1C";
                 msgBox.innerText = '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.';
@@ -495,11 +512,20 @@
         const sido = document.getElementById('signupSido').value;
         const sigungu = document.getElementById('signupSigungu').value;
         const address = (sido && sigungu) ? `${sido} ${sigungu}` : '';
+        const agreeSystemNoti = document.getElementById('agreeSystemNoti').checked;
+        const allowActivityNoti = document.getElementById('allowActivityNoti').checked;
+        const allowMarketingNoti = document.getElementById('allowMarketingNoti').checked;
         const msgBox = document.getElementById('signupMsg');
 
         if(!id || !pw || !pwConfirm || !email) {
             msgBox.style.color = "#B91C1C";
             msgBox.innerText = '필수 항목(아이디, 비밀번호, 비밀번호 재확인, 이메일)을 모두 입력해주세요.';
+            return;
+        }
+
+        if(!agreeSystemNoti) {
+            msgBox.style.color = "#B91C1C";
+            msgBox.innerText = '[필수] 시스템 및 보안 중요 알림 수신에 동의해주세요.';
             return;
         }
 
@@ -531,7 +557,9 @@
                     password: pw,
                     email: email,
                     nickname: nickname,
-                    address: address
+                    address: address,
+                    allowActivityNoti: allowActivityNoti,
+                    allowMarketingNoti: allowMarketingNoti
                 })
             });
 

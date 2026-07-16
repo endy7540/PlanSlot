@@ -17,9 +17,9 @@ public class CustomErrorController implements ErrorController {
         if (status != null) {
             Integer statusCode = Integer.valueOf(status.toString());
             if (statusCode == HttpStatus.NOT_FOUND.value()) {
-                return "redirect:/home";
+                return "redirect:/planslot";
             }
         }
-        return "redirect:/home";
+        return "redirect:/planslot";
     }
 }

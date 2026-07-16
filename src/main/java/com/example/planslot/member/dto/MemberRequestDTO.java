@@ -14,6 +14,8 @@ public class MemberRequestDTO {
         private String email;
         private String nickname;
         private String address;
+        private boolean allowActivityNoti;
+        private boolean allowMarketingNoti;
     }
 
     @Getter
@@ -24,5 +26,13 @@ public class MemberRequestDTO {
         private String address;
         private String currentPassword;
         private String newPassword;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class UpdateNotification {
+        private boolean allowActivityNoti;
+        private boolean allowMarketingNoti;
     }
 }

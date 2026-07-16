@@ -35,6 +35,8 @@ public class MemberServiceImpl implements MemberService{
                 .address(request.getAddress())
                 .role(Member.Role.MEMBER)
                 .status(Member.Status.ACTIVE)
+                .allowActivityNoti(request.isAllowActivityNoti())
+                .allowMarketingNoti(request.isAllowMarketingNoti())
                 .build();
 
         return memberRepository.save(member).getId();
@@ -53,6 +55,9 @@ public class MemberServiceImpl implements MemberService{
                 .email(member.getEmail())
                 .nickname(member.getNickname())
                 .address(member.getAddress())
+                .profileImageUrl(member.getProfileImageUrl())
+                .allowActivityNoti(member.isAllowActivityNoti())
+                .allowMarketingNoti(member.isAllowMarketingNoti())
                 .build();
     }
 
@@ -74,5 +79,29 @@ public class MemberServiceImpl implements MemberService{
         }
         
         member.updateInfo(request.getNickname(), encodedPassword, request.getAddress());
+    }
+
+    @Override
+    @Transactional
+    public void withdraw(String email) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        member.withdraw();
+    }
+
+    @Override
+    @Transactional
+    public void updateNotification(String email, MemberRequestDTO.UpdateNotification request) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        member.updateNotification(request.isAllowActivityNoti(), request.isAllowMarketingNoti());
+    }
+
+    @Override
+    @Transactional
+    public void updateProfileImage(String email, String imageUrl) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        member.updateProfileImage(imageUrl);
     }
 }

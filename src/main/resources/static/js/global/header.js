@@ -41,7 +41,10 @@ window.addEventListener("DOMContentLoaded", function() {
         const headerNickname = document.getElementById("headerNickname");
         if (headerNickname) {
             fetch('/members/me', {
-                headers: { 'Authorization': 'Bearer ' + token }
+                headers: { 
+                    'Authorization': 'Bearer ' + token,
+                    'Accept': 'application/json'
+                }
             })
             .then(res => {
                 if (res.ok) return res.json();
@@ -49,6 +52,14 @@ window.addEventListener("DOMContentLoaded", function() {
             })
             .then(data => {
                 headerNickname.innerText = data.nickname + '님';
+                const headerProfileImage = document.getElementById("headerProfileImage");
+                if (headerProfileImage) {
+                    if (data.profileImageUrl) {
+                        headerProfileImage.src = data.profileImageUrl;
+                    } else {
+                        headerProfileImage.src = "/images/default-avatar.png";
+                    }
+                }
             })
             .catch(() => {
                 headerNickname.innerText = '회원님';

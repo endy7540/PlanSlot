@@ -7,7 +7,7 @@
   <link rel="stylesheet" th:href="@{/css/global/header.css}">
 
   <header class="header-nav">
-    <div class="header-brand" onclick="location.href='/'">
+    <div class="header-brand" onclick="location.href='/planslot'">
       <div class="logo">PlanSlot</div>
       <div class="tagline">
         AI가 함께하는 일정 플랫폼
@@ -54,7 +54,7 @@
       <div class="profile-dropdown-wrap" id="profileWrap" style="display: none;">
         <button class="profile-btn" id="profileBtn" type="button" aria-label="프로필 메뉴">
           <span class="profile-nickname" id="headerNickname">로딩중...</span>
-          <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" alt="Profile" class="profile-img">
+          <img src="/images/default-avatar.png" onerror="this.src='https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'" alt="" class="profile-img" id="headerProfileImage">
         </button>
         <div class="profile-dropdown" id="profileDropdown" style="display: none;">
           <a th:href="@{/mypage}">마이페이지</a>

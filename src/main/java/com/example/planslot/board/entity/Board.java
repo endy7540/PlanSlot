@@ -44,6 +44,13 @@ public class Board {
     @Column(name = "board_status", nullable = false, length = 30)
     private BoardStatus boardStatus;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recruitment_status", length = 20)
+    private BoardRecruitmentStatus recruitmentStatus;
+
+    @Column(name = "group_id", unique = true)
+    private Long groupId;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -60,16 +67,34 @@ public class Board {
         this.viewCount = 0;
         this.boardType = boardType;
         this.boardStatus = BoardStatus.ACTIVE;
+        this.recruitmentStatus = boardType == BoardType.STUDY || boardType == BoardType.CLUB
+                ? BoardRecruitmentStatus.OPEN
+                : null;
     }
 
-    // 게시글 수정
     public void update(String title, String content) {
         this.title = title;
         this.content = content;
     }
 
-    // 게시글 삭제 상태 변경
     public void delete() {
         this.boardStatus = BoardStatus.DELETED;
     }
+
+    public boolean isRecruitmentBoard() {
+        return boardType == BoardType.STUDY || boardType == BoardType.CLUB;
+    }
+
+    public boolean isRecruitmentOpen() {
+        return isRecruitmentBoard() && recruitmentStatus != BoardRecruitmentStatus.CLOSED && groupId == null;
+    }
+
+    public BoardRecruitmentStatus getEffectiveRecruitmentStatus() {
+        if (!isRecruitmentBoard()) {
+            return null;
+        }
+
+        return recruitmentStatus == null ? BoardRecruitmentStatus.OPEN : recruitmentStatus;
+    }
+
 }

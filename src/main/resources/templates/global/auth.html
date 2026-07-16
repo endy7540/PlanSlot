@@ -199,7 +199,14 @@
                 <button type="button" class="ghost" style="padding:0 16px; margin:0;" onclick="verifyEmailCodeBtn()">인증 확인</button>
             </div>
             <input type="text" id="signupNickname" placeholder="닉네임 (예: 홍길동)">
-            <input type="text" id="signupAddress" placeholder="주소 / 소속 (선택)">
+            <div style="display:flex; gap:8px;">
+                <select id="signupSido" style="flex:1; border:2px solid #DCEFFC!important; border-radius:10px; padding:14px; outline:none; font-size:14px; color:#182B3A;">
+                    <option value="">시/도 선택</option>
+                </select>
+                <select id="signupSigungu" style="flex:1; border:2px solid #DCEFFC!important; border-radius:10px; padding:14px; outline:none; font-size:14px; color:#182B3A;">
+                    <option value="">시/군/구 선택</option>
+                </select>
+            </div>
 
             <div id="signupMsg" class="msg-box"></div>
 
@@ -485,7 +492,9 @@
         const pwConfirm = document.getElementById('signupPwConfirm').value;
         const email = document.getElementById('signupEmail').value;
         const nickname = document.getElementById('signupNickname').value;
-        const address = document.getElementById('signupAddress').value;
+        const sido = document.getElementById('signupSido').value;
+        const sigungu = document.getElementById('signupSigungu').value;
+        const address = (sido && sigungu) ? `${sido} ${sigungu}` : '';
         const msgBox = document.getElementById('signupMsg');
 
         if(!id || !pw || !pwConfirm || !email) {
@@ -544,6 +553,14 @@
             msgBox.innerText = '서버 통신에 실패했습니다.';
         }
     }
+</script>
+<script src="/js/global/region.js"></script>
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        if (typeof initRegionSelects === 'function') {
+            initRegionSelects('signupSido', 'signupSigungu');
+        }
+    });
 </script>
 
 </body>

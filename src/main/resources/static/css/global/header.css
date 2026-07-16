@@ -1,4 +1,4 @@
-﻿.header-nav{
+.header-nav{
   height:78px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
   padding:0 28px;background:#F3FAFF;border-bottom:2px solid #DCEFFC;
   box-shadow:0 6px 18px rgba(8,32,51,.05);
@@ -20,9 +20,15 @@
 /* 프로필 드롭다운 (Google 스타일) */
 .profile-dropdown-wrap { position: relative; }
 .profile-btn { 
-  background: none; border: none; cursor: pointer; padding: 0; 
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; outline: none;
+  background: none; border: none; cursor: pointer; padding: 4px 8px; 
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  border-radius: 20px; outline: none; transition: background 0.2s;
+}
+.profile-btn:hover {
+  background: #f1f5f9;
+}
+.profile-nickname {
+  font-size: 15px; font-weight: bold; color: #075985;
 }
 .profile-img {
   width: 40px; height: 40px; border-radius: 50%; object-fit: cover;

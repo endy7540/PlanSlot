@@ -52,6 +52,14 @@ window.addEventListener("DOMContentLoaded", function() {
             })
             .then(data => {
                 headerNickname.innerText = data.nickname + '님';
+                const headerProfileImage = document.getElementById("headerProfileImage");
+                if (headerProfileImage) {
+                    if (data.profileImageUrl) {
+                        headerProfileImage.src = data.profileImageUrl;
+                    } else {
+                        headerProfileImage.src = "/images/default-avatar.png";
+                    }
+                }
             })
             .catch(() => {
                 headerNickname.innerText = '회원님';

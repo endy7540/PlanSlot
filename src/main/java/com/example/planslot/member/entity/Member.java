@@ -54,6 +54,17 @@ public class Member {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Column(name = "profile_image_url", length = 255)
+    private String profileImageUrl;
+
+    @Column(name = "allow_activity_noti", nullable = false)
+    @Builder.Default
+    private boolean allowActivityNoti = true;
+
+    @Column(name = "allow_marketing_noti", nullable = false)
+    @Builder.Default
+    private boolean allowMarketingNoti = false;
+
     public enum Role {
         MEMBER, ADMIN
     }
@@ -72,6 +83,15 @@ public class Member {
         if (address != null) {
             this.address = address;
         }
+    }
+
+    public void updateNotification(boolean allowActivityNoti, boolean allowMarketingNoti) {
+        this.allowActivityNoti = allowActivityNoti;
+        this.allowMarketingNoti = allowMarketingNoti;
+    }
+
+    public void updateProfileImage(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
     }
 
     public void withdraw() {

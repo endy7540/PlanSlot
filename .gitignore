@@ -38,3 +38,6 @@ out/
 
 ### application ###
 src/main/resources/application-secret.yaml
+
+### Uploads ###
+uploads/

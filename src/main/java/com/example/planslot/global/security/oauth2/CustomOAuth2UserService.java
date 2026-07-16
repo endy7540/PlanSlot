@@ -34,12 +34,14 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         String providerId = "";
         String email = "";
         String name = "";
+        String profileImageUrl = null;
         String userNameAttributeName = "";
 
         if ("google".equals(registrationId)) {
             providerId = String.valueOf(attributes.get("sub"));
             email = String.valueOf(attributes.get("email"));
             name = String.valueOf(attributes.get("name"));
+            profileImageUrl = attributes.containsKey("picture") ? String.valueOf(attributes.get("picture")) : null;
             userNameAttributeName = "sub";
         } else if ("kakao".equals(registrationId)) {
             providerId = String.valueOf(attributes.get("id"));
@@ -48,6 +50,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
             
             email = kakaoAccount.containsKey("email") ? String.valueOf(kakaoAccount.get("email")) : "kakao_" + providerId + "@kakao.com";
             name = profile.containsKey("nickname") ? String.valueOf(profile.get("nickname")) : "카카오유저";
+            profileImageUrl = profile.containsKey("profile_image_url") ? String.valueOf(profile.get("profile_image_url")) : null;
             userNameAttributeName = "id";
         }
 
@@ -57,16 +60,29 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         Member member = memberRepository.findByEmail(email).orElse(null);
         if (member == null) {
             String loginId = registrationId + "_" + providerId;
-            String nickname = name + "_" + UUID.randomUUID().toString().substring(0, 4);
+            
+            String nickname = name;
+            int count = 1;
+            while (memberRepository.existsByNickname(nickname)) {
+                nickname = name + count;
+                count++;
+            }
             member = Member.builder()
                     .loginId(loginId)
                     .password("") // 소셜 로그인은 비밀번호 없음
                     .email(email)
                     .nickname(nickname)
+                    .profileImageUrl(profileImageUrl)
                     .role(Member.Role.MEMBER)
                     .status(Member.Status.ACTIVE)
                     .build();
             memberRepository.save(member);
+        } else {
+            // 기존 회원이지만 프로필 이미지가 없는 경우 소셜 이미지로 동기화
+            if (member.getProfileImageUrl() == null && profileImageUrl != null) {
+                member.updateProfileImage(profileImageUrl);
+                memberRepository.save(member);
+            }
         }
 
         return new DefaultOAuth2User(

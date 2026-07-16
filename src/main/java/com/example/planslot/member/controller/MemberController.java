@@ -29,11 +29,15 @@ public class MemberController {
     }
 
     @org.springframework.web.bind.annotation.PutMapping("/me")
-    public ResponseEntity<Void> updateMyPage(org.springframework.security.core.Authentication authentication, @org.springframework.web.bind.annotation.RequestBody com.example.planslot.member.dto.MemberRequestDTO.UpdateInfo request) {
+    public ResponseEntity<?> updateMyPage(org.springframework.security.core.Authentication authentication, @org.springframework.web.bind.annotation.RequestBody com.example.planslot.member.dto.MemberRequestDTO.UpdateInfo request) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
         }
-        memberService.updateMyInfo(authentication.getName(), request);
-        return ResponseEntity.ok().build();
+        try {
+            memberService.updateMyInfo(authentication.getName(), request);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+        }
     }
 }

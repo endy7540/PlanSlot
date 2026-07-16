@@ -326,11 +326,11 @@
             cells.push({ day: d, otherMonth: false, y: viewYear, m: viewMonth });
         }
         // 다음달 머리 (6주 채우기)
+        const targetM = viewMonth === 11 ? 0 : viewMonth + 1;
+        const targetY = viewMonth === 11 ? viewYear + 1 : viewYear;
+        let nextDay = 1;
         while (cells.length % 7 !== 0 || cells.length < 42) {
-            const last = cells[cells.length - 1];
-            const nextM = last.m === 11 ? 0 : last.m + 1;
-            const nextY = last.m === 11 ? last.y + 1 : last.y;
-            cells.push({ day: cells.filter(c => c.m === nextM && c.y === nextY).length + 1, otherMonth: true, y: nextY, m: nextM });
+            cells.push({ day: nextDay++, otherMonth: true, y: targetY, m: targetM });
             if (cells.length >= 42) break;
         }
 

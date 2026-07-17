@@ -36,7 +36,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function initializeBoardHeader() {
-  const type = document.body.dataset.boardType;
+  const page = document.body.dataset.boardPage;
+  const type = page === 'write' ? getWriteBoardType() : document.body.dataset.boardType;
+
+  if (BOARD_TYPE_INFO[type]) document.body.dataset.boardType = type;
 
   document.querySelectorAll('[data-board-nav]').forEach(link => {
     link.classList.toggle('active', link.dataset.boardNav === type);

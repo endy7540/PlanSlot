@@ -407,7 +407,14 @@ async function initializeBoardDetail() {
   document.getElementById('boardBackButton')?.addEventListener('click', () => history.back());
   document.getElementById('boardCommentList')?.addEventListener('click', event => handleCommentAction(event, boardId));
 
-  await Promise.all([loadBoardDetail(boardId), loadBoardComments(boardId)]);
+  const detailLoaded = await loadBoardDetail(boardId);
+
+  if (!detailLoaded) {
+    document.querySelector('.board-comments')?.setAttribute('hidden', '');
+    return;
+  }
+
+  await loadBoardComments(boardId);
 }
 
 async function loadBoardDetail(boardId) {
@@ -415,6 +422,10 @@ async function loadBoardDetail(boardId) {
 
   try {
     const board = await fetchBoardJson(`/board/${boardId}`);
+    const boardTypeInfo = BOARD_TYPE_INFO[board?.boardType];
+
+    if (!boardTypeInfo) throw new Error('게시글 정보를 불러올 수 없습니다.');
+
     currentDetailBoard = board;
     document.body.dataset.boardType = board.boardType;
 
@@ -423,15 +434,15 @@ async function loadBoardDetail(boardId) {
     });
 
     document.title = `PlanSlot - ${board.title}`;
-    document.getElementById('boardDetailCategory').textContent = BOARD_TYPE_INFO[board.boardType]?.label || board.boardType;
+    document.getElementById('boardDetailCategory').textContent = boardTypeInfo.label;
     document.getElementById('boardDetailTitle').textContent = board.title;
     document.getElementById('boardDetailWriter').textContent = board.writerNickname || '알 수 없음';
     document.getElementById('boardDetailDate').textContent = formatBoardDateTimeWithModified(board.createdAt, board.updatedAt);
     document.getElementById('boardDetailViews').textContent = `조회 ${board.viewCount ?? 0}`;
     document.getElementById('boardDetailContent').textContent = board.content || '';
     document.getElementById('boardDetailCommentCount').textContent = board.commentCount ?? 0;
-    document.getElementById('boardListLink').href = `/board/${BOARD_TYPE_INFO[board.boardType].path}`;
-    document.getElementById('boardListLink').textContent = BOARD_TYPE_INFO[board.boardType].label;
+    document.getElementById('boardListLink').href = `/board/${boardTypeInfo.path}`;
+    document.getElementById('boardListLink').textContent = boardTypeInfo.label;
     renderDetailRecruitmentBadges(board);
 
     const image = document.getElementById('boardDetailImage');
@@ -447,8 +458,11 @@ async function loadBoardDetail(boardId) {
     renderBoardDetailActions(board);
     article.hidden = false;
     document.getElementById('boardDetailLoading').hidden = true;
+    return true;
   } catch (error) {
-    document.getElementById('boardDetailLoading').innerHTML = `<div class="board-error">${escapeBoardHtml(error.message)}</div>`;
+    const message = error.status ? error.message : '게시글 정보를 불러오는 중 오류가 발생했습니다.';
+    document.getElementById('boardDetailLoading').innerHTML = `<div class="board-error">${escapeBoardHtml(message)}</div>`;
+    return false;
   }
 }
 
@@ -507,9 +521,8 @@ function renderRecruitmentBadges(board) {
   const statusBadge = board.recruitmentStatus === 'CLOSED'
       ? '<span class="board-recruitment-badge closed">모집 마감</span>'
       : '<span class="board-recruitment-badge open">모집 중</span>';
-  const groupBadge = board.groupCreated ? '<span class="board-recruitment-badge created">모임 생성 완료</span>' : '';
 
-  return `<span class="board-recruitment-badges">${statusBadge}${groupBadge}</span>`;
+  return `<span class="board-recruitment-badges">${statusBadge}</span>`;
 }
 
 function renderDetailRecruitmentBadges(board) {
@@ -525,8 +538,7 @@ function renderDetailRecruitmentBadges(board) {
   const statusBadge = board.recruitmentStatus === 'CLOSED'
       ? '<span class="board-recruitment-badge closed">모집 마감</span>'
       : '<span class="board-recruitment-badge open">모집 중</span>';
-  const groupBadge = board.groupCreated ? '<span class="board-recruitment-badge created">모임 생성 완료</span>' : '';
-  container.innerHTML = statusBadge + groupBadge;
+  container.innerHTML = statusBadge;
   container.hidden = false;
 }
 
@@ -534,7 +546,7 @@ async function applyToBoardGroup(boardId) {
   if (!requireBoardLogin()) return;
 
   try {
-    await fetchBoardJson(`/board/${boardId}/applications`, { method: 'POST' });
+    await fetchBoardJson(`/board/${boardId}/group/applications`, { method: 'POST' });
     currentDetailBoard.myApplicationStatus = 'PENDING';
     renderBoardDetailActions(currentDetailBoard);
     showBoardToast('모임 참가를 신청했습니다.', false, 'success');
@@ -547,7 +559,7 @@ async function cancelBoardApplication(boardId) {
   if (!requireBoardLogin() || !confirm('참가 신청을 취소하시겠습니까?')) return;
 
   try {
-    await fetchBoardJson(`/board/${boardId}/applications/me`, { method: 'DELETE' });
+    await fetchBoardJson(`/board/${boardId}/group/applications/me`, { method: 'DELETE' });
     currentDetailBoard.myApplicationStatus = null;
     renderBoardDetailActions(currentDetailBoard);
     showBoardToast('참가 신청을 취소했습니다.', false, 'success');
@@ -573,7 +585,7 @@ function initializeBoardGroupModal() {
 
 async function openBoardGroupModal(board) {
   try {
-    boardGroupCandidates = await fetchBoardJson(`/board/${board.boardId}/group-candidates`);
+    boardGroupCandidates = await fetchBoardJson(`/board/${board.boardId}/group/candidates`);
     document.getElementById('boardGroupName').value = boardGroupCandidates.groupName || board.title || '';
     updateBoardGroupNameCount();
     renderBoardGroupCandidates('boardApplicantCandidates', boardGroupCandidates.applicants || [], 'applicant');
@@ -615,7 +627,7 @@ function renderBoardGroupCandidates(elementId, candidates, type) {
   const container = document.getElementById(elementId);
 
   if (!candidates.length) {
-    container.innerHTML = `<div class="board-group-candidate-empty">${type === 'applicant' ? '현재 대기 중인 신청자가 없습니다.' : '추가로 초대할 댓글 작성자가 없습니다.'}</div>`;
+    container.innerHTML = `<div class="board-group-candidate-empty">${type === 'applicant' ? '현재 대기 중인 신청자가 없습니다.' : '신청자와 게시글 작성자를 제외한 추가 댓글 작성자가 없습니다.'}</div>`;
     return;
   }
 
@@ -702,17 +714,15 @@ async function loadBoardComments(boardId) {
 
   try {
     const comments = await fetchBoardJson(`/board/${boardId}/comments`);
-    renderBoardComments(comments || [], boardId);
+    renderBoardComments(comments || []);
   } catch (error) {
     list.innerHTML = `<div class="board-error">${escapeBoardHtml(error.message)}</div>`;
   }
 }
 
-function renderBoardComments(comments, boardId) {
+function renderBoardComments(comments) {
   const list = document.getElementById('boardCommentList');
-  const count = comments.reduce((total, comment) => total + (comment.commentStatus === 'DELETED' ? 0 : 1) + (comment.replies?.length || 0), 0);
-
-  document.getElementById('boardDetailCommentCount').textContent = count;
+  document.getElementById('boardDetailCommentCount').textContent = comments.reduce((total, comment) => total + (comment.commentStatus === 'DELETED' ? 0 : 1) + (comment.replies?.length || 0), 0);
 
   if (!comments.length) {
     list.innerHTML = '<div class="board-empty">첫 댓글을 남겨보세요.</div>';
@@ -720,13 +730,13 @@ function renderBoardComments(comments, boardId) {
   }
 
   list.innerHTML = comments.map(comment => {
-    const root = renderSingleComment(comment, false, boardId);
-    const replies = (comment.replies || []).map(reply => renderSingleComment(reply, true, boardId)).join('');
+    const root = renderSingleComment(comment, false);
+    const replies = (comment.replies || []).map(reply => renderSingleComment(reply, true)).join('');
     return root + replies;
   }).join('');
 }
 
-function renderSingleComment(comment, reply, boardId) {
+function renderSingleComment(comment, reply) {
   if (comment.commentStatus === 'DELETED') {
     return `<div class="board-comment deleted" data-comment-id="${comment.commentId}">${escapeBoardHtml(comment.content)}</div>`;
   }
@@ -927,11 +937,13 @@ async function loadBoardForEdit(boardId, expectedType) {
     const board = await fetchBoardJson(`/board/${boardId}`);
 
     if (board.boardType !== expectedType) {
-      throw new Error('게시판 유형이 올바르지 않습니다.');
+      showWriteAccessDenied('게시판 유형이 올바르지 않습니다.');
+      return false;
     }
 
     if (!currentBoardMember || Number(currentBoardMember.memberId) !== Number(board.writerId)) {
-      throw new Error('게시글 작성자만 수정할 수 있습니다.');
+      showWriteAccessDenied('게시글 작성자만 수정할 수 있습니다.');
+      return false;
     }
 
     document.getElementById('boardWriteTitle').value = board.title || '';

@@ -1,0 +1,113 @@
+/* admin_layout.css */
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Pretendard, 'Malgun Gothic', Arial, sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+}
+
+button, input, select, textarea {
+    font-family: inherit;
+}
+button {
+    cursor: pointer;
+}
+
+.admin-layout {
+    display: flex;
+    width: 50%;
+    margin: 24px auto;
+    padding: 0 28px;
+    gap: 40px;
+    align-items: flex-start;
+}
+
+@media (max-width: 1280px) {
+    .admin-layout {
+        width: 100%;
+    }
+}
+
+.admin-sidebar {
+    flex: 0 0 180px;
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 28px 0;
+    box-shadow: 0 10px 40px rgba(8, 32, 51, 0.08);
+}
+
+.sidebar-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #0f172a;
+    padding: 0 28px;
+    margin: 0 0 24px 0;
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sidebar-menu li a {
+    display: flex;
+    align-items: center;
+    padding: 14px 28px;
+    color: #64748b;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.sidebar-menu li:hover a {
+    background: #f8fafc;
+    color: #0ea5e9;
+}
+
+.sidebar-menu li.active a {
+    background: #f0f9ff;
+    color: #0284c7;
+    border-left: 3px solid #0ea5e9;
+    font-weight: 600;
+}
+
+.admin-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.admin-container {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 40px;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(8, 32, 51, 0.08);
+}
+
+.admin-page-title {
+    text-align: left;
+    margin-bottom: 32px;
+    border-bottom: 2px solid #f1f5f9;
+    padding-bottom: 20px;
+}
+
+.admin-page-title h1 {
+    font-size: 28px;
+    color: #0f172a;
+    margin: 0 0 8px 0;
+}
+
+.admin-page-title p {
+    color: #64748b;
+    font-size: 15px;
+    margin: 0;
+}

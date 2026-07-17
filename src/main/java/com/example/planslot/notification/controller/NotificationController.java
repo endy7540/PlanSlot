@@ -23,15 +23,16 @@ public class NotificationController {
     private final NotificationService notificationService;
     private final MemberRepository memberRepository;
 
-    // 내 알림 목록 조회
+    // 내 알림 목록 조회 (showAll=false: 읽지 않은 것만 / showAll=true: 전체 목록)
     @GetMapping
     public ResponseEntity<List<NotificationDTO>> getNotifications(
+            @RequestParam(defaultValue = "false") boolean showAll,
             Principal principal) {
 
         Long memberId = getLoginMemberId(principal);
 
         return ResponseEntity.ok(
-                notificationService.getNotifications(memberId)
+                notificationService.getNotifications(memberId, showAll)
         );
     }
 

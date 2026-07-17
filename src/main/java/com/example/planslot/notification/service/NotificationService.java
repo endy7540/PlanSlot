@@ -42,8 +42,8 @@ public interface NotificationService {
     void sendApplicationNotification(Long receiverId, String title, String content,
                                      String targetType, Long targetId);
 
-    // 내 알림 목록 조회
-    List<NotificationDTO> getNotifications(Long memberId);
+    // 내 알림 목록 조회 (showAll=false: 읽지 않은 것만, showAll=true: 전체)
+    List<NotificationDTO> getNotifications(Long memberId, boolean showAll);
 
     // 안 읽은 알림 개수 조회
     long getUnreadCount(Long memberId);

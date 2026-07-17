@@ -137,22 +137,20 @@ public class NotificationServiceImpl implements NotificationService {
     public void sendApplicationNotification(Long receiverId, String title, String content,
                                             String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
-        NotificationSetting setting = getOrCreateNotificationSetting(receiver);
-
-        if (!setting.isAllEnabled() || !setting.isApplicationEnabled()) {
-            return;
-        }
-
         saveNotification(receiver, NotificationType.APPLICATION, title, content, targetType, targetId);
     }
 
-    // 내 알림 목록 조회
+    // 내 알림 목록 조회 (showAll=false: 읽지 않은 것만, showAll=true: 전체)
     @Override
     @Transactional(readOnly = true)
-    public List<NotificationDTO> getNotifications(Long memberId) {
+    public List<NotificationDTO> getNotifications(Long memberId, boolean showAll) {
         findReceiver(memberId);
 
-        return notificationRepository.findAllByReceiver_IdOrderByCreatedAtDesc(memberId).stream()
+        List<Notification> notifications = showAll
+                ? notificationRepository.findAllByReceiver_IdOrderByCreatedAtDesc(memberId)
+                : notificationRepository.findAllByReceiver_IdAndIsReadFalseOrderByCreatedAtDesc(memberId);
+
+        return notifications.stream()
                 .map(this::toNotificationDTO)
                 .toList();
     }

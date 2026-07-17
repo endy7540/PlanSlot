@@ -36,6 +36,12 @@ public class ScheduleServiceImpl implements ScheduleService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
 
+        if (requestDTO.getDeadlineDate() != null && requestDTO.getStartDate() != null) {
+            if (requestDTO.getDeadlineDate().isAfter(requestDTO.getStartDate().toLocalDate())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "데드라인 날짜는 일정 시작일보다 이후일 수 없습니다.");
+            }
+        }
+
         Schedule schedule = Schedule.builder()
                 .member(member)
                 .title(requestDTO.getTitle())
@@ -74,6 +80,12 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Transactional
     public ScheduleDTO updateSchedule(Long scheduleId, Long memberId, ScheduleDTO requestDTO) {
         Schedule schedule = getOwnedSchedule(scheduleId, memberId);
+
+        if (requestDTO.getDeadlineDate() != null && requestDTO.getStartDate() != null) {
+            if (requestDTO.getDeadlineDate().isAfter(requestDTO.getStartDate().toLocalDate())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "데드라인 날짜는 일정 시작일보다 이후일 수 없습니다.");
+            }
+        }
 
         schedule.update(
                 requestDTO.getTitle(),

@@ -51,7 +51,7 @@ function initializeBoardHeader() {
     }
 
     localStorage.removeItem('jwtToken');
-    location.href = '/planslot';
+    location.href = '/home';
   });
 }
 
@@ -129,7 +129,7 @@ async function submitBoardReport() {
 
   const path = reportTarget.targetType === 'POST'
       ? `/board/${reportTarget.targetId}/report`
-      : `/comment/${reportTarget.targetId}/report`;
+      : `/board/comment/${reportTarget.targetId}/report`;
 
   try {
     await fetchBoardJson(path, {
@@ -740,7 +740,7 @@ async function updateBoardComment(commentId, content, boardId) {
   }
 
   try {
-    await fetchBoardJson(`/comment/${commentId}`, {
+    await fetchBoardJson(`/board/comment/${commentId}`, {
       method: 'PUT',
       body: JSON.stringify({ content: trimmed })
     });
@@ -756,7 +756,7 @@ async function deleteBoardComment(commentId, boardId) {
   if (!requireBoardLogin() || !confirm('댓글을 삭제하시겠습니까?')) return;
 
   try {
-    await fetchBoardJson(`/comment/${commentId}`, { method: 'DELETE' });
+    await fetchBoardJson(`/board/comment/${commentId}`, { method: 'DELETE' });
     showBoardToast('댓글을 삭제했습니다.', false, 'success');
     await loadBoardComments(boardId);
   } catch (error) {

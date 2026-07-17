@@ -61,6 +61,9 @@ public class Schedule {
     @Column(name = "location", length = 200)
     private String location;
 
+    @Column(name = "recurrence_end_date")
+    private java.time.LocalDate recurrenceEndDate;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -76,7 +79,7 @@ public class Schedule {
 
     public void update(String title, String description, ScheduleType scheduleType,
                        LocalDateTime startDate, LocalDateTime endDate,
-                       String isPublic, String location) {
+                       String isPublic, String location, java.time.LocalDate recurrenceEndDate) {
         this.title = title;
         this.description = description;
         this.scheduleType = scheduleType;
@@ -84,6 +87,7 @@ public class Schedule {
         this.endDate = endDate;
         this.isPublic = isPublic;
         this.location = location;
+        this.recurrenceEndDate = recurrenceEndDate;
     }
 
     public void softDelete() {

@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -36,6 +37,8 @@ public class GroupServiceImpl implements GroupService {
     private final GroupScheduleRepository groupScheduleRepository;
     private final ScheduleRepository scheduleRepository;
     private final NotificationService notificationService;
+    private final com.example.planslot.group.repository.GroupScheduleShareRepository groupScheduleShareRepository;
+    private final com.example.planslot.schedule.entity.SourceType sourceType = null; // Unused dummy to prevent import issue
 
     @Override
     @Transactional
@@ -244,24 +247,88 @@ public class GroupServiceImpl implements GroupService {
                 String nickname = gm.getMember().getNickname();
                 List<Schedule> schedules;
                 if (start != null && end != null) {
-                    schedules = scheduleRepository.findAllByMemberIdAndPeriod(targetMemberId, start, end);
+                    schedules = scheduleRepository.findAllByMemberIdAndPeriodCandidate(targetMemberId, start, end);
+                    for (Schedule s : schedules) {
+                        if ("Y".equals(s.getIsPublic()) || targetMemberId.equals(memberId)) {
+                            if (s.getScheduleType() == null || s.getScheduleType() == ScheduleType.DAILY) {
+                                String dateStr = s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : "";
+                                String timeStr = s.getStartDate() != null ? s.getStartDate().toLocalTime().toString() : "";
+                                result.add(new GroupDTO.CalendarScheduleInfo(
+                                        s.getScheduleId().toString(),
+                                        nickname,
+                                        s.getTitle(),
+                                        dateStr,
+                                        timeStr,
+                                        s.getIsPublic()
+                                ));
+                            } else {
+                                 LocalDateTime eventStart = s.getStartDate();
+                                 LocalDateTime eventEnd = s.getEndDate();
+                                 LocalDate searchStart = start.toLocalDate();
+                                 LocalDate searchEnd = end.toLocalDate();
+                                 LocalDate limitStart = eventStart.toLocalDate();
+                                 LocalDate limitEnd = s.getRecurrenceEndDate();
+
+                                 for (LocalDate date = searchStart; !date.isAfter(searchEnd); date = date.plusDays(1)) {
+                                     if (date.isBefore(limitStart)) {
+                                         continue;
+                                     }
+                                     if (limitEnd != null && date.isAfter(limitEnd)) {
+                                         continue;
+                                     }
+
+
+                                    boolean matches = false;
+                                    if (s.getScheduleType() == ScheduleType.WEEKLY) {
+                                        matches = (date.getDayOfWeek() == limitStart.getDayOfWeek());
+                                    } else if (s.getScheduleType() == ScheduleType.MONTHLY) {
+                                        int targetDay = limitStart.getDayOfMonth();
+                                        int maxDayInMonth = date.lengthOfMonth();
+                                        int actualDay = Math.min(targetDay, maxDayInMonth);
+                                        matches = (date.getDayOfMonth() == actualDay);
+                                    } else if (s.getScheduleType() == ScheduleType.YEARLY) {
+                                        int targetMonth = limitStart.getMonthValue();
+                                        int targetDay = limitStart.getDayOfMonth();
+                                        if (date.getMonthValue() == targetMonth) {
+                                            if (targetMonth == 2 && targetDay == 29 && !date.isLeapYear()) {
+                                                matches = (date.getDayOfMonth() == 28);
+                                            } else {
+                                                matches = (date.getDayOfMonth() == targetDay);
+                                            }
+                                        }
+                                    }
+
+                                    if (matches) {
+                                        String dateStr = date.toString();
+                                        String timeStr = eventStart.toLocalTime().toString();
+                                        result.add(new GroupDTO.CalendarScheduleInfo(
+                                                s.getScheduleId().toString(),
+                                                nickname,
+                                                s.getTitle(),
+                                                dateStr,
+                                                timeStr,
+                                                s.getIsPublic()
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
                 } else {
                     schedules = scheduleRepository.findAllByMemberId(targetMemberId);
-                }
-
-                for (Schedule s : schedules) {
-                    // 모임 캘린더에는 공개(Y) 일정과 자신의 비공개(N) 일정 표시
-                    if ("Y".equals(s.getIsPublic()) || targetMemberId.equals(memberId)) {
-                        String dateStr = s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : "";
-                        String timeStr = s.getStartDate() != null ? s.getStartDate().toLocalTime().toString() : "";
-                        result.add(new GroupDTO.CalendarScheduleInfo(
-                                s.getScheduleId().toString(),
-                                nickname,
-                                s.getTitle(),
-                                dateStr,
-                                timeStr,
-                                s.getIsPublic()
-                        ));
+                    for (Schedule s : schedules) {
+                        if ("Y".equals(s.getIsPublic()) || targetMemberId.equals(memberId)) {
+                            String dateStr = s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : "";
+                            String timeStr = s.getStartDate() != null ? s.getStartDate().toLocalTime().toString() : "";
+                            result.add(new GroupDTO.CalendarScheduleInfo(
+                                    s.getScheduleId().toString(),
+                                    nickname,
+                                    s.getTitle(),
+                                    dateStr,
+                                    timeStr,
+                                    s.getIsPublic()
+                            ));
+                        }
                     }
                 }
             }
@@ -301,6 +368,7 @@ public class GroupServiceImpl implements GroupService {
                 .startDate(startDateTime)
                 .scheduleType(ScheduleType.DAILY)
                 .isPublic(isPublic ? "Y" : "N")
+                .sourceType(com.example.planslot.schedule.entity.SourceType.MANUAL)
                 .build();
 
         schedule = scheduleRepository.save(schedule);
@@ -313,5 +381,125 @@ public class GroupServiceImpl implements GroupService {
                 .build();
 
         groupScheduleRepository.save(groupSchedule);
+    }
+
+    @Override
+    @Transactional
+    public void shareSchedulesWithPeers(Long groupId, Long sharerId, List<Long> scheduleIds, List<Long> targetMemberIds) {
+        Group group = groupRepository.findById(groupId).orElseThrow();
+        Member sharer = memberRepository.findById(sharerId).orElseThrow();
+
+        for (Long scheduleId : scheduleIds) {
+            Schedule schedule = scheduleRepository.findById(scheduleId).orElseThrow();
+            for (Long targetMemberId : targetMemberIds) {
+                if (groupScheduleShareRepository.existsByGroup_IdAndSchedule_ScheduleIdAndTargetMember_Id(groupId, scheduleId, targetMemberId)) {
+                    continue;
+                }
+                Member target = memberRepository.findById(targetMemberId).orElseThrow();
+                com.example.planslot.group.entity.GroupScheduleShare share = com.example.planslot.group.entity.GroupScheduleShare.builder()
+                        .group(group)
+                        .schedule(schedule)
+                        .sharer(sharer)
+                        .targetMember(target)
+                        .sharedTitle(schedule.getTitle())
+                        .build();
+                groupScheduleShareRepository.save(share);
+            }
+        }
+    }
+
+    @Override
+    public List<GroupDTO.SharedPeerSchedule> getSharedPeerSchedules(Long groupId, Long targetMemberId) {
+        List<com.example.planslot.group.entity.GroupScheduleShare> shares = groupScheduleShareRepository.findByGroup_IdAndTargetMember_Id(groupId, targetMemberId);
+        return shares.stream().map(share -> {
+            Schedule schedule = share.getSchedule();
+            String dateStr = schedule.getStartDate() != null ? schedule.getStartDate().toLocalDate().toString() : "";
+            String timeStr = schedule.getStartDate() != null ? schedule.getStartDate().toLocalTime().toString() : "";
+            return new GroupDTO.SharedPeerSchedule(
+                    share.getId().toString(),
+                    schedule.getScheduleId().toString(),
+                    schedule.getTitle(),
+                    dateStr,
+                    timeStr,
+                    share.getSharer().getNickname(),
+                    schedule.getIsPublic()
+            );
+        }).toList();
+    }
+
+    @Override
+    public List<GroupDTO.SharedPeerSchedule> getSchedulesSharedByMe(Long groupId, Long sharerId) {
+        List<com.example.planslot.group.entity.GroupScheduleShare> shares = groupScheduleShareRepository.findByGroup_IdAndSharer_Id(groupId, sharerId);
+        return shares.stream().map(share -> {
+            Schedule schedule = share.getSchedule();
+            String dateStr = schedule.getStartDate() != null ? schedule.getStartDate().toLocalDate().toString() : "";
+            String timeStr = schedule.getStartDate() != null ? schedule.getStartDate().toLocalTime().toString() : "";
+            return new GroupDTO.SharedPeerSchedule(
+                    share.getId().toString(),
+                    schedule.getScheduleId().toString(),
+                    schedule.getTitle(),
+                    dateStr,
+                    timeStr,
+                    share.getTargetMember().getNickname(), // For this method, sharerName field is repurposed to hold the target member's name
+                    schedule.getIsPublic()
+            );
+        }).toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteSharedPeerSchedule(Long shareId, Long sharerId) {
+        com.example.planslot.group.entity.GroupScheduleShare share = groupScheduleShareRepository.findById(shareId).orElseThrow(() -> new IllegalArgumentException("해당 공유 일정을 찾을 수 없습니다."));
+        if (!share.getSharer().getId().equals(sharerId)) {
+            throw new IllegalArgumentException("공유 일정을 취소할 권한이 없습니다.");
+        }
+        groupScheduleShareRepository.delete(share);
+    }
+
+    @Override
+    @Transactional
+    public GroupDTO.ImportResult importSharedPeerSchedule(Long shareId, Long memberId, boolean overwrite, String isPublic) {
+        com.example.planslot.group.entity.GroupScheduleShare share = groupScheduleShareRepository.findById(shareId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 공유 일정을 찾을 수 없습니다."));
+
+        if (!share.getTargetMember().getId().equals(memberId)) {
+            throw new IllegalArgumentException("자신에게 공유된 일정만 가져올 수 있습니다.");
+        }
+
+        Schedule sharedSchedule = share.getSchedule();
+        LocalDateTime sharedStart = sharedSchedule.getStartDate();
+        
+        List<Schedule> mySchedules = scheduleRepository.findAllByMemberId(memberId);
+        
+        if (!overwrite) {
+            for (Schedule mySchedule : mySchedules) {
+                if (mySchedule.getStartDate() != null && sharedStart != null && java.time.Duration.between(mySchedule.getStartDate(), sharedStart).abs().toMinutes() < 60) {
+                    return new GroupDTO.ImportResult(false, mySchedule.getTitle(), mySchedule.getStartDate().toLocalTime().toString(), sharedStart.toLocalDate().toString());
+                }
+            }
+        } else {
+            for (Schedule mySchedule : mySchedules) {
+                if (mySchedule.getStartDate() != null && sharedStart != null && java.time.Duration.between(mySchedule.getStartDate(), sharedStart).abs().toMinutes() < 60) {
+                    mySchedule.softDelete();
+                    scheduleRepository.save(mySchedule);
+                }
+            }
+        }
+        
+        Schedule newSchedule = Schedule.builder()
+                .member(share.getTargetMember())
+                .title(sharedSchedule.getTitle())
+                .description(sharedSchedule.getDescription())
+                .scheduleType(sharedSchedule.getScheduleType())
+                .startDate(sharedSchedule.getStartDate())
+                .endDate(sharedSchedule.getEndDate())
+                .isPublic(isPublic != null ? isPublic : "N")
+                .sourceType(sharedSchedule.getSourceType())
+                .location(sharedSchedule.getLocation())
+                .build();
+        
+        scheduleRepository.save(newSchedule);
+        
+        return new GroupDTO.ImportResult(true, null, null, sharedStart != null ? sharedStart.toLocalDate().toString() : "");
     }
 }

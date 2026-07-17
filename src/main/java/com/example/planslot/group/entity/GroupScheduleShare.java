@@ -39,6 +39,10 @@ public class GroupScheduleShare {
     @JoinColumn(name = "sharer_id", nullable = false)
     private Member sharer;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "target_member_id", nullable = false)
+    private Member targetMember;
+
     @Column(name = "shared_title", length = 100)
     private String sharedTitle;
 
@@ -50,10 +54,11 @@ public class GroupScheduleShare {
     private LocalDateTime updatedAt;
 
     @Builder
-    public GroupScheduleShare(Group group, Schedule schedule, Member sharer, String sharedTitle, String sharedMemo) {
+    public GroupScheduleShare(Group group, Schedule schedule, Member sharer, Member targetMember, String sharedTitle, String sharedMemo) {
         this.group = group;
         this.schedule = schedule;
         this.sharer = sharer;
+        this.targetMember = targetMember;
         this.sharedTitle = sharedTitle;
         this.sharedMemo = sharedMemo;
     }

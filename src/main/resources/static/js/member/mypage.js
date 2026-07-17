@@ -276,6 +276,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 cropImageTarget.src = event.target.result;
                 cropModal.style.display = 'flex';
                 
+                // 모달이 열릴 때 '적용 및 업로드' 버튼으로 포커스를 이동시켜 엔터키가 동작하게 함
+                setTimeout(() => {
+                    if (btnConfirmCrop) btnConfirmCrop.focus();
+                }, 100);
+                
                 if (cropper) {
                     cropper.destroy();
                 }
@@ -302,6 +307,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // 엔터키 입력 시 '적용 및 업로드' 버튼 클릭 처리
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && cropModal.style.display === 'flex' && !btnConfirmCrop.disabled) {
+            e.preventDefault(); // 기본 엔터 동작 방지
+            btnConfirmCrop.click();
+        }
+    });
 
     if (btnConfirmCrop) {
         btnConfirmCrop.addEventListener('click', () => {

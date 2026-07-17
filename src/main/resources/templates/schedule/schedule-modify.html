@@ -368,6 +368,13 @@
             showToast('제목과 시작 일시는 필수입니다.', true);
             return;
         }
+        if (body.deadlineDate) {
+            const startDateOnly = body.startDate.slice(0, 10);
+            if (body.deadlineDate > startDateOnly) {
+                showToast('데드라인 날짜는 일정 시작일보다 이후일 수 없습니다.', true);
+                return;
+            }
+        }
 
         const url = `${API_BASE}/schedule/${scheduleId}`;
         try {
@@ -391,8 +398,20 @@
         }
     }
 
+    function updateDeadlineMax() {
+        const startVal = document.getElementById('f-startDate').value;
+        if (startVal) {
+            document.getElementById('f-deadlineDate').min = '';
+            document.getElementById('f-deadlineDate').max = startVal.slice(0, 10);
+        }
+    }
+
+    document.getElementById('f-startDate').addEventListener('change', updateDeadlineMax);
+
     if (checkAuth()) {
-        loadScheduleData();
+        loadScheduleData().then(() => {
+            updateDeadlineMax();
+        });
     }
 </script>
 </body>

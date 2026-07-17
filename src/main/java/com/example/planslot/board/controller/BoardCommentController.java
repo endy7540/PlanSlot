@@ -19,23 +19,23 @@ public class BoardCommentController {
     private final BoardCommentService boardCommentService;
 
     // 댓글 및 대댓글 등록
-    @PostMapping("/board/{postId}/comment")
-    public ResponseEntity<Long> createComment(@PathVariable Long postId,
+    @PostMapping("/board/{boardId}/comment")
+    public ResponseEntity<Long> createComment(@PathVariable Long boardId,
                                               @RequestBody BoardCommentDTO commentDTO,
                                               Principal principal) {
-        Long commentId = boardCommentService.createComment(postId, commentDTO, getLoginEmail(principal));
+        Long commentId = boardCommentService.createComment(boardId, commentDTO, getLoginEmail(principal));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(commentId);
     }
 
     // 게시글 댓글 목록 조회
-    @GetMapping("/board/{postId}/comments")
-    public ResponseEntity<List<BoardCommentDTO>> getCommentList(@PathVariable Long postId) {
-        return ResponseEntity.ok(boardCommentService.getCommentList(postId));
+    @GetMapping("/board/{boardId}/comments")
+    public ResponseEntity<List<BoardCommentDTO>> getCommentList(@PathVariable Long boardId) {
+        return ResponseEntity.ok(boardCommentService.getCommentList(boardId));
     }
 
     // 댓글 및 대댓글 수정
-    @PutMapping("/comment/{commentId}")
+    @PutMapping("/board/comment/{commentId}")
     public ResponseEntity<BoardCommentDTO> updateComment(@PathVariable Long commentId,
                                                          @RequestBody BoardCommentDTO commentDTO,
                                                          Principal principal) {
@@ -46,7 +46,7 @@ public class BoardCommentController {
     }
 
     // 댓글 및 대댓글 삭제
-    @DeleteMapping("/comment/{commentId}")
+    @DeleteMapping("/board/comment/{commentId}")
     public ResponseEntity<Void> deleteComment(@PathVariable Long commentId, Principal principal) {
         boardCommentService.deleteComment(commentId, getLoginEmail(principal));
 
@@ -54,7 +54,7 @@ public class BoardCommentController {
     }
 
     // 댓글 및 대댓글 신고
-    @PostMapping("/comment/{commentId}/report")
+    @PostMapping("/board/comment/{commentId}/report")
     public ResponseEntity<Long> reportComment(@PathVariable Long commentId,
                                               @RequestBody BoardReportRequestDTO reportRequestDTO,
                                               Principal principal) {

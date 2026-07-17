@@ -109,6 +109,19 @@ public class MemberController {
             java.nio.file.Path filePath = uploadPath.resolve(newFilename);
             file.transferTo(filePath.toFile());
             
+            // 기존 프로필 이미지 파일 삭제 로직
+            com.example.planslot.member.dto.MemberResponseDTO.MyPage myPage = memberService.getMyPage(authentication.getName());
+            String oldImageUrl = myPage.getProfileImageUrl();
+            if (oldImageUrl != null && oldImageUrl.startsWith("/uploads/profile/")) {
+                String oldFilename = oldImageUrl.substring("/uploads/profile/".length());
+                java.nio.file.Path oldFilePath = uploadPath.resolve(oldFilename);
+                try {
+                    java.nio.file.Files.deleteIfExists(oldFilePath);
+                } catch (Exception ignored) {
+                    // 삭제 실패 시 무시 (예: 파일이 이미 없는 경우)
+                }
+            }
+            
             String imageUrl = "/uploads/profile/" + newFilename;
             memberService.updateProfileImage(authentication.getName(), imageUrl);
             

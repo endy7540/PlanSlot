@@ -288,18 +288,19 @@
 
 .modal-content {
     background: #ffffff;
-    padding: 32px;
+    padding: 40px;
     border-radius: 20px;
     box-shadow: 0 10px 40px rgba(8, 32, 51, 0.15);
-    width: 400px;
+    width: 560px;
     max-width: 90%;
     text-align: center;
 }
 
 .modal-title {
     margin-top: 0;
-    margin-bottom: 12px;
-    font-size: 20px;
+    margin-bottom: 16px;
+    font-size: 24px;
+    font-weight: 700;
 }
 
 .modal-title.text-danger {
@@ -307,18 +308,21 @@
 }
 
 .modal-desc {
-    font-size: 14px;
+    font-size: 15px;
     color: #475569;
-    line-height: 1.5;
-    margin-bottom: 24px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+    word-break: keep-all;
 }
 
 .modal-input-group label {
     display: block;
-    font-size: 13px;
+    font-size: 14px;
     color: #334155;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     text-align: left;
+    line-height: 1.5;
+    word-break: keep-all;
 }
 
 .modal-input-group input {

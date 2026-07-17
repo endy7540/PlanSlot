@@ -63,7 +63,18 @@
         <div class="board-field">
           <label for="boardWriteImage">이미지</label>
           <div class="board-image-upload">
-            <input id="boardWriteImage" type="file" accept="image/jpeg,image/png,image/webp">
+            <input class="board-image-file-input" id="boardWriteImage" type="file" accept="image/jpeg,image/png,image/webp">
+            <button class="board-image-dropzone" id="boardWriteImageSelect" type="button">
+              <span class="board-image-upload-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 16.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2.5M8 9l4-4 4 4M12 5v11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="board-image-upload-copy">
+                <strong>이미지를 선택하거나 끌어다 놓으세요</strong>
+                <span id="boardWriteImageFileName">선택된 파일 없음</span>
+              </span>
+              <span class="board-image-select-badge">파일 선택</span>
+            </button>
+            <div class="board-image-upload-hint">JPG, PNG, WEBP 형식의 이미지 한 장을 첨부할 수 있습니다.</div>
             <div class="board-image-preview-wrap" id="boardWriteImagePreviewWrap">
               <img class="board-image-preview" id="boardWriteImagePreview" alt="첨부 이미지 미리보기">
               <div class="board-image-preview-actions">
@@ -84,7 +95,6 @@
 
 
 <div class="board-toast" id="boardToast"></div>
-<script th:src="@{/js/notification/notification.js}" src="/js/notification/notification.js"></script>
 <script th:src="@{/js/board/board.js}" src="/js/board/board.js"></script>
 </body>
 </html>

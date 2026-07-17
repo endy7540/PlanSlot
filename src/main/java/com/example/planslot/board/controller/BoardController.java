@@ -6,6 +6,8 @@ import com.example.planslot.board.dto.BoardMemberDTO;
 import com.example.planslot.board.entity.BoardType;
 import com.example.planslot.board.service.BoardService;
 import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
+import com.example.planslot.member.entity.Member;
+import com.example.planslot.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +23,7 @@ import org.springframework.web.servlet.ModelAndView;
 
 import java.security.Principal;
 import java.util.Locale;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/board")
@@ -28,6 +31,14 @@ import java.util.Locale;
 public class BoardController {
 
     private final BoardService boardService;
+    private final MemberRepository memberRepository;
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, String>> handleBoardError(ResponseStatusException exception) {
+        String message = exception.getReason();
+        if (message == null || message.isBlank()) message = "요청 처리에 실패했습니다.";
+        return ResponseEntity.status(exception.getStatusCode()).body(Map.of("message", message));
+    }
 
     // 게시판 기본 화면
     @GetMapping
@@ -37,8 +48,20 @@ public class BoardController {
 
     // 공지사항 화면
     @GetMapping("/notice")
-    public ModelAndView noticePage() {
-        return new ModelAndView("board/notice");
+    public ModelAndView noticePage(Principal principal) {
+        ModelAndView modelAndView = new ModelAndView("board/notice");
+
+        boolean isAdmin = false;
+
+        if (principal != null) {
+            isAdmin = memberRepository.findByEmail(principal.getName())
+                    .map(member -> member.getRole() == Member.Role.ADMIN)
+                    .orElse(false);
+        }
+
+        modelAndView.addObject("isAdmin", isAdmin);
+
+        return modelAndView;
     }
 
     // 스터디 게시판 화면
@@ -90,18 +113,24 @@ public class BoardController {
     // 게시판 종류별 목록 및 검색
     @GetMapping("/type/{boardType}")
     public ResponseEntity<Page<BoardDTO>> getBoardList(@PathVariable String boardType,
+                                                       @RequestParam(defaultValue = "TITLE_CONTENT") String searchType,
                                                        @RequestParam(required = false) String keyword,
                                                        @PageableDefault(size = 10, sort = "createdAt",
                                                                direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<BoardDTO> boardList = boardService.getBoardList(parseBoardType(boardType), keyword, pageable);
+        Page<BoardDTO> boardList = boardService.getBoardList(
+                parseBoardType(boardType), searchType, keyword, pageable
+        );
 
         return ResponseEntity.ok(boardList);
     }
 
     // 게시글 상세 조회
     @GetMapping("/{boardId}")
-    public ResponseEntity<BoardDTO> getBoardDetail(@PathVariable Long boardId) {
-        return ResponseEntity.ok(boardService.getBoardDetail(boardId));
+    public ResponseEntity<BoardDTO> getBoardDetail(@PathVariable Long boardId, Principal principal) {
+        // 비로그인 사용자도 상세 조회 가능하도록 null 허용
+        String email = (principal != null && principal.getName() != null && !principal.getName().isBlank())
+                ? principal.getName() : null;
+        return ResponseEntity.ok(boardService.getBoardDetail(boardId, email));
     }
 
     // 게시글 수정

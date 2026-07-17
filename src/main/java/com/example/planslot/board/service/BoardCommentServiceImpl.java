@@ -13,6 +13,7 @@ import com.example.planslot.boardreport.entity.BoardReportTargetType;
 import com.example.planslot.boardreport.repository.BoardReportRepository;
 import com.example.planslot.member.entity.Member;
 import com.example.planslot.member.repository.MemberRepository;
+import com.example.planslot.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -35,6 +36,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
     private final BoardRepository boardRepository;
     private final MemberRepository memberRepository;
     private final BoardReportRepository boardReportRepository;
+    private final NotificationService notificationService;
 
     // 댓글 및 대댓글 등록
     @Override
@@ -59,7 +61,50 @@ public class BoardCommentServiceImpl implements BoardCommentService {
                 .content(commentDTO.getContent().trim())
                 .build();
 
-        return boardCommentRepository.save(comment).getCommentId();
+        Long commentId = boardCommentRepository.save(comment).getCommentId();
+        sendCommentNotifications(board, parentComment, writer, boardId);
+
+        return commentId;
+    }
+
+    // 게시글 작성자와 부모 댓글 작성자에게 중복 없이 알림 전송
+    private void sendCommentNotifications(Board board, BoardComment parentComment, Member writer, Long boardId) {
+        Long boardWriterId = board.getWriter().getId();
+        Long writerId = writer.getId();
+
+        if (parentComment != null) {
+            Long parentWriterId = parentComment.getWriter().getId();
+
+            if (!Objects.equals(parentWriterId, writerId)) {
+                notificationService.sendBoardMessage(
+                        parentWriterId,
+                        "새로운 대댓글",
+                        writer.getNickname() + "님이 회원님의 댓글에 대댓글을 작성했습니다.",
+                        "BOARD",
+                        boardId
+                );
+            }
+
+            if (!Objects.equals(boardWriterId, writerId) && !Objects.equals(boardWriterId, parentWriterId)) {
+                sendBoardWriterCommentNotification(board, writer, boardId);
+            }
+            return;
+        }
+
+        if (!Objects.equals(boardWriterId, writerId)) {
+            sendBoardWriterCommentNotification(board, writer, boardId);
+        }
+    }
+
+    // 게시글 작성자에게 댓글 작성 알림 전송
+    private void sendBoardWriterCommentNotification(Board board, Member writer, Long boardId) {
+        notificationService.sendBoardMessage(
+                board.getWriter().getId(),
+                "새로운 댓글",
+                writer.getNickname() + "님이 '" + board.getTitle() + "' 게시글에 댓글을 작성했습니다.",
+                "BOARD",
+                boardId
+        );
     }
 
     // 게시글 댓글 목록 조회

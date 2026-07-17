@@ -42,8 +42,21 @@
             justify-content:space-between;
             margin-bottom:16px;
         }
-        .cal-nav h2{margin:0;font-size:20px}
-        .cal-nav .btn-row{display:flex;gap:8px}
+        .cal-nav-left{
+            flex:1;
+            display:flex;
+            justify-content:flex-start;
+        }
+        .cal-nav-center{
+            display:flex;
+            align-items:center;
+            gap:16px;
+        }
+        .cal-nav-right{
+            flex:1;
+            display:flex;
+            justify-content:flex-end;
+        }
 
         .cal-grid{
             display:grid;
@@ -74,6 +87,8 @@
         .cal-day.today{border-color:#38BDF8;box-shadow:0 0 0 2px rgba(56,189,248,.15) inset}
         .cal-day .date-num{font-size:12px;font-weight:900;color:#475569}
         .cal-day.today .date-num{color:#075985}
+        .cal-day .date-num.red-day{color:#ef4444}
+        .cal-day.other-month .date-num.red-day{color:#fca5a5}
         .cal-day.just-added{animation:pulse-highlight 2.5s ease}
         @keyframes pulse-highlight{
             0%{background:#FEF9C3;border-color:#FACC15}
@@ -152,13 +167,17 @@
     <!-- 캘린더 -->
     <div class="panel" id="calendarPanel" style="display:none">
         <div class="cal-nav">
-            <div class="btn-row">
-                <button class="ghost" onclick="moveMonth(-1)">◀ 이전달</button>
+            <div class="cal-nav-left">
                 <button class="ghost" onclick="goToday()">오늘</button>
-                <button class="ghost" onclick="moveMonth(1)">다음달 ▶</button>
             </div>
-            <h2 id="monthLabel"></h2>
-            <a class="primary" id="newScheduleBtn" href="/schedule/new">+ 새 일정 등록</a>
+            <div class="cal-nav-center">
+                <button class="ghost" onclick="moveMonth(-1)">◀</button>
+                <h2 id="monthLabel" style="margin:0; font-size: 22px; font-weight: 800; color: #075985;"></h2>
+                <button class="ghost" onclick="moveMonth(1)">▶</button>
+            </div>
+            <div class="cal-nav-right">
+                <a class="primary" id="newScheduleBtn" href="/schedule/new">+ 새 일정 등록</a>
+            </div>
         </div>
         <div class="cal-grid" id="dowRow">
             <div class="cal-dow" style="color:#DC2626">일</div>
@@ -177,6 +196,29 @@
 <div class="toast" id="toast"></div>
 
 <script>
+    const HOLIDAYS = {
+        // 2025년
+        "2025-01-01": "신정", "2025-01-28": "설날", "2025-01-29": "설날", "2025-01-30": "설날",
+        "2025-03-01": "삼일절", "2025-03-03": "대체공휴일", "2025-05-05": "어린이날", "2025-05-06": "부처님오신날",
+        "2025-06-06": "현충일", "2025-08-15": "광복절", "2025-10-03": "개천절", "2025-10-05": "추석",
+        "2025-10-06": "추석", "2025-10-07": "추석", "2025-10-08": "대체공휴일", "2025-10-09": "한글날",
+        "2025-12-25": "크리스마스",
+        // 2026년
+        "2026-01-01": "신정", "2026-02-16": "설날 연휴", "2026-02-17": "설날", "2026-02-18": "설날 연휴",
+        "2026-03-01": "삼일절", "2026-03-02": "대체공휴일", "2026-05-05": "어린이날", "2026-05-24": "부처님오신날",
+        "2026-05-25": "대체공휴일", "2026-06-06": "현충일", "2026-07-17": "제헌절", "2026-08-15": "광복절",
+        "2026-08-17": "대체공휴일", "2026-09-24": "추석 연휴", "2026-09-25": "추석", "2026-09-26": "추석 연휴",
+        "2026-09-28": "대체공휴일", "2026-10-03": "개천절", "2026-10-05": "대체공휴일", "2026-10-09": "한글날",
+        "2026-12-25": "크리스마스",
+        // 2027년
+        "2027-01-01": "신정", "2027-02-06": "설날 연휴", "2027-02-07": "설날", "2027-02-08": "설날 연휴",
+        "2027-02-09": "대체공휴일", "2027-03-01": "삼일절", "2027-05-05": "어린이날", "2027-05-13": "부처님오신날",
+        "2027-06-06": "현충일", "2027-06-07": "대체공휴일", "2027-08-15": "광복절", "2027-08-16": "대체공휴일",
+        "2027-09-14": "추석 연휴", "2027-09-15": "추석", "2027-09-16": "추석 연휴", "2027-10-03": "개천절",
+        "2027-10-04": "대체공휴일", "2027-10-09": "한글날", "2027-10-11": "대체공휴일", "2027-12-25": "크리스마스",
+        "2027-12-27": "대체공휴일"
+    };
+
     const API_BASE = window.location.origin;
     let token = '';
     let viewYear, viewMonth; // viewMonth: 0-11
@@ -309,11 +351,11 @@
             cells.push({ day: d, otherMonth: false, y: viewYear, m: viewMonth });
         }
         // 다음달 머리 (6주 채우기)
+        const targetM = viewMonth === 11 ? 0 : viewMonth + 1;
+        const targetY = viewMonth === 11 ? viewYear + 1 : viewYear;
+        let nextDay = 1;
         while (cells.length % 7 !== 0 || cells.length < 42) {
-            const last = cells[cells.length - 1];
-            const nextM = last.m === 11 ? 0 : last.m + 1;
-            const nextY = last.m === 11 ? last.y + 1 : last.y;
-            cells.push({ day: cells.filter(c => c.m === nextM && c.y === nextY).length + 1, otherMonth: true, y: nextY, m: nextM });
+            cells.push({ day: nextDay++, otherMonth: true, y: targetY, m: targetM });
             if (cells.length >= 42) break;
         }
 
@@ -322,14 +364,22 @@
             const dateKey = `${c.y}-${pad(c.m+1)}-${pad(c.day)}`;
             const dayEvents = schedulesByDate[dateKey] || [];
             const isToday = dateKey === todayKey;
+            
+            // 일요일 & 공휴일 판정
+            const isSunday = new Date(c.y, c.m, c.day).getDay() === 0;
+            const mmdd = `${pad(c.m+1)}-${pad(c.day)}`;
+            const isSolarHoliday = ["01-01", "03-01", "05-05", "06-06", "07-17", "08-15", "10-03", "10-09", "12-25"].includes(mmdd);
+            const isHoliday = !!HOLIDAYS[dateKey] || isSolarHoliday;
+            const isRedDay = isSunday || isHoliday;
+
             const chips = dayEvents.slice(0, 3).map(s =>
-                `<div class="event-chip${s.isPublic ? ' public' : ''}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId})">${escapeHtml(s.title)}</div>`
+                `<div class="event-chip${s.isPublic ? ' public' : ''}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${escapeHtml(s.title)}</div>`
             ).join('');
             const more = dayEvents.length > 3 ? `<div class="event-more">+${dayEvents.length - 3}개 더보기</div>` : '';
 
             return `
         <div class="cal-day${c.otherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}" data-date="${dateKey}" onclick="openNewSchedule('${dateKey}')">
-          <div class="date-num">${c.day}</div>
+          <div class="date-num${isRedDay ? ' red-day' : ''}">${c.day}</div>
           ${chips}
           ${more}
         </div>`;
@@ -340,8 +390,8 @@
         window.location.href = `/schedule/new?date=${dateKey}`;
     }
 
-    function openSchedule(scheduleId) {
-        window.location.href = `/schedule/${scheduleId}`;
+    function openSchedule(scheduleId, dateKey) {
+        window.location.href = `/schedule/${scheduleId}?date=${dateKey}`;
     }
 
     function escapeHtml(str) {

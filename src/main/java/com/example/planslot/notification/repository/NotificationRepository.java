@@ -12,6 +12,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     Optional<Notification> findByIdAndReceiver_Id(Long notificationId, Long receiverId);
 
+    // 읽지 않은 알림 목록 조회 (벨 아이콘·드롭다운용)
+    List<Notification> findAllByReceiver_IdAndIsReadFalseOrderByCreatedAtDesc(Long receiverId);
+
     List<Notification> findAllByReceiver_IdAndIsReadFalse(Long receiverId);
 
     long countByReceiver_IdAndIsReadFalse(Long receiverId);

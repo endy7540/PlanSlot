@@ -14,6 +14,7 @@ let currentDetailBoard = null;
 let existingWriteImage = null;
 let removeExistingWriteImage = false;
 let selectedWriteImage = null;
+let selectedWriteImagePreviewUrl = null;
 let currentBoardMember = null;
 let boardGroupCandidates = null;
 
@@ -166,6 +167,7 @@ async function initializeBoardList() {
   searchTypeSelect?.addEventListener('change', () => {
     updateBoardSearchPlaceholder(searchTypeSelect, searchInput);
   });
+  initializeBoardSearchDropdown(searchTypeSelect);
 
   searchButton?.addEventListener('click', () => {
     currentListPage = 0;
@@ -198,6 +200,114 @@ function updateBoardSearchPlaceholder(searchTypeSelect, searchInput) {
 
   const searchType = searchTypeSelect?.value || 'TITLE_CONTENT';
   searchInput.placeholder = placeholders[searchType] || placeholders.TITLE_CONTENT;
+}
+
+function initializeBoardSearchDropdown(select) {
+  if (!select || select.dataset.enhanced === 'true') return;
+
+  select.dataset.enhanced = 'true';
+  select.classList.add('is-enhanced');
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'board-search-select-wrap';
+  select.parentNode.insertBefore(wrapper, select);
+  wrapper.appendChild(select);
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'board-search-select-button';
+  button.setAttribute('aria-label', '검색 조건');
+  button.setAttribute('aria-haspopup', 'listbox');
+  button.setAttribute('aria-expanded', 'false');
+
+  const selectedLabel = document.createElement('span');
+  selectedLabel.className = 'board-search-selected-label';
+  const arrow = document.createElement('span');
+  arrow.className = 'board-search-select-arrow';
+  arrow.setAttribute('aria-hidden', 'true');
+  button.append(selectedLabel, arrow);
+
+  const menu = document.createElement('div');
+  menu.id = 'boardSearchTypeMenu';
+  menu.className = 'board-search-select-menu';
+  menu.setAttribute('role', 'listbox');
+  menu.setAttribute('aria-label', '검색 조건 목록');
+  menu.hidden = true;
+  button.setAttribute('aria-controls', menu.id);
+
+  const optionButtons = [...select.options].map(option => {
+    const optionButton = document.createElement('button');
+    optionButton.type = 'button';
+    optionButton.className = 'board-search-select-option';
+    optionButton.dataset.value = option.value;
+    optionButton.textContent = option.textContent;
+    optionButton.setAttribute('role', 'option');
+
+    optionButton.addEventListener('click', () => {
+      select.value = option.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      syncSelectedOption();
+      setDropdownOpen(false);
+      button.focus();
+    });
+
+    menu.appendChild(optionButton);
+    return optionButton;
+  });
+
+  wrapper.append(button, menu);
+
+  function syncSelectedOption() {
+    const selectedOption = select.options[select.selectedIndex];
+    selectedLabel.textContent = selectedOption?.textContent || '';
+    optionButtons.forEach(optionButton => {
+      const selected = optionButton.dataset.value === select.value;
+      optionButton.classList.toggle('selected', selected);
+      optionButton.setAttribute('aria-selected', String(selected));
+    });
+  }
+
+  function setDropdownOpen(open) {
+    menu.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+  }
+
+  function focusOption(index) {
+    optionButtons[Math.max(0, Math.min(index, optionButtons.length - 1))]?.focus();
+  }
+
+  button.addEventListener('click', () => setDropdownOpen(menu.hidden));
+  button.addEventListener('keydown', event => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+
+    event.preventDefault();
+    setDropdownOpen(true);
+    const selectedIndex = optionButtons.findIndex(optionButton => optionButton.dataset.value === select.value);
+    focusOption(event.key === 'ArrowUp' ? optionButtons.length - 1 : Math.max(0, selectedIndex));
+  });
+
+  menu.addEventListener('keydown', event => {
+    const currentIndex = optionButtons.indexOf(document.activeElement);
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setDropdownOpen(false);
+      button.focus();
+      return;
+    }
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      focusOption((currentIndex + direction + optionButtons.length) % optionButtons.length);
+    }
+  });
+
+  document.addEventListener('click', event => {
+    if (!wrapper.contains(event.target)) setDropdownOpen(false);
+  });
+
+  syncSelectedOption();
 }
 
 async function loadBoardList() {
@@ -787,6 +897,7 @@ async function initializeBoardWrite() {
   const titleInput = document.getElementById('boardWriteTitle');
   const contentInput = document.getElementById('boardWriteContent');
   const imageInput = document.getElementById('boardWriteImage');
+  const imageSelectButton = document.getElementById('boardWriteImageSelect');
 
   document.getElementById('boardWriteCategory').textContent = BOARD_TYPE_INFO[type].label;
   document.getElementById('boardWritePageTitle').textContent = boardId ? '게시글 수정' : '새 게시글 작성';
@@ -800,6 +911,8 @@ async function initializeBoardWrite() {
   titleInput.addEventListener('input', () => updateWriteCount('boardWriteTitleCount', titleInput.value.length, 100));
   contentInput.addEventListener('input', () => updateWriteCount('boardWriteContentCount', contentInput.value.length, 1000));
   imageInput.addEventListener('change', handleWriteImageSelection);
+  imageSelectButton?.addEventListener('click', () => imageInput.click());
+  initializeWriteImageDropzone(imageSelectButton);
   document.getElementById('boardWriteImageRemove').addEventListener('click', clearWriteImage);
   form.addEventListener('submit', event => saveBoardPost(event, type, boardId));
 
@@ -828,6 +941,7 @@ async function loadBoardForEdit(boardId, expectedType) {
 
     if (board.boardImage?.fileUrl) {
       existingWriteImage = board.boardImage;
+      updateWriteImageFileName('현재 등록된 이미지');
       showWriteImagePreview(board.boardImage.fileUrl);
     }
   } catch (error) {
@@ -908,17 +1022,67 @@ function handleWriteImageSelection(event) {
 
   if (!file) return;
 
+  applyWriteImageFile(file);
+}
+
+function initializeWriteImageDropzone(dropzone) {
+  if (!dropzone) return;
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropzone.addEventListener(eventName, event => {
+      event.preventDefault();
+      dropzone.classList.add('dragging');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropzone.addEventListener(eventName, event => {
+      event.preventDefault();
+      dropzone.classList.remove('dragging');
+    });
+  });
+
+  dropzone.addEventListener('drop', event => {
+    const file = event.dataTransfer?.files?.[0];
+    if (file) applyWriteImageFile(file);
+  });
+}
+
+function applyWriteImageFile(file) {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+  if (!allowedTypes.includes(file.type)) {
+    document.getElementById('boardWriteImage').value = '';
+    showBoardToast('JPG, PNG, WEBP 이미지 파일만 첨부할 수 있습니다.', true);
+    return;
+  }
+
+  if (selectedWriteImagePreviewUrl) URL.revokeObjectURL(selectedWriteImagePreviewUrl);
+
   selectedWriteImage = file;
   removeExistingWriteImage = false;
-  showWriteImagePreview(URL.createObjectURL(file));
+  selectedWriteImagePreviewUrl = URL.createObjectURL(file);
+  updateWriteImageFileName(file.name);
+  showWriteImagePreview(selectedWriteImagePreviewUrl);
 }
 
 function clearWriteImage() {
   document.getElementById('boardWriteImage').value = '';
+  if (selectedWriteImagePreviewUrl) URL.revokeObjectURL(selectedWriteImagePreviewUrl);
+  selectedWriteImagePreviewUrl = null;
   selectedWriteImage = null;
   removeExistingWriteImage = Boolean(existingWriteImage);
+  updateWriteImageFileName('선택된 파일 없음');
   document.getElementById('boardWriteImagePreviewWrap').classList.remove('show');
   document.getElementById('boardWriteImagePreview').removeAttribute('src');
+}
+
+function updateWriteImageFileName(fileName) {
+  const fileNameElement = document.getElementById('boardWriteImageFileName');
+  const dropzone = document.getElementById('boardWriteImageSelect');
+
+  if (fileNameElement) fileNameElement.textContent = fileName;
+  if (dropzone) dropzone.classList.toggle('has-file', fileName !== '선택된 파일 없음');
 }
 
 function showWriteImagePreview(url) {

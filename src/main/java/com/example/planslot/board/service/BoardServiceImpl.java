@@ -135,6 +135,14 @@ public class BoardServiceImpl implements BoardService {
         int updatedCount = boardRepository.increaseViewCount(boardId, BoardStatus.ACTIVE);
 
         if (updatedCount == 0) {
+            BoardStatus boardStatus = boardRepository.findById(boardId)
+                    .map(Board::getBoardStatus)
+                    .orElse(null);
+
+            if (boardStatus == BoardStatus.DELETED) {
+                throw new ResponseStatusException(HttpStatus.GONE, "이미 삭제된 게시글입니다.");
+            }
+
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
         }
 

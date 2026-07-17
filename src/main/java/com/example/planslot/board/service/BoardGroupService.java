@@ -258,10 +258,28 @@ public class BoardGroupService {
     }
 
     private List<Member> getInviteCandidateMembers(Board board, Set<Long> applicationMemberIds) {
-        return boardCommentRepository.findDistinctActiveCommentWriters(
-                        board.getBoardId(), BoardCommentStatus.ACTIVE, board.getWriter().getId()
-                ).stream()
+        List<BoardComment> comments = new ArrayList<>(boardCommentRepository.findRootComments(board.getBoardId()));
+        List<Long> rootCommentIds = comments.stream()
+                .map(BoardComment::getCommentId)
+                .toList();
+
+        if (!rootCommentIds.isEmpty()) {
+            comments.addAll(boardCommentRepository.findActiveReplies(rootCommentIds, BoardCommentStatus.ACTIVE));
+        }
+
+        return comments.stream()
+                .filter(comment -> comment.getCommentStatus() == BoardCommentStatus.ACTIVE)
+                .map(BoardComment::getWriter)
+                .filter(member -> !Objects.equals(member.getId(), board.getWriter().getId()))
                 .filter(member -> !applicationMemberIds.contains(member.getId()))
+                .collect(Collectors.toMap(
+                        Member::getId,
+                        Function.identity(),
+                        (first, duplicate) -> first,
+                        LinkedHashMap::new
+                ))
+                .values()
+                .stream()
                 .sorted(Comparator.comparing(Member::getNickname, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }

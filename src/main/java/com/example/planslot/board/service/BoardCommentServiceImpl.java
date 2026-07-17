@@ -13,6 +13,7 @@ import com.example.planslot.boardreport.entity.BoardReportTargetType;
 import com.example.planslot.boardreport.repository.BoardReportRepository;
 import com.example.planslot.member.entity.Member;
 import com.example.planslot.member.repository.MemberRepository;
+import com.example.planslot.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -35,6 +36,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
     private final BoardRepository boardRepository;
     private final MemberRepository memberRepository;
     private final BoardReportRepository boardReportRepository;
+    private final NotificationService notificationService;
 
     // 댓글 및 대댓글 등록
     @Override
@@ -59,7 +61,20 @@ public class BoardCommentServiceImpl implements BoardCommentService {
                 .content(commentDTO.getContent().trim())
                 .build();
 
-        return boardCommentRepository.save(comment).getCommentId();
+        Long commentId = boardCommentRepository.save(comment).getCommentId();
+
+        // 댓글 작성자가 게시글 작성자가 아닌 경우에만 알림 전송
+        if (!Objects.equals(board.getWriter().getId(), writer.getId())) {
+            notificationService.sendBoardMessage(
+                    board.getWriter().getId(),
+                    "새로운 댓글",
+                    writer.getNickname() + "님이 '" + board.getTitle() + "' 게시글에 댓글을 작성했습니다.",
+                    "BOARD",
+                    boardId
+            );
+        }
+
+        return commentId;
     }
 
     // 게시글 댓글 목록 조회

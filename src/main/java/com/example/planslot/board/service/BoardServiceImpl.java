@@ -132,7 +132,6 @@ public class BoardServiceImpl implements BoardService {
     @Override
     @Transactional
     public BoardDTO getBoardDetail(Long boardId, String memberEmail) {
-        Member member = findMember(memberEmail);
         int updatedCount = boardRepository.increaseViewCount(boardId, BoardStatus.ACTIVE);
 
         if (updatedCount == 0) {
@@ -140,6 +139,8 @@ public class BoardServiceImpl implements BoardService {
         }
 
         Board board = findBoard(boardId);
+        // 비로그인 사용자는 member-specific 데이터 없이 반환
+        Member member = (memberEmail != null && !memberEmail.isBlank()) ? findMember(memberEmail) : null;
 
         return toDetailDTO(board, member);
     }
@@ -178,7 +179,10 @@ public class BoardServiceImpl implements BoardService {
         Board board = findBoard(boardId);
         Member member = findMember(memberEmail);
 
-        validateWriter(board, member);
+        // 관리자는 작성자 확인 없이 삭제 가능
+        if (member.getRole() != Member.Role.ADMIN) {
+            validateWriter(board, member);
+        }
 
         board.delete();
     }
@@ -509,15 +513,21 @@ public class BoardServiceImpl implements BoardService {
         );
 
         Long groupId = resolveExistingGroupId(board);
-        BoardApplicationStatus myApplicationStatus = boardApplicationRepository
-                .findByBoard_BoardIdAndApplicant_Id(board.getBoardId(), member.getId())
-                .map(application -> application.getApplicationStatus())
-                .orElse(null);
-        GroupMemberStatus myGroupMemberStatus = groupId == null
-                ? null
-                : groupMemberRepository.findByGroup_IdAndMember_Id(groupId, member.getId())
-                .map(groupMember -> groupMember.getMemberStatus())
-                .orElse(null);
+        // 로그인 회원이 없으면 개인화 데이터는 null
+        BoardApplicationStatus myApplicationStatus = null;
+        GroupMemberStatus myGroupMemberStatus = null;
+
+        if (member != null) {
+            myApplicationStatus = boardApplicationRepository
+                    .findByBoard_BoardIdAndApplicant_Id(board.getBoardId(), member.getId())
+                    .map(application -> application.getApplicationStatus())
+                    .orElse(null);
+            myGroupMemberStatus = groupId == null
+                    ? null
+                    : groupMemberRepository.findByGroup_IdAndMember_Id(groupId, member.getId())
+                    .map(groupMember -> groupMember.getMemberStatus())
+                    .orElse(null);
+        }
 
         return BoardDTO.builder()
                 .boardId(board.getBoardId())

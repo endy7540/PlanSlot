@@ -119,7 +119,10 @@ public class BoardController {
     // 게시글 상세 조회
     @GetMapping("/{boardId}")
     public ResponseEntity<BoardDTO> getBoardDetail(@PathVariable Long boardId, Principal principal) {
-        return ResponseEntity.ok(boardService.getBoardDetail(boardId, getLoginEmail(principal)));
+        // 비로그인 사용자도 상세 조회 가능하도록 null 허용
+        String email = (principal != null && principal.getName() != null && !principal.getName().isBlank())
+                ? principal.getName() : null;
+        return ResponseEntity.ok(boardService.getBoardDetail(boardId, email));
     }
 
     // 게시글 수정

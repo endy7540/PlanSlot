@@ -3,13 +3,18 @@ const NOTIFICATION_LOGIN_URL = '/auth/login';
 
 // 실제 게시글, 모임, 일정 화면 주소가 확정되면 이 부분만 수정
 const NOTIFICATION_TARGET_ROUTES = {
-    POST: targetId => `/post/${encodeURIComponent(targetId)}`,
-    BOARD: targetId => `/post/${encodeURIComponent(targetId)}`,
+    POST: targetId => `/board/detail/${encodeURIComponent(targetId)}`,
+    BOARD: targetId => `/board/detail/${encodeURIComponent(targetId)}`,
     GROUP: targetId => `/group/detail?id=${encodeURIComponent(targetId)}`,
+    GROUP_KICK: () => '/group',
     SCHEDULE: targetId => `/schedule/${encodeURIComponent(targetId)}`
 };
 
 let notificationAuthRedirecting = false;
+let notificationSseAbortController = null;
+let notificationSseRetryTimer = null;
+let notificationSseRetryCount = 0;
+let notificationRefreshTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     bindNotificationDropdown();
@@ -22,7 +27,103 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     refreshNotificationUI();
+    connectNotificationSse();
 });
+
+// Authorization 헤더를 사용한 SSE 실시간 알림 연결
+async function connectNotificationSse() {
+    const token = getNotificationToken();
+    if (!token || notificationAuthRedirecting || notificationSseAbortController) return;
+
+    notificationSseAbortController = new AbortController();
+
+    try {
+        const response = await fetch(notificationUrl('/subscribe'), {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'text/event-stream'
+            },
+            cache: 'no-store',
+            signal: notificationSseAbortController.signal
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            handleNotificationUnauthorized();
+            return;
+        }
+
+        if (response.redirected) {
+            handleNotificationUnauthorized();
+            return;
+        }
+
+        if (!response.ok || !response.body
+            || !response.headers.get('content-type')?.includes('text/event-stream')) {
+            throw new Error('실시간 알림 연결에 실패했습니다.');
+        }
+
+        notificationSseRetryCount = 0;
+        await readNotificationSseStream(response.body);
+    } catch (error) {
+        if (error.name !== 'AbortError') console.error(error);
+    } finally {
+        notificationSseAbortController = null;
+        if (!notificationAuthRedirecting && getNotificationToken()) scheduleNotificationSseReconnect();
+    }
+}
+
+// SSE 응답을 이벤트 단위로 나누어 처리
+async function readNotificationSseStream(stream) {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true }).replaceAll('\r\n', '\n');
+        const events = buffer.split('\n\n');
+        buffer = events.pop() || '';
+        events.forEach(handleNotificationSseEvent);
+    }
+}
+
+// 실시간 알림 이벤트를 토스트로 표시하고 목록을 다시 조회
+function handleNotificationSseEvent(rawEvent) {
+    let eventName = 'message';
+    const dataLines = [];
+
+    rawEvent.split('\n').forEach(line => {
+        if (line.startsWith('event:')) eventName = line.slice(6).trim();
+        if (line.startsWith('data:')) dataLines.push(line.slice(5).trimStart());
+    });
+
+    if (eventName !== 'notification' || !dataLines.length) return;
+
+    try {
+        const notification = JSON.parse(dataLines.join('\n'));
+        showNotificationToast(`${notification.title}: ${notification.content}`);
+        scheduleNotificationRefresh();
+    } catch (error) {
+        console.error('실시간 알림 처리에 실패했습니다.', error);
+    }
+}
+
+// 여러 이벤트가 연속으로 도착하면 한 번만 목록을 새로고침
+function scheduleNotificationRefresh() {
+    clearTimeout(notificationRefreshTimer);
+    notificationRefreshTimer = setTimeout(refreshNotificationUI, 100);
+}
+
+// 연결 종료 시 최대 30초 간격으로 자동 재연결
+function scheduleNotificationSseReconnect() {
+    clearTimeout(notificationSseRetryTimer);
+    const retryDelay = Math.min(1000 * (2 ** notificationSseRetryCount), 30000);
+    notificationSseRetryCount += 1;
+    notificationSseRetryTimer = setTimeout(connectNotificationSse, retryDelay);
+}
 
 // 브라우저에 저장된 JWT 조회
 function getNotificationToken() {
@@ -611,6 +712,9 @@ function handleNotificationUnauthorized() {
     }
 
     notificationAuthRedirecting = true;
+
+    clearTimeout(notificationSseRetryTimer);
+    if (notificationSseAbortController) notificationSseAbortController.abort();
 
     localStorage.removeItem('jwtToken');
     localStorage.removeItem('memberId');

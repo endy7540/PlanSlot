@@ -120,6 +120,23 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   flex-wrap:wrap;
 }
 .board-search{display:flex;gap:8px;flex:1;min-width:260px}
+.board-search-select{
+  flex:0 0 126px;
+  height:42px;
+  padding:0 36px 0 13px;
+  border:2px solid var(--board-border);
+  border-radius:10px;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center/14px;
+  color:var(--board-ink);
+  font:inherit;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+  appearance:none;
+  -webkit-appearance:none;
+}
+.board-search-select:hover{border-color:#BAE6FD}
+.board-search-select:focus{border-color:var(--board-sky);outline:0;box-shadow:0 0 0 3px rgba(56,189,248,.12)}
 .board-search input{
   flex:1;
   min-width:0;
@@ -154,9 +171,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   padding:12px 18px;
   border-bottom:1px solid var(--board-border);
   transition:.14s;
+  cursor:pointer;
 }
 .board-list-row:last-child{border-bottom:0}
 .board-list-row:hover{background:#F8FCFF}
+.board-list-row:focus-visible{position:relative;z-index:1;outline-offset:-2px}
 .board-list-number,.board-list-writer,.board-list-views,.board-list-date{
   color:var(--board-muted);
   font-size:12px;
@@ -166,11 +185,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   white-space:nowrap;
 }
 .board-list-title{min-width:0}
-.board-list-title a{display:inline;font-size:14px;font-weight:900;line-height:1.45}
-.board-list-title a:hover{color:var(--board-navy)}
+.board-list-title-text{display:inline;font-size:14px;font-weight:900;line-height:1.45}
+.board-list-row:hover .board-list-title-text{color:var(--board-navy)}
 .board-comment-count{color:var(--board-sky);font-size:12px;font-weight:950;margin-left:5px}
 .board-notice-row{background:#FBFDFF}
-.board-notice-row .board-list-title a{color:var(--board-navy)}
+.board-notice-row .board-list-title-text{color:var(--board-navy)}
 .board-type-badge{
   display:inline-flex;
   align-items:center;

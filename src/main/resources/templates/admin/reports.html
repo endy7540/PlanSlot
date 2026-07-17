@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>신고 접수함 - PlanSlot Admin</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Pretendard, 'Malgun Gothic', Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+
+        .admin-layout {
+            display: flex;
+            width: 50%;
+            margin: 24px auto;
+            padding: 0 28px;
+            gap: 40px;
+            align-items: flex-start;
+        }
+
+        @media (max-width: 1280px) {
+            .admin-layout {
+                width: 100%;
+            }
+        }
+
+        .admin-sidebar {
+            flex: 0 0 180px;
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 28px 0;
+            box-shadow: 0 10px 40px rgba(8, 32, 51, 0.08);
+        }
+
+        .sidebar-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: #0f172a;
+            padding: 0 28px;
+            margin: 0 0 24px 0;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sidebar-menu li a {
+            display: flex;
+            align-items: center;
+            padding: 14px 28px;
+            color: #64748b;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-menu li:hover a {
+            background: #f8fafc;
+            color: #0ea5e9;
+        }
+
+        .sidebar-menu li.active a {
+            background: #f0f9ff;
+            color: #0284c7;
+            border-left: 3px solid #0ea5e9;
+            font-weight: 600;
+        }
+
+        .admin-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .admin-container {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 40px;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(8, 32, 51, 0.08);
+        }
+
+        .admin-header {
+            text-align: left;
+            margin-bottom: 32px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .admin-header h1 {
+            font-size: 28px;
+            color: #0f172a;
+            margin: 0 0 8px 0;
+        }
+
+        .admin-header p {
+            color: #64748b;
+            font-size: 15px;
+            margin: 0;
+        }
+
+        /* 테이블 스타일 */
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        .report-table th {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-weight: 600;
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .report-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+            vertical-align: middle;
+        }
+
+        .report-table tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .truncate {
+            display: inline-block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+        }
+
+        .truncate-target {
+            max-width: 130px; /* 넓이를 더 줄임 */
+        }
+
+        .truncate-reporter {
+            max-width: 70px;
+        }
+
+        .no-wrap {
+            white-space: nowrap;
+        }
+
+        /* 상태 뱃지와 버튼 크기 통일 */
+        .badge-status {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 76px;
+            height: 32px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .badge-waiting { background: #fef3c7; color: #d97706; }
+        .badge-processed { background: #dcfce7; color: #16a34a; }
+        .badge-rejected { background: #f1f5f9; color: #64748b; }
+
+        .btn-process {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 76px;
+            height: 32px;
+            padding: 0;
+            background-color: #0ea5e9;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-process:hover {
+            background-color: #0284c7;
+        }
+    </style>
+</head>
+<body>
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<div class="admin-layout">
+    <aside class="admin-sidebar">
+        <h2 class="sidebar-title">관리자 메뉴</h2>
+        <ul class="sidebar-menu">
+            <li><a href="/admin">대시보드</a></li>
+            <li><a href="#">회원 관리</a></li>
+            <li><a href="#">게시판 관리</a></li>
+            <li class="active"><a href="/admin/reports">신고 접수함</a></li>
+        </ul>
+    </aside>
+
+    <main class="admin-content">
+        <div class="admin-container">
+            <header class="admin-header">
+                <div>
+                    <h1>신고 접수함</h1>
+                    <p>게시판 및 댓글에서 접수된 신고 내역을 확인하고 처리합니다.</p>
+                </div>
+                <div style="font-size: 14px; color: #64748b;">
+                    총 접수 건: <strong style="color:#0ea5e9;" th:text="${reports.size()}">0</strong>건
+                </div>
+            </header>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th class="no-wrap" style="width: 50px;">ID</th>
+                        <th class="no-wrap" style="width: 60px;">유형</th>
+                        <th class="no-wrap" style="width: 150px;">신고 대상 (제목)</th>
+                        <th class="no-wrap">신고 사유</th>
+                        <th class="no-wrap" style="width: 90px;">신고자</th>
+                        <th class="no-wrap" style="width: 90px;">접수일</th>
+                        <th class="no-wrap" style="width: 90px;">상태</th>
+                        <th class="no-wrap" style="width: 90px;">관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(reports)}">
+                        <td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            접수된 신고 내역이 없습니다.
+                        </td>
+                    </tr>
+                    <tr th:each="report : ${reports}">
+                        <td class="no-wrap" th:text="${report.reportId}">1</td>
+                        <td class="no-wrap" th:text="${report.targetType == 'POST' ? '게시글' : '댓글'}">게시글</td>
+                        <td>
+                            <div class="truncate truncate-target" th:text="${report.targetContent}">글 제목이 표시됩니다...</div>
+                        </td>
+                        <td class="no-wrap" th:text="${report.reasonCode}">스팸·광고</td>
+                        <td class="no-wrap">
+                            <div class="truncate truncate-reporter" th:text="${report.reporterNickname}">홍길동</div>
+                        </td>
+                        <td class="no-wrap" th:text="${#temporals.format(report.createdAt, 'yyyy-MM-dd')}">2026-07-17</td>
+                        <td class="no-wrap">
+                            <span th:class="'badge-status ' + (${report.status == 'WAITING'} ? 'badge-waiting' : (${report.status == 'PROCESSED'} ? 'badge-processed' : 'badge-rejected'))"
+                                  th:text="${report.status == 'WAITING' ? '대기중' : (report.status == 'PROCESSED' ? '처리완료' : '반려')}">대기중</span>
+                        </td>
+                        <td class="no-wrap">
+                            <button type="button" class="btn-process">상세확인</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+
+</body>
+</html>

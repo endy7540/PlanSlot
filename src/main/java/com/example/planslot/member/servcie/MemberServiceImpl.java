@@ -58,6 +58,7 @@ public class MemberServiceImpl implements MemberService{
                 .profileImageUrl(member.getProfileImageUrl())
                 .allowActivityNoti(member.isAllowActivityNoti())
                 .allowMarketingNoti(member.isAllowMarketingNoti())
+                .role(member.getRole().name())
                 .build();
     }
 

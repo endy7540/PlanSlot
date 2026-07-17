@@ -105,8 +105,21 @@
             white-space:nowrap;
             overflow:hidden;
             text-overflow:ellipsis;
+            border: 1.5px solid transparent;
+            transition: all 0.15s ease-in-out;
+            cursor: pointer;
+        }
+        .event-chip:hover {
+            border-color: #38BDF8;
+            background: #BAE6FD;
+            transform: scale(1.02);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
         }
         .event-chip.public{background:#DCFCE7;color:#166534}
+        .event-chip.public:hover {
+            border-color: #4ADE80;
+            background: #BBF7D0;
+        }
         .event-more{font-size:10px;color:#94A3B8;padding-left:2px}
 
         .empty-notice{color:#94A3B8;font-size:13px;padding:20px;text-align:center}
@@ -142,6 +155,38 @@
             max-height:200px;
             overflow:auto;
         }
+        .cal-day.selected-day {
+            border-color: #075985;
+            background: #F0F9FF;
+            box-shadow: 0 0 0 2px rgba(7, 89, 133, 0.15) inset;
+        }
+        .selected-event-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border: 2px solid #F3FAFF;
+            border-radius: 10px;
+            background: #fff;
+            cursor: pointer;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+        }
+        .selected-event-item:hover {
+            border-color: #38BDF8;
+            background: #F3FAFF;
+            transform: translateY(-1px);
+        }
+        .selected-event-title {
+            font-weight: 800;
+            color: #075985;
+            font-size: 14px;
+        }
+        .selected-event-time {
+            font-size: 12px;
+            color: #748898;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -172,7 +217,7 @@
             </div>
             <div class="cal-nav-center">
                 <button class="ghost" onclick="moveMonth(-1)">◀</button>
-                <h2 id="monthLabel" style="margin:0; font-size: 22px; font-weight: 800; color: #075985;"></h2>
+                <h2 id="monthLabel" style="margin:0; font-size: 22px; font-weight: 800; color: #075985; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" onclick="showDatePicker(event)"></h2>
                 <button class="ghost" onclick="moveMonth(1)">▶</button>
             </div>
             <div class="cal-nav-right">
@@ -189,6 +234,17 @@
             <div class="cal-dow" style="color:#2563EB">토</div>
         </div>
         <div class="cal-grid" id="calGrid" style="margin-top:6px"></div>
+        
+        <!-- 선택된 날짜의 일정 목록 패널 (로그인 시 캘린더 아래에 함께 뜸) -->
+        <div class="panel" id="selectedDateEventsPanel" style="margin-top: 18px;">
+            <div class="panel-head" style="margin-bottom: 12px; border-bottom: 2px solid #F3FAFF; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <h3 id="selectedDateLabel" style="margin: 0; font-size: 16px; color: #075985; font-weight: 800;">날짜를 선택해 주세요.</h3>
+                <span style="font-size: 11px; color: #748898; font-weight: 700;">* 선택된 날짜를 한 번 더 클릭하면 새 일정을 등록할 수 있습니다.</span>
+            </div>
+            <div id="selectedDateEventsList">
+                <div class="empty-notice" style="padding: 10px 0;">일정이 없습니다.</div>
+            </div>
+        </div>
     </div>
 
 </div>
@@ -223,6 +279,7 @@
     let token = '';
     let viewYear, viewMonth; // viewMonth: 0-11
     let schedulesByDate = {}; // { 'YYYY-MM-DD': [schedule, ...] }
+    let selectedDateKey = null;
 
     // 화면에 표시되던 "요청 로그" 패널은 제거했고, 디버깅용으로 콘솔에만 남겨둡니다.
     function log(label, data) {
@@ -329,6 +386,53 @@
         loadMonthSchedules();
     }
 
+    function showDatePicker(event) {
+        if (document.getElementById('monthSelect') || document.getElementById('yearSelect')) return;
+        event.stopPropagation();
+
+        const label = document.getElementById('monthLabel');
+        const currentYear = new Date().getFullYear();
+        let yearOptions = '';
+        for (let y = currentYear - 10; y <= currentYear + 10; y++) {
+            yearOptions += `<option value="${y}" ${y === viewYear ? 'selected' : ''}>${y}년</option>`;
+        }
+
+        let monthOptions = '';
+        for (let m = 1; m <= 12; m++) {
+            monthOptions += `<option value="${m - 1}" ${(m - 1) === viewMonth ? 'selected' : ''}>${m}월</option>`;
+        }
+
+        label.innerHTML = `
+            <select id="yearSelect" style="font-size: 16px; font-weight: 800; color: #075985; border: 1px solid #38BDF8; border-radius: 4px; padding: 2px 4px;" onclick="event.stopPropagation()">
+                ${yearOptions}
+            </select>
+            <select id="monthSelect" style="font-size: 16px; font-weight: 800; color: #075985; border: 1px solid #38BDF8; border-radius: 4px; padding: 2px 4px;" onclick="event.stopPropagation()">
+                ${monthOptions}
+            </select>
+            <button id="dateMoveBtn" style="font-size: 13px; font-weight: 900; background: #075985; color: #fff; border: 0; border-radius: 4px; padding: 4px 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#0369a1'" onmouseout="this.style.background='#075985'" onclick="onDateSelectorConfirm(event)">이동</button>
+        `;
+    }
+
+    function onDateSelectorConfirm(event) {
+        if (event) event.stopPropagation();
+        const yearSel = document.getElementById('yearSelect');
+        const monthSel = document.getElementById('monthSelect');
+        if (yearSel && monthSel) {
+            viewYear = parseInt(yearSel.value, 10);
+            viewMonth = parseInt(monthSel.value, 10);
+            loadMonthSchedules();
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        const label = document.getElementById('monthLabel');
+        if (label && !label.contains(e.target)) {
+            if (document.getElementById('monthSelect') || document.getElementById('yearSelect')) {
+                label.textContent = `${viewYear}년 ${viewMonth + 1}월`;
+            }
+        }
+    });
+
     function renderCalendar() {
         document.getElementById('monthLabel').textContent = `${viewYear}년 ${viewMonth + 1}월`;
 
@@ -371,6 +475,7 @@
             const isSolarHoliday = ["01-01", "03-01", "05-05", "06-06", "07-17", "08-15", "10-03", "10-09", "12-25"].includes(mmdd);
             const isHoliday = !!HOLIDAYS[dateKey] || isSolarHoliday;
             const isRedDay = isSunday || isHoliday;
+            const isSelected = dateKey === selectedDateKey;
 
             const chips = dayEvents.slice(0, 3).map(s =>
                 `<div class="event-chip${s.isPublic ? ' public' : ''}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${escapeHtml(s.title)}</div>`
@@ -378,7 +483,7 @@
             const more = dayEvents.length > 3 ? `<div class="event-more">+${dayEvents.length - 3}개 더보기</div>` : '';
 
             return `
-        <div class="cal-day${c.otherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}" data-date="${dateKey}" onclick="openNewSchedule('${dateKey}')">
+        <div class="cal-day${c.otherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}${isSelected ? ' selected-day' : ''}" data-date="${dateKey}" onclick="openNewSchedule('${dateKey}')">
           <div class="date-num${isRedDay ? ' red-day' : ''}">${c.day}</div>
           ${chips}
           ${more}
@@ -387,7 +492,55 @@
     }
 
     function openNewSchedule(dateKey) {
-        window.location.href = `/schedule/new?date=${dateKey}`;
+        if (selectedDateKey === dateKey) {
+            window.location.href = `/schedule/new?date=${dateKey}`;
+        } else {
+            selectedDateKey = dateKey;
+            
+            document.querySelectorAll('.cal-day').forEach(el => el.classList.remove('selected-day'));
+            const currentEl = document.querySelector(`.cal-day[data-date="${dateKey}"]`);
+            if (currentEl) {
+                currentEl.classList.add('selected-day');
+            }
+            
+            renderSelectedDateEvents(dateKey);
+        }
+    }
+
+    function renderSelectedDateEvents(dateKey) {
+        const label = document.getElementById('selectedDateLabel');
+        const list = document.getElementById('selectedDateEventsList');
+        if (!label || !list) return;
+
+        const days = ['일', '월', '화', '수', '목', '금', '토'];
+        const dateObj = new Date(dateKey);
+        const dayOfWeek = days[dateObj.getDay()];
+        const parts = dateKey.split('-');
+        label.textContent = `${parts[0]}년 ${parseInt(parts[1], 10)}월 ${parseInt(parts[2], 10)}일 (${dayOfWeek}) 일정`;
+
+        const dayEvents = schedulesByDate[dateKey] || [];
+        if (dayEvents.length === 0) {
+            list.innerHTML = `<div class="empty-notice" style="padding: 20px; font-weight: 700; color: #94A3B8;">등록된 일정이 없습니다.<br><span style="font-size:12px; font-weight:500;">(한 번 더 누르면 새로운 일정을 추가합니다.)</span></div>`;
+            return;
+        }
+
+        list.innerHTML = dayEvents.map(s => {
+            let timeText = '하루종일';
+            if (s.startDate && s.endDate) {
+                const isAllDay = (s.startDate.includes('T00:00') || s.startDate.includes(' 00:00')) && (s.endDate.includes('T23:59') || s.endDate.includes(' 23:59'));
+                if (!isAllDay) {
+                     const startT = s.startDate.includes('T') ? s.startDate.split('T')[1].slice(0, 5) : s.startDate.split(' ')[1].slice(0, 5);
+                     const endT = s.endDate.includes('T') ? s.endDate.split('T')[1].slice(0, 5) : s.endDate.split(' ')[1].slice(0, 5);
+                     timeText = `${startT} ~ ${endT}`;
+                }
+            }
+            return `
+                <div class="selected-event-item" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
+                    <span class="selected-event-title">${escapeHtml(s.title)}</span>
+                    <span class="selected-event-time">${timeText}</span>
+                </div>
+            `;
+        }).join('');
     }
 
     function openSchedule(scheduleId, dateKey) {
@@ -408,9 +561,13 @@
         viewYear = base.getFullYear();
         viewMonth = base.getMonth();
 
+        const padStr = (n) => String(n).padStart(2, '0');
+        selectedDateKey = dateParam || `${base.getFullYear()}-${padStr(base.getMonth()+1)}-${padStr(base.getDate())}`;
+
         if (checkAuth()) {
             loadMonthSchedules().then(() => {
                 if (dateParam) highlightDate(dateParam);
+                renderSelectedDateEvents(selectedDateKey);
             });
         }
     })();

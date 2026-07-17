@@ -60,6 +60,18 @@ window.addEventListener("DOMContentLoaded", function() {
                         headerProfileImage.src = "/images/default-avatar.png";
                     }
                 }
+
+                if (data.role === 'ADMIN') {
+                    if (!document.getElementById("adminPageLink")) {
+                        const adminLink = document.createElement('a');
+                        adminLink.id = "adminPageLink";
+                        adminLink.href = "/admin";
+                        adminLink.innerText = "관리자 페이지";
+                        adminLink.style.color = "#e11d48";
+                        adminLink.style.fontWeight = "bold";
+                        profileDropdown.insertBefore(adminLink, profileDropdown.firstChild);
+                    }
+                }
             })
             .catch(() => {
                 headerNickname.innerText = '회원님';

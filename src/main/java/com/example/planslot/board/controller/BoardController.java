@@ -23,6 +23,7 @@ import org.springframework.web.servlet.ModelAndView;
 
 import java.security.Principal;
 import java.util.Locale;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/board")
@@ -31,6 +32,13 @@ public class BoardController {
 
     private final BoardService boardService;
     private final MemberRepository memberRepository;
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, String>> handleBoardError(ResponseStatusException exception) {
+        String message = exception.getReason();
+        if (message == null || message.isBlank()) message = "요청 처리에 실패했습니다.";
+        return ResponseEntity.status(exception.getStatusCode()).body(Map.of("message", message));
+    }
 
     // 게시판 기본 화면
     @GetMapping

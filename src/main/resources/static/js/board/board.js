@@ -911,7 +911,7 @@ async function initializeBoardWrite() {
   titleInput.addEventListener('input', () => updateWriteCount('boardWriteTitleCount', titleInput.value.length, 100));
   contentInput.addEventListener('input', () => updateWriteCount('boardWriteContentCount', contentInput.value.length, 1000));
   imageInput.addEventListener('change', handleWriteImageSelection);
-  imageSelectButton.addEventListener('click', () => imageInput.click());
+  imageSelectButton?.addEventListener('click', () => imageInput.click());
   initializeWriteImageDropzone(imageSelectButton);
   document.getElementById('boardWriteImageRemove').addEventListener('click', clearWriteImage);
   form.addEventListener('submit', event => saveBoardPost(event, type, boardId));

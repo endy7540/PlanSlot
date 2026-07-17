@@ -27,8 +27,12 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody AuthRequestDTO.Login request) {
-        String token = authService.login(request);
-        return ResponseEntity.ok("Bearer " + token);
+        try {
+            String token = authService.login(request);
+            return ResponseEntity.ok("Bearer " + token);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PostMapping("/email/send")

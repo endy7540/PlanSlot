@@ -35,8 +35,6 @@ public class MemberServiceImpl implements MemberService{
                 .address(request.getAddress())
                 .role(Member.Role.MEMBER)
                 .status(Member.Status.ACTIVE)
-                .allowActivityNoti(request.isAllowActivityNoti())
-                .allowMarketingNoti(request.isAllowMarketingNoti())
                 .build();
 
         return memberRepository.save(member).getId();
@@ -56,8 +54,8 @@ public class MemberServiceImpl implements MemberService{
                 .nickname(member.getNickname())
                 .address(member.getAddress())
                 .profileImageUrl(member.getProfileImageUrl())
-                .allowActivityNoti(member.isAllowActivityNoti())
-                .allowMarketingNoti(member.isAllowMarketingNoti())
+                .allowActivityNoti(true)  // 임시 기본값 (DB 분리됨)
+                .allowMarketingNoti(false) // 임시 기본값 (DB 분리됨)
                 .role(member.getRole().name())
                 .build();
     }

@@ -57,13 +57,7 @@ public class Member {
     @Column(name = "profile_image_url", length = 255)
     private String profileImageUrl;
 
-    @Column(name = "allow_activity_noti", nullable = false)
-    @Builder.Default
-    private boolean allowActivityNoti = true;
 
-    @Column(name = "allow_marketing_noti", nullable = false)
-    @Builder.Default
-    private boolean allowMarketingNoti = false;
 
     public enum Role {
         MEMBER, ADMIN
@@ -86,8 +80,9 @@ public class Member {
     }
 
     public void updateNotification(boolean allowActivityNoti, boolean allowMarketingNoti) {
-        this.allowActivityNoti = allowActivityNoti;
-        this.allowMarketingNoti = allowMarketingNoti;
+        // DB 컬럼 분리를 위해 임시 주석 처리 또는 빈 메서드 유지
+        // this.allowActivityNoti = allowActivityNoti;
+        // this.allowMarketingNoti = allowMarketingNoti;
     }
 
     public void updateProfileImage(String profileImageUrl) {

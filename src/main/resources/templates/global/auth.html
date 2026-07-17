@@ -501,7 +501,7 @@
                 window.location.href = "/planslot";
             } else {
                 msgBox.style.color = "#B91C1C";
-                msgBox.innerText = '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.';
+                msgBox.innerText = result || '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.';
             }
         } catch (error) {
             msgBox.style.color = "#B91C1C";
@@ -530,18 +530,20 @@
             return;
         }
 
-        if(nickname.trim().length < 2 || nickname.trim().length > 20) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '닉네임은 2자 이상 20자 이하로 입력해주세요.';
-            return;
-        }
-
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!emailRegex.test(email)) {
             msgBox.style.color = "#B91C1C";
             msgBox.innerText = '올바른 이메일 형식을 입력해주세요.';
             return;
         }
+
+        if(nickname.trim().length < 2 || nickname.trim().length > 20) {
+            msgBox.style.color = "#B91C1C";
+            msgBox.innerText = '닉네임은 2자 이상 20자 이하로 입력해주세요.';
+            return;
+        }
+
+
 
         if(!agreeSystemNoti) {
             msgBox.style.color = "#B91C1C";

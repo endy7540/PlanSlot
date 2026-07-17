@@ -14,5 +14,6 @@ public class MemberResponseDTO {
         private String profileImageUrl;
         private boolean allowActivityNoti;
         private boolean allowMarketingNoti;
+        private String role;
     }
 }

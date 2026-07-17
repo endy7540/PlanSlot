@@ -5,12 +5,15 @@ import com.example.planslot.notification.dto.GroupNotificationSettingDTO;
 import com.example.planslot.notification.dto.NotificationDTO;
 import com.example.planslot.notification.dto.NotificationSettingDTO;
 import com.example.planslot.notification.service.NotificationService;
+import com.example.planslot.notification.service.NotificationSseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.security.Principal;
 import java.util.List;
@@ -21,7 +24,15 @@ import java.util.List;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final NotificationSseService notificationSseService;
     private final MemberRepository memberRepository;
+
+    // 로그인 사용자의 실시간 알림 연결
+    @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @ResponseBody
+    public SseEmitter subscribe(Principal principal) {
+        return notificationSseService.subscribe(getLoginMemberId(principal));
+    }
 
     // 내 알림 목록 조회 (showAll=false: 읽지 않은 것만 / showAll=true: 전체 목록)
     @GetMapping

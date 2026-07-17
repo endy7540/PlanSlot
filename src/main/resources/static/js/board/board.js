@@ -236,17 +236,17 @@ function renderBoardRows(boards) {
   }
 
   list.innerHTML = boards.map(board => `
-    <article class="board-list-row ${type === 'NOTICE' ? 'board-notice-row' : ''}">
+    <a class="board-list-row ${type === 'NOTICE' ? 'board-notice-row' : ''}" href="/board/detail/${encodeURIComponent(board.boardId)}">
       <div class="board-list-number"><span class="board-type-badge">${BOARD_TYPE_INFO[type].label}</span></div>
       <div class="board-list-title">
-        <a href="/board/detail/${board.boardId}">${escapeBoardHtml(board.title)}</a>
+        <span class="board-list-title-text">${escapeBoardHtml(board.title)}</span>
         ${board.commentCount > 0 ? `<span class="board-comment-count">[${board.commentCount}]</span>` : ''}
         ${renderRecruitmentBadges(board)}
       </div>
       <div class="board-list-writer">${escapeBoardHtml(board.writerNickname || '알 수 없음')}</div>
       <div class="board-list-views">${board.viewCount ?? 0}</div>
       <div class="board-list-date">${formatBoardDate(board.createdAt)}</div>
-    </article>
+    </a>
   `).join('');
 }
 

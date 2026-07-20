@@ -38,7 +38,7 @@ public class BoardReport {
     @Column(name = "reason_code", nullable = false, length = 30)
     private BoardReportReasonCode reasonCode;
 
-    @Column(name = "reason_detail", nullable = false, length = 500)
+    @Column(name = "reason_detail", columnDefinition = "TEXT")
     private String reasonDetail;
 
     @Enumerated(EnumType.STRING)

@@ -408,3 +408,188 @@
 .cropper-face {
   border-radius: 50%;
 }
+
+/* Notification Settings */
+
+#section-notifications.is-notification-loading {
+    position: relative;
+    min-height: 280px;
+}
+
+#section-notifications.is-notification-loading .notification-settings-stack,
+#section-notifications.is-notification-loading .notification-save-actions {
+    visibility: hidden;
+}
+
+#section-notifications.is-notification-loading::after {
+    position: absolute;
+    top: 132px;
+    left: 50%;
+    content: '알림 설정을 불러오는 중...';
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+    transform: translateX(-50%);
+}
+
+#section-notifications.is-notification-loading .toggle-switch .slider,
+#section-notifications.is-notification-loading .toggle-switch .slider::before,
+#section-notifications.is-notification-loading .notification-setting-card {
+    transition: none !important;
+}
+
+.notification-settings-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.notification-setting-card {
+    overflow: hidden;
+    border: 1px solid #dbeafe;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 7px 22px rgba(8, 32, 51, 0.05);
+    transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.notification-card-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 22px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fcff;
+}
+
+.notification-card-label {
+    display: block;
+    margin-bottom: 5px;
+    color: #0ea5e9;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+}
+
+.notification-card-heading h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 18px;
+}
+
+.notification-card-heading p {
+    margin: 7px 0 0;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.notification-setting-row,
+.group-notification-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    min-height: 76px;
+    padding: 16px 22px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.notification-setting-row:last-child,
+.group-notification-item:last-child {
+    border-bottom: 0;
+}
+
+.notification-setting-copy {
+    min-width: 0;
+}
+
+.notification-setting-copy strong,
+.group-notification-name {
+    display: block;
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.notification-setting-copy span {
+    display: block;
+    margin-top: 5px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.group-notification-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.group-notification-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.notification-settings-loading,
+.notification-settings-empty,
+.notification-settings-error {
+    padding: 28px 22px;
+    color: #64748b;
+    font-size: 13px;
+    text-align: center;
+}
+
+.notification-settings-error {
+    color: #dc2626;
+}
+
+.notification-setting-card.is-disabled {
+    background: #f8fafc;
+}
+
+.notification-setting-card.is-disabled .notification-setting-row,
+.notification-setting-card.is-disabled .group-notification-item,
+.notification-setting-card.is-disabled .notification-card-heading {
+    opacity: 0.55;
+}
+
+.toggle-switch input:disabled + .slider {
+    cursor: not-allowed;
+    background-color: #dbe3ec;
+}
+
+.notification-save-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.notification-save-actions .btn-primary {
+    width: auto;
+    min-width: 170px;
+    padding: 14px 22px;
+}
+
+.notification-save-actions .btn-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+    box-shadow: none;
+}
+
+@media (max-width: 640px) {
+    .notification-setting-row,
+    .group-notification-item {
+        padding: 15px 16px;
+    }
+
+    .notification-card-heading {
+        padding: 18px 16px 14px;
+    }
+
+    .notification-save-actions .btn-primary {
+        width: 100%;
+    }
+}

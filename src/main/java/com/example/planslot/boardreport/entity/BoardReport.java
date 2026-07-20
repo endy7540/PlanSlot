@@ -67,4 +67,14 @@ public class BoardReport {
         this.reasonDetail = reasonDetail;
         this.status = BoardReportStatus.WAITING;
     }
+
+    public void approve() {
+        this.status = BoardReportStatus.APPROVED;
+        this.processedAt = LocalDateTime.now();
+    }
+
+    public void reject() {
+        this.status = BoardReportStatus.REJECTED;
+        this.processedAt = LocalDateTime.now();
+    }
 }

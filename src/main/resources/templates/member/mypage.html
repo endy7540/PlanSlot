@@ -125,35 +125,122 @@
                 <div id="section-notifications" class="mypage-section" style="display:none;">
                     <div class="mypage-header">
                         <h1>알림 설정</h1>
-                        <p>플랜슬롯에서 받는 알림을 관리하세요.</p>
+                        <p>플랜슬롯에서 받는 알림을 한곳에서 관리하세요.</p>
                     </div>
 
-                    <div class="profile-info-card" style="display:flex; flex-direction:column; gap:20px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <div style="font-weight:bold; font-size:15px; color:#0f172a; margin-bottom:4px;">서비스 주요 활동 알림</div>
-                                <div style="font-size:13px; color:#64748b;">모임 초대, 일정 임박, 내 게시글 댓글 등</div>
+                    <div class="notification-settings-stack">
+                        <section class="notification-setting-card">
+                            <div class="notification-card-heading">
+                                <div>
+                                    <span class="notification-card-label">기본 설정</span>
+                                    <h2>알림 수신 설정</h2>
+                                </div>
                             </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="toggleActivityNoti">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                        <hr style="border:0; border-top:1px solid #e2e8f0; margin:0;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <div style="font-weight:bold; font-size:15px; color:#0f172a; margin-bottom:4px;">혜택 및 이벤트 알림</div>
-                                <div style="font-size:13px; color:#64748b;">플랜슬롯의 다양한 프로모션 및 마케팅 정보</div>
+
+                            <div class="notification-setting-row">
+                                <div class="notification-setting-copy">
+                                    <strong>서비스 주요 활동 알림</strong>
+                                    <span>모임, 일정, 게시판 등 서비스 활동 알림을 받습니다.</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggleActivityNoti">
+                                    <span class="slider"></span>
+                                </label>
                             </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="toggleMarketingNoti">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
+
+                            <div class="notification-setting-row">
+                                <div class="notification-setting-copy">
+                                    <strong>혜택 및 이벤트 알림</strong>
+                                    <span>플랜슬롯의 혜택, 이벤트 및 마케팅 정보를 받습니다.</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggleMarketingNoti">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </section>
+
+                        <section class="notification-setting-card" id="notificationDetailSection">
+                            <div class="notification-card-heading">
+                                <div>
+                                    <span class="notification-card-label">세부 설정</span>
+                                    <h2>기능별 알림</h2>
+                                    <p>서비스 주요 활동 알림 안에서 필요한 기능만 선택할 수 있습니다.</p>
+                                </div>
+                            </div>
+
+                            <div class="notification-setting-row">
+                                <div class="notification-setting-copy">
+                                    <strong>모임 알림</strong>
+                                    <span>참여 중인 모임에서 발생한 주요 소식을 받습니다.</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggleGroupNoti" data-notification-detail>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="notification-setting-row">
+                                <div class="notification-setting-copy">
+                                    <strong>일정 알림</strong>
+                                    <span>모임 일정 등록 및 변경 소식을 받습니다.</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggleScheduleNoti" data-notification-detail>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="notification-setting-row">
+                                <div class="notification-setting-copy">
+                                    <strong>게시판 알림</strong>
+                                    <span>내 게시글에 등록된 댓글 등 게시판 소식을 받습니다.</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggleBoardNoti" data-notification-detail>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="notification-setting-row">
+                                <div class="notification-setting-copy">
+                                    <strong>신청 및 초대 알림</strong>
+                                    <span>모임 신청, 초대 및 처리 결과를 확인합니다.</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggleApplicationNoti" data-notification-detail>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="notification-setting-row">
+                                <div class="notification-setting-copy">
+                                    <strong>일정 리마인더</strong>
+                                    <span>다가오는 일정과 마감 알림을 받습니다.</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggleReminderNoti" data-notification-detail>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </section>
+
+                        <section class="notification-setting-card" id="groupNotificationSection">
+                            <div class="notification-card-heading">
+                                <div>
+                                    <span class="notification-card-label">모임 설정</span>
+                                    <h2>모임별 알림</h2>
+                                    <p>참여 중인 모임마다 알림 수신 여부를 따로 설정할 수 있습니다.</p>
+                                </div>
+                            </div>
+                            <div id="groupNotificationSettings" class="group-notification-list">
+                                <div class="notification-settings-loading">알림 설정 탭을 열면 모임 목록을 불러옵니다.</div>
+                            </div>
+                        </section>
                     </div>
-                    
-                    <div style="margin-top:24px; text-align:right;">
-                        <button type="button" class="btn-primary" onclick="saveNotificationSettings()">알림 설정 저장</button>
+
+                    <div class="notification-save-actions">
+                        <button type="button" class="btn-primary" id="btnSaveNotificationSettings" onclick="saveNotificationSettings()" disabled>알림 설정 저장</button>
                     </div>
                 </div> <!-- section-notifications end -->
 

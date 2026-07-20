@@ -2,6 +2,8 @@ package com.example.planslot.board.repository;
 
 import com.example.planslot.board.entity.BoardComment;
 import com.example.planslot.board.entity.BoardCommentStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,6 +22,42 @@ public interface BoardCommentRepository extends JpaRepository<BoardComment, Long
             ORDER BY c.createdAt ASC, c.commentId ASC
             """)
     List<BoardComment> findRootComments(@Param("boardId") Long boardId);
+
+    // 화면에 표시할 부모 댓글 페이징 조회
+    @Query(value = """
+            SELECT c
+            FROM BoardComment c
+            JOIN FETCH c.writer
+            WHERE c.board.boardId = :boardId
+              AND c.parentComment IS NULL
+              AND (
+                    c.commentStatus = :commentStatus
+                    OR EXISTS (
+                        SELECT reply.commentId
+                        FROM BoardComment reply
+                        WHERE reply.parentComment.commentId = c.commentId
+                          AND reply.commentStatus = :commentStatus
+                    )
+              )
+            ORDER BY c.createdAt ASC, c.commentId ASC
+            """, countQuery = """
+            SELECT COUNT(c)
+            FROM BoardComment c
+            WHERE c.board.boardId = :boardId
+              AND c.parentComment IS NULL
+              AND (
+                    c.commentStatus = :commentStatus
+                    OR EXISTS (
+                        SELECT reply.commentId
+                        FROM BoardComment reply
+                        WHERE reply.parentComment.commentId = c.commentId
+                          AND reply.commentStatus = :commentStatus
+                    )
+              )
+            """)
+    Page<BoardComment> findVisibleRootComments(@Param("boardId") Long boardId,
+                                                @Param("commentStatus") BoardCommentStatus commentStatus,
+                                                Pageable pageable);
 
     // 부모 댓글에 작성된 활성 대댓글 조회
     @Query("""

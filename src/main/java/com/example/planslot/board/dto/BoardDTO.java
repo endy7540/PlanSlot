@@ -22,6 +22,7 @@ public class BoardDTO {
     private Long boardId;
     private Long writerId;
     private String writerNickname;
+    private String writerProfileImageUrl;
     private String title;
     private String content;
     private Integer viewCount;

@@ -8,6 +8,7 @@ const BOARD_TYPE_INFO = {
 let boardToastTimer;
 let reportTarget = null;
 let currentListPage = 0;
+let currentCommentPage = 0;
 let currentListKeyword = '';
 let currentListSearchType = 'titleContent';
 let currentReadBoard = null;
@@ -416,7 +417,7 @@ async function loadBoardRead(boardId) {
     document.title = `PlanSlot - ${board.title}`;
     document.getElementById('boardReadCategory').textContent = boardTypeInfo.label;
     document.getElementById('boardReadTitle').textContent = board.title;
-    document.getElementById('boardReadWriter').textContent = board.writerNickname || '알 수 없음';
+    renderBoardReadWriter(board);
     document.getElementById('boardReadDate').textContent = formatBoardDateTimeWithModified(board.createdAt, board.updatedAt);
     document.getElementById('boardReadViews').textContent = `조회 ${board.viewCount ?? 0}`;
     document.getElementById('boardReadContent').textContent = board.content || '';
@@ -444,6 +445,58 @@ async function loadBoardRead(boardId) {
     document.getElementById('boardReadLoading').innerHTML = `<div class="board-error">${escapeBoardHtml(message)}</div>`;
     return false;
   }
+}
+
+function renderBoardReadWriter(board) {
+  const writer = document.getElementById('boardReadWriter');
+  const nickname = board.writerNickname || '알 수 없음';
+
+  writer.className = 'board-read-author';
+  writer.innerHTML = `
+    ${renderBoardProfileAvatar(board.writerProfileImageUrl, nickname, 'board-read-avatar')}
+    <span class="board-read-author-name">${escapeBoardHtml(nickname)}</span>
+  `;
+
+  initializeBoardProfileImages(writer);
+}
+
+function renderBoardProfileAvatar(profileImageUrl, nickname, avatarClass) {
+  const safeNickname = nickname || '알 수 없음';
+  const initial = escapeBoardHtml(safeNickname.slice(0, 1));
+  const image = profileImageUrl
+      ? `<img src="${escapeBoardAttribute(profileImageUrl)}" alt="${escapeBoardAttribute(safeNickname)} 프로필 이미지" loading="lazy" data-board-profile-image>`
+      : '';
+
+  return `
+    <span class="board-profile-avatar ${avatarClass}">
+      <span class="board-profile-avatar-fallback" aria-hidden="true">${initial}</span>
+      ${image}
+    </span>
+  `;
+}
+
+function initializeBoardProfileImages(container) {
+  container.querySelectorAll('[data-board-profile-image]').forEach(image => {
+    const avatar = image.closest('.board-profile-avatar');
+
+    const showImage = () => {
+      image.hidden = false;
+      avatar?.classList.add('has-profile-image');
+    };
+
+    const showFallback = () => {
+      image.hidden = true;
+      avatar?.classList.remove('has-profile-image');
+    };
+
+    image.addEventListener('load', showImage, { once: true });
+    image.addEventListener('error', showFallback, { once: true });
+
+    if (image.complete) {
+      if (image.naturalWidth > 0) showImage();
+      else showFallback();
+    }
+  });
 }
 
 function renderBoardReadActions(board) {
@@ -488,7 +541,7 @@ function renderBoardReadActions(board) {
   document.getElementById('boardApplyButton')?.addEventListener('click', () => applyToBoardGroup(board.boardId));
   document.getElementById('boardApplicationCancelButton')?.addEventListener('click', () => cancelBoardApplication(board.boardId));
   document.getElementById('boardGroupOpenButton')?.addEventListener('click', () => openBoardGroupModal(board));
-  document.getElementById('boardGroupViewButton')?.addEventListener('click', () => location.href = `/group/detail?id=${board.groupId}`);
+  document.getElementById('boardGroupViewButton')?.addEventListener('click', () => location.href = `/group/read?id=${board.groupId}`);
 }
 
 function isRecruitmentBoard(boardType) {
@@ -666,7 +719,7 @@ async function createBoardGroup() {
     showBoardToast('모임 캘린더를 생성했습니다.', false, 'success');
 
     if (response?.groupId) {
-      setTimeout(() => location.href = `/group/detail?id=${response.groupId}`, 500);
+      setTimeout(() => location.href = `/group/read?id=${response.groupId}`, 500);
     }
   } catch (error) {
     showBoardToast(error.message, true);
@@ -688,13 +741,32 @@ async function deleteBoardPost(board) {
   }
 }
 
-async function loadBoardComments(boardId) {
+async function loadBoardComments(boardId, moveToLastPage = false) {
   const list = document.getElementById('boardCommentList');
+  const pagination = document.getElementById('boardCommentPagination');
   list.innerHTML = '<div class="board-loading">댓글을 불러오는 중...</div>';
+  if (pagination) pagination.innerHTML = '';
+
+  const params = new URLSearchParams({ page: currentCommentPage, size: 10 });
 
   try {
-    const comments = await fetchBoardJson(`/board/${boardId}/comments`);
-    renderBoardComments(comments || []);
+    const page = await fetchBoardJson(`/board/${boardId}/comments?${params}`);
+    const totalPages = page.totalPages || 0;
+
+    if (moveToLastPage && totalPages > 0 && currentCommentPage !== totalPages - 1) {
+      currentCommentPage = totalPages - 1;
+      await loadBoardComments(boardId);
+      return;
+    }
+
+    if (!(page.content || []).length && currentCommentPage > 0) {
+      currentCommentPage = Math.max(0, totalPages - 1);
+      await loadBoardComments(boardId);
+      return;
+    }
+
+    renderBoardComments(page.content || []);
+    renderBoardCommentPagination(page, boardId);
   } catch (error) {
     list.innerHTML = `<div class="board-error">${escapeBoardHtml(error.message)}</div>`;
   }
@@ -702,7 +774,6 @@ async function loadBoardComments(boardId) {
 
 function renderBoardComments(comments) {
   const list = document.getElementById('boardCommentList');
-  document.getElementById('boardReadCommentCount').textContent = comments.reduce((total, comment) => total + (comment.commentStatus === 'DELETED' ? 0 : 1) + (comment.replies?.length || 0), 0);
 
   if (!comments.length) {
     list.innerHTML = '<div class="board-empty">첫 댓글을 남겨보세요.</div>';
@@ -714,6 +785,37 @@ function renderBoardComments(comments) {
     const replies = (comment.replies || []).map(reply => renderSingleComment(reply, true)).join('');
     return root + replies;
   }).join('');
+
+  initializeBoardProfileImages(list);
+}
+
+function renderBoardCommentPagination(page, boardId) {
+  const pagination = document.getElementById('boardCommentPagination');
+  const totalPages = page.totalPages || 0;
+
+  if (!pagination || totalPages <= 1) return;
+
+  const current = page.number || 0;
+  const start = Math.max(0, current - 2);
+  const end = Math.min(totalPages - 1, start + 4);
+  let html = `<button class="board-page-button" data-comment-page="${current - 1}" ${current === 0 ? 'disabled' : ''}>‹</button>`;
+
+  for (let index = start; index <= end; index++) {
+    html += `<button class="board-page-button ${index === current ? 'active' : ''}" data-comment-page="${index}">${index + 1}</button>`;
+  }
+
+  html += `<button class="board-page-button" data-comment-page="${current + 1}" ${current >= totalPages - 1 ? 'disabled' : ''}>›</button>`;
+  pagination.innerHTML = html;
+
+  pagination.querySelectorAll('[data-comment-page]').forEach(button => {
+    button.addEventListener('click', async () => {
+      if (button.disabled) return;
+
+      currentCommentPage = Number(button.dataset.commentPage);
+      await loadBoardComments(boardId);
+      document.querySelector('.board-comments')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
 }
 
 function renderSingleComment(comment, reply) {
@@ -722,14 +824,14 @@ function renderSingleComment(comment, reply) {
   }
 
   const isWriter = currentBoardMember && Number(currentBoardMember.memberId) === Number(comment.writerId);
-  const initial = escapeBoardHtml((comment.writerNickname || '?').slice(0, 1));
+  const nickname = comment.writerNickname || '알 수 없음';
 
   return `
     <article class="board-comment ${reply ? 'reply' : ''}" data-comment-id="${comment.commentId}" data-comment-content="${escapeBoardAttribute(comment.content)}">
       <div class="board-comment-head">
         <div class="board-comment-author">
-          <span class="board-comment-avatar">${initial}</span>
-          <span>${escapeBoardHtml(comment.writerNickname || '알 수 없음')}<small class="board-comment-time">${formatBoardDateTimeWithModified(comment.createdAt, comment.updatedAt)}</small></span>
+          ${renderBoardProfileAvatar(comment.writerProfileImageUrl, nickname, 'board-comment-avatar')}
+          <span>${escapeBoardHtml(nickname)}<small class="board-comment-time">${formatBoardDateTimeWithModified(comment.createdAt, comment.updatedAt)}</small></span>
         </div>
         <div class="board-comment-actions">
           ${!reply ? '<button class="board-text-button" data-comment-action="reply">답글</button>' : ''}
@@ -770,9 +872,10 @@ async function createBoardComment(boardId, parentCommentId = null, content = nul
     });
 
     if (textarea) textarea.value = '';
+    updateBoardCommentCount(1);
 
     showBoardToast(parentCommentId ? '답글을 등록했습니다.' : '댓글을 등록했습니다.', false, 'success');
-    await loadBoardComments(boardId);
+    await loadBoardComments(boardId, !parentCommentId);
   } catch (error) {
     showBoardToast(error.message, true);
   }
@@ -860,11 +963,20 @@ async function deleteBoardComment(commentId, boardId) {
 
   try {
     await fetchBoardJson(`/board/comment/${commentId}`, { method: 'DELETE' });
+    updateBoardCommentCount(-1);
     showBoardToast('댓글을 삭제했습니다.', false, 'success');
     await loadBoardComments(boardId);
   } catch (error) {
     showBoardToast(error.message, true);
   }
+}
+
+function updateBoardCommentCount(change) {
+  if (!currentReadBoard) return;
+
+  currentReadBoard.commentCount = Math.max(0, Number(currentReadBoard.commentCount || 0) + change);
+  const count = document.getElementById('boardReadCommentCount');
+  if (count) count.textContent = currentReadBoard.commentCount;
 }
 
 async function initializeBoardRegister() {

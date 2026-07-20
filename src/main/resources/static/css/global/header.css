@@ -2,6 +2,7 @@
   height:78px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
   padding:0 28px;background:#F3FAFF;border-bottom:2px solid #DCEFFC;
   box-shadow:0 6px 18px rgba(8,32,51,.05);
+  font-family: 'Pretendard', 'Malgun Gothic', Arial, sans-serif;
 }
 .header-brand{cursor:pointer;}
 .header-brand .logo{font-size:28px;font-weight:950;color:#38BDF8!important}

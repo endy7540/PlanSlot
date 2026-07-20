@@ -19,8 +19,9 @@ public class AdminReportResponseDTO {
     private LocalDateTime createdAt;
     
     private String targetContent;
+    private String targetBody;
 
-    public static AdminReportResponseDTO fromEntity(BoardReport report, String targetContent) {
+    public static AdminReportResponseDTO fromEntity(BoardReport report, String targetContent, String targetBody) {
         return AdminReportResponseDTO.builder()
                 .reportId(report.getReportId())
                 .reporterNickname(report.getReporter().getNickname())
@@ -31,6 +32,7 @@ public class AdminReportResponseDTO {
                 .status(report.getStatus().name())
                 .createdAt(report.getCreatedAt())
                 .targetContent(targetContent)
+                .targetBody(targetBody)
                 .build();
     }
 }

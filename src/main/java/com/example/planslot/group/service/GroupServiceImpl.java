@@ -78,7 +78,7 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    public GroupDTO.DetailResponse getGroupDetail(Long groupId, Long memberId) {
+    public GroupDTO.DetailResponse getGroupRead(Long groupId, Long memberId) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 모임입니다."));
 
@@ -422,7 +422,8 @@ public class GroupServiceImpl implements GroupService {
                     dateStr,
                     timeStr,
                     share.getSharer().getNickname(),
-                    schedule.getIsPublic()
+                    schedule.getIsPublic(),
+                    schedule.getScheduleType() != null ? schedule.getScheduleType().name() : "DAILY"
             );
         }).toList();
     }
@@ -441,7 +442,8 @@ public class GroupServiceImpl implements GroupService {
                     dateStr,
                     timeStr,
                     share.getTargetMember().getNickname(), // For this method, sharerName field is repurposed to hold the target member's name
-                    schedule.getIsPublic()
+                    schedule.getIsPublic(),
+                    schedule.getScheduleType() != null ? schedule.getScheduleType().name() : "DAILY"
             );
         }).toList();
     }
@@ -496,6 +498,7 @@ public class GroupServiceImpl implements GroupService {
                 .isPublic(isPublic != null ? isPublic : "N")
                 .sourceType(sharedSchedule.getSourceType())
                 .location(sharedSchedule.getLocation())
+                .recurrenceEndDate(sharedSchedule.getRecurrenceEndDate())
                 .build();
         
         scheduleRepository.save(newSchedule);

@@ -35,7 +35,7 @@ public class SecurityConfig {
                                 "/css/**", "/js/**", "/images/**",
 
                                 // 인증 및 회원가입 관련
-                                "/auth", "/auth/signup", "/auth/login", "/auth/email/send", "/auth/email/verify", "/auth/oauth2-callback",
+                                "/auth", "/auth/signup", "/auth/login", "/auth/email/send", "/auth/email/verify", "/auth/oauth2-callback", "/auth/terms",
                                 "/members/checkDuplicate",
 
                                 // 도메인 화면 및 기타

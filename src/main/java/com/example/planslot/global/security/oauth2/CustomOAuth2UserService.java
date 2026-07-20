@@ -77,6 +77,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
                     .status(Member.Status.ACTIVE)
                     .build();
             memberRepository.save(member);
+            modifiableAttributes.put("is_new", true);
         } else {
             // 기존 회원이지만 프로필 이미지가 없는 경우 소셜 이미지로 동기화
             if (member.getProfileImageUrl() == null && profileImageUrl != null) {

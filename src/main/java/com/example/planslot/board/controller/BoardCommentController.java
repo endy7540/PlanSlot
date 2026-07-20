@@ -4,13 +4,15 @@ import com.example.planslot.board.dto.BoardCommentDTO;
 import com.example.planslot.board.service.BoardCommentService;
 import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -28,10 +30,11 @@ public class BoardCommentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(commentId);
     }
 
-    // 게시글 댓글 목록 조회
+    // 게시글 부모 댓글 페이징 조회 및 대댓글 함께 조회
     @GetMapping("/board/{boardId}/comments")
-    public ResponseEntity<List<BoardCommentDTO>> getCommentList(@PathVariable Long boardId) {
-        return ResponseEntity.ok(boardCommentService.getCommentList(boardId));
+    public ResponseEntity<Page<BoardCommentDTO>> getCommentList(@PathVariable Long boardId,
+                                                                 @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(boardCommentService.getCommentList(boardId, pageable));
     }
 
     // 댓글 및 대댓글 수정

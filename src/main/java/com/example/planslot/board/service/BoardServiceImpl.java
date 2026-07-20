@@ -537,6 +537,7 @@ public class BoardServiceImpl implements BoardService {
                 .boardId(board.getBoardId())
                 .writerId(board.getWriter().getId())
                 .writerNickname(board.getWriter().getNickname())
+                .writerProfileImageUrl(board.getWriter().getProfileImageUrl())
                 .title(board.getTitle())
                 .content(board.getContent())
                 .viewCount(board.getViewCount())

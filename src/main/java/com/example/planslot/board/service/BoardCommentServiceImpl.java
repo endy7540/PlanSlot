@@ -15,6 +15,9 @@ import com.example.planslot.member.entity.Member;
 import com.example.planslot.member.repository.MemberRepository;
 import com.example.planslot.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -107,15 +110,18 @@ public class BoardCommentServiceImpl implements BoardCommentService {
         );
     }
 
-    // 게시글 댓글 목록 조회
+    // 게시글 부모 댓글 페이징 조회 및 대댓글 함께 조회
     @Override
-    public List<BoardCommentDTO> getCommentList(Long boardId) {
+    public Page<BoardCommentDTO> getCommentList(Long boardId, Pageable pageable) {
         findBoard(boardId);
 
-        List<BoardComment> rootComments = boardCommentRepository.findRootComments(boardId);
+        Page<BoardComment> rootCommentPage = boardCommentRepository.findVisibleRootComments(
+                boardId, BoardCommentStatus.ACTIVE, pageable
+        );
+        List<BoardComment> rootComments = rootCommentPage.getContent();
 
         if (rootComments.isEmpty()) {
-            return List.of();
+            return new PageImpl<>(List.of(), pageable, rootCommentPage.getTotalElements());
         }
 
         List<Long> rootCommentIds = rootComments.stream()
@@ -135,26 +141,19 @@ public class BoardCommentServiceImpl implements BoardCommentService {
                     .add(toDTO(reply, List.of()));
         }
 
-        List<BoardCommentDTO> result = new ArrayList<>();
+        List<BoardCommentDTO> comments = rootComments.stream()
+                .map(rootComment -> {
+                    List<BoardCommentDTO> commentReplies = repliesByParentId.getOrDefault(
+                            rootComment.getCommentId(), List.of()
+                    );
 
-        for (BoardComment rootComment : rootComments) {
-            List<BoardCommentDTO> commentReplies = repliesByParentId.getOrDefault(
-                    rootComment.getCommentId(), List.of()
-            );
+                    return rootComment.getCommentStatus() == BoardCommentStatus.DELETED
+                            ? toDeletedRootDTO(rootComment, commentReplies)
+                            : toDTO(rootComment, commentReplies);
+                })
+                .toList();
 
-            if (rootComment.getCommentStatus() == BoardCommentStatus.DELETED) {
-                if (commentReplies.isEmpty()) {
-                    continue;
-                }
-
-                result.add(toDeletedRootDTO(rootComment, commentReplies));
-                continue;
-            }
-
-            result.add(toDTO(rootComment, commentReplies));
-        }
-
-        return result;
+        return new PageImpl<>(comments, pageable, rootCommentPage.getTotalElements());
     }
 
     // 댓글 및 대댓글 수정
@@ -321,6 +320,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
                 .parentCommentId(parentCommentId)
                 .writerId(comment.getWriter().getId())
                 .writerNickname(comment.getWriter().getNickname())
+                .writerProfileImageUrl(comment.getWriter().getProfileImageUrl())
                 .content(comment.getContent())
                 .commentStatus(comment.getCommentStatus())
                 .replies(replies)
@@ -337,6 +337,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
                 .parentCommentId(null)
                 .writerId(null)
                 .writerNickname(null)
+                .writerProfileImageUrl(null)
                 .content(DELETED_COMMENT_MESSAGE)
                 .commentStatus(BoardCommentStatus.DELETED)
                 .replies(replies)

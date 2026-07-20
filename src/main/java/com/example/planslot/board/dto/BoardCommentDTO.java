@@ -17,6 +17,7 @@ public class BoardCommentDTO {
     private Long parentCommentId;
     private Long writerId;
     private String writerNickname;
+    private String writerProfileImageUrl;
     private String content;
     private BoardCommentStatus commentStatus;
     private List<BoardCommentDTO> replies;

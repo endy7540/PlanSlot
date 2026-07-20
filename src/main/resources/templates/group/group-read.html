@@ -121,14 +121,14 @@
           
           <div style="margin-bottom:12px;">
             <h4 style="font-size:12px; margin-bottom:6px;">공유할 일정 선택</h4>
-            <div id="shareMyScheduleList" style="max-height:120px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:6px; padding:6px; background:#fff;">
+            <div id="shareMyScheduleList" style="max-height:300px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:6px; padding:6px; background:#fff;">
               <!-- JS 렌더링 -->
             </div>
           </div>
           
           <div style="margin-bottom:12px;">
             <h4 style="font-size:12px; margin-bottom:6px;">공유받을 모임원 선택</h4>
-            <div id="shareTargetMemberList" style="max-height:120px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:6px; padding:6px; background:#fff;">
+            <div id="shareTargetMemberList" style="max-height:200px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:6px; padding:6px; background:#fff;">
               <!-- JS 렌더링 -->
             </div>
           </div>
@@ -689,7 +689,7 @@ async function fetchGroupDetail() {
     return;
   }
   try {
-    const res = await fetchApi('/group/detail/' + id);
+    const res = await fetchApi('/group/read/' + id);
     if(res.ok) {
       group = await res.json();
       renderHead();
@@ -751,20 +751,44 @@ function renderDynamicCalendar() {
     
     const daySchedules = groupSchedules.filter(s => s.startDate && s.startDate.startsWith(dateStr));
     
-    let toRender = [...daySchedules];
+    let eventsHtml = '';
+    
+    // 일정 제목과 시간 기준으로 병합 (동일한 공유 일정은 하나로)
+    const myName = group.members.find(m => String(m.id) === String(group.myMemberId))?.name || '나';
+    const mergedMap = new Map();
+    daySchedules.forEach(s => {
+      const key = `${s.title}|${s.time}`;
+      let displayNick = s.nickname;
+      if (s.nickname === myName && s.isPublic === 'N') {
+        displayNick = `${s.nickname} (나-비공개)`;
+      }
+      
+      if (!mergedMap.has(key)) {
+        mergedMap.set(key, { ...s, nicknames: [displayNick] });
+      } else {
+        const existing = mergedMap.get(key);
+        if (displayNick && !existing.nicknames.includes(displayNick)) {
+          existing.nicknames.push(displayNick);
+        }
+      }
+    });
+    let toRender = Array.from(mergedMap.values());
+    
     if (tempImportSchedule && tempImportSchedule.startDate && tempImportSchedule.startDate.startsWith(dateStr)) {
       toRender.unshift(tempImportSchedule);
     }
     
-    let eventsHtml = '';
     // 최대 3개까지만 표시 (디자인 유지)
     toRender.slice(0, 3).forEach(s => {
       let cls = s.isPublic === 'N' ? 'cal-event private' : 'cal-event public';
       if (s.isTemp) cls += ' blink-slow';
-      eventsHtml += `<em class="${cls}" title="${s.title}">${s.nickname} ${s.time}</em>`;
+      // hover시 원래 누구의 일정인지 툴팁으로 표시
+      const tooltip = s.nicknames ? `${s.title} (${s.nicknames.join(', ')})` : s.title;
+      // 캘린더에는 이름(s.nickname) 대신 제목(s.title)을 표시
+      eventsHtml += `<em class="${cls}" title="${tooltip}">${s.title} ${s.time}</em>`;
     });
-    if (daySchedules.length > 3) {
-      eventsHtml += `<span style="display:block;font-size:10px;color:var(--muted);text-align:center;margin-top:2px">+${daySchedules.length - 3}개 더보기</span>`;
+    if (toRender.length > 3) {
+      eventsHtml += `<span style="display:block;font-size:10px;color:var(--muted);text-align:center;margin-top:2px">+${toRender.length - 3}개 더보기</span>`;
     }
     
     html += `<div class="date ${isToday ? 'today' : ''}" style="cursor:pointer;" onclick="showDayDetail('${dateStr}')"><b>${d}</b>${eventsHtml}</div>`;
@@ -803,15 +827,36 @@ function showDayDetail(dateStr) {
   
   const daySchedules = groupSchedules.filter(s => s.startDate && s.startDate.startsWith(dateStr));
   
+  // 일정 제목과 시간 기준으로 병합 (동일한 공유 일정은 하나로)
+  const myName = group.members.find(m => String(m.id) === String(group.myMemberId))?.name || '나';
+  const mergedMap = new Map();
+  daySchedules.forEach(s => {
+    const key = `${s.title}|${s.time}`;
+    let displayNick = s.nickname;
+    if (s.nickname === myName && s.isPublic === 'N') {
+      displayNick = `${s.nickname} (나-비공개)`;
+    }
+    
+    if (!mergedMap.has(key)) {
+      mergedMap.set(key, { ...s, nicknames: [displayNick] });
+    } else {
+      const existing = mergedMap.get(key);
+      if (displayNick && !existing.nicknames.includes(displayNick)) {
+        existing.nicknames.push(displayNick);
+      }
+    }
+  });
+  let toRender = Array.from(mergedMap.values());
+  
   // 일정이 없을 때
-  if(daySchedules.length === 0) {
+  if(toRender.length === 0) {
     list.innerHTML = '<div style="font-size:12.5px; color:#64748B; text-align:center; padding:12px 0;">등록된 일정이 없습니다.</div>';
     container.style.display = 'block';
     return;
   }
   
   // 일정이 있을 때
-  list.innerHTML = daySchedules.map(s => {
+  list.innerHTML = toRender.map(s => {
     const isPrivate = s.isPublic === 'N';
     const badge = isPrivate 
       ? `<span style="font-size:10px; padding:2px 6px; background:#e2e8f0; color:#475569; border-radius:4px; margin-left:6px;">비공개</span>`
@@ -821,6 +866,9 @@ function showDayDetail(dateStr) {
     const borderColor = isPrivate ? '#E2E8F0' : '#bae6fd';
     const timeColor = isPrivate ? '#64748B' : '#0284C7';
     
+    // 여러 명이 공유한 일정일 경우 이름 목록 표시
+    const namesDisplay = s.nicknames && s.nicknames.length > 0 ? s.nicknames.join(', ') : '알 수 없음';
+    
     return `
       <div style="background:${bgColor}; padding:8px 12px; border-radius:6px; border:1px solid ${borderColor}; display:flex; justify-content:space-between; align-items:center;">
         <div>
@@ -828,7 +876,7 @@ function showDayDetail(dateStr) {
             <b style="font-size:13px; color:#1E293B;">${s.title}</b>
             ${badge}
           </div>
-          <div style="font-size:11px; color:#64748B; margin-top:2px;">${s.nickname}</div>
+          <div style="font-size:11px; color:#64748B; margin-top:2px;">${namesDisplay}</div>
         </div>
         <div style="font-size:12px; font-weight:600; color:${timeColor};">${s.time}</div>
       </div>
@@ -864,6 +912,11 @@ function renderSharedPeerSchedules() {
       ? `<span style="font-size:10px; padding:2px 6px; background:#bae6fd; color:#0369a1; border-radius:4px; margin-left:6px; vertical-align:middle;">공개</span>`
       : `<span style="font-size:10px; padding:2px 6px; background:#e2e8f0; color:#475569; border-radius:4px; margin-left:6px; vertical-align:middle;">비공개</span>`;
 
+    let recurBadge = '';
+    if (s.scheduleType === 'WEEKLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px; vertical-align:middle;">매주 반복</span>`;
+    else if (s.scheduleType === 'MONTHLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px; vertical-align:middle;">매월 반복</span>`;
+    else if (s.scheduleType === 'YEARLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px; vertical-align:middle;">매년 반복</span>`;
+
     const row = document.createElement('div');
     row.style.display = 'flex';
     row.style.justifyContent = 'space-between';
@@ -876,7 +929,7 @@ function renderSharedPeerSchedules() {
     row.innerHTML = `
       <div>
         <div style="font-size:11px; color:#64748B; margin-bottom:2px;"><b>${s.sharerName}</b>님이 공유함</div>
-        <div style="font-size:14px; font-weight:600; color:#1E293B;">${s.title}${badge}</div>
+        <div style="font-size:14px; font-weight:600; color:#1E293B;">${s.title}${badge}${recurBadge}</div>
         <div style="font-size:12px; color:#64748B; margin-top:4px;">${s.date} ${s.time}</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="previewImportSharedPeerSchedule('${s.shareId}')">가져오기</button>
@@ -1062,6 +1115,7 @@ function renderSchedulesSharedByMe() {
         date: s.date,
         time: s.time,
         isPublic: s.isPublic,
+        scheduleType: s.scheduleType,
         shares: []
       };
     }
@@ -1073,6 +1127,11 @@ function renderSchedulesSharedByMe() {
     const badge = isPublic 
       ? `<span style="font-size:10px; padding:2px 6px; background:#bae6fd; color:#0369a1; border-radius:4px; margin-left:6px; vertical-align:middle;">공개</span>`
       : `<span style="font-size:10px; padding:2px 6px; background:#e2e8f0; color:#475569; border-radius:4px; margin-left:6px; vertical-align:middle;">비공개</span>`;
+      
+    let recurBadge = '';
+    if (group.scheduleType === 'WEEKLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px; vertical-align:middle;">매주 반복</span>`;
+    else if (group.scheduleType === 'MONTHLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px; vertical-align:middle;">매월 반복</span>`;
+    else if (group.scheduleType === 'YEARLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px; vertical-align:middle;">매년 반복</span>`;
 
     const names = group.shares.map(s => s.sharerName).join(', ');
     const shareIds = group.shares.map(s => s.shareId).join(',');
@@ -1090,7 +1149,7 @@ function renderSchedulesSharedByMe() {
     row.innerHTML = `
       <div>
         <div style="font-size:11px; color:#64748B; margin-bottom:2px;"><b>${names}</b>님에게 공유됨</div>
-        <div style="font-size:14px; font-weight:600; color:#1E293B;">${group.title}${badge}</div>
+        <div style="font-size:14px; font-weight:600; color:#1E293B;">${group.title}${badge}${recurBadge}</div>
         <div style="font-size:12px; color:#64748B; margin-top:4px;">${group.date} ${group.time}</div>
       </div>
       <button class="btn btn-danger btn-sm" onclick="stopSharingMultipleSchedules('${shareIds}')">공유 중지</button>
@@ -1148,6 +1207,13 @@ async function toggleShareMyScheduleContainer() {
     const res = await fetchApi('/schedule');
     if (res.ok) {
       myPersonalSchedulesCache = await res.json();
+      // 최신 일정(혹은 가장 가까운 일정)이 위로 오도록 내림차순 정렬
+      myPersonalSchedulesCache.sort((a, b) => {
+        const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+        const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
+        return dateB - dateA;
+      });
+      
       if (myPersonalSchedulesCache.length === 0) {
         listDiv.innerHTML = '<div style="font-size:12px; color:var(--muted); padding:8px;">공유할 개인 일정이 없습니다.</div>';
       } else {
@@ -1159,11 +1225,16 @@ async function toggleShareMyScheduleContainer() {
             ? `<span style="font-size:10px; padding:2px 6px; background:#bae6fd; color:#0369a1; border-radius:4px; margin-left:6px;">공개</span>`
             : `<span style="font-size:10px; padding:2px 6px; background:#e2e8f0; color:#475569; border-radius:4px; margin-left:6px;">비공개</span>`;
             
+          let recurBadge = '';
+          if (s.scheduleType === 'WEEKLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px;">매주 반복</span>`;
+          else if (s.scheduleType === 'MONTHLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px;">매월 반복</span>`;
+          else if (s.scheduleType === 'YEARLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px;">매년 반복</span>`;
+            
           return `
             <label style="display:flex; align-items:flex-start; gap:8px; padding:6px; border-bottom:1px solid #F1F5F9; cursor:pointer;">
               <input type="checkbox" name="peerSchedule" value="${s.scheduleId}" style="margin-top:2px;">
               <div>
-                <div style="font-size:12px; font-weight:500; display:flex; align-items:center;">${s.title} ${badge}</div>
+                <div style="font-size:12px; font-weight:500; display:flex; align-items:center;">${s.title} ${badge} ${recurBadge}</div>
                 <div style="font-size:11px; color:#64748B; margin-top:2px;">${dateStr} ${timeStr}</div>
               </div>
             </label>

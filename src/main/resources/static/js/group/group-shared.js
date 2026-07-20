@@ -15,7 +15,7 @@ function currentGroup(){
   return (id && getGroupById(id)) || GROUPS[0];
 }
 
-function linkToDetail(groupId){ return '/group/detail?id=' + encodeURIComponent(groupId); }
+function linkToDetail(groupId){ return '/group/read?id=' + encodeURIComponent(groupId); }
 function linkToAi(groupId){ return '/group/recommend?id=' + encodeURIComponent(groupId); }
 function linkToList(){ return '/group/list'; }
 

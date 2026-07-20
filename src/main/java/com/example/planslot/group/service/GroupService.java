@@ -15,7 +15,7 @@ public interface GroupService {
     List<GroupDTO.ListResponse> getMyGroups(Long memberId);
 
     // 모임 상세 조회
-    GroupDTO.DetailResponse getGroupDetail(Long groupId, Long memberId);
+    GroupDTO.DetailResponse getGroupRead(Long groupId, Long memberId);
 
     // 모임 이름 수정
     void updateGroupName(Long groupId, String newName, Long memberId);

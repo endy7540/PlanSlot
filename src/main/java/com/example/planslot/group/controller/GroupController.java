@@ -3,7 +3,6 @@ package com.example.planslot.group.controller;
 import com.example.planslot.group.dto.GroupDTO;
 import com.example.planslot.group.service.GroupService;
 import com.example.planslot.member.repository.MemberRepository;
-import com.example.planslot.schedule.dto.ScheduleDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -41,9 +40,9 @@ public class GroupController {
     }
 
     // 모임 상세 화면 반환
-    @GetMapping("/detail")
+    @GetMapping("/read")
     public String groupDetail() {
-        return "group/group-detail";
+        return "group/group-read";
     }
 
     // AI 추천 화면 반환
@@ -78,11 +77,11 @@ public class GroupController {
     }
 
     // 모임 상세 정보 조회
-    @GetMapping("/detail/{groupId}")
+    @GetMapping("/read/{groupId}")
     @ResponseBody
     public ResponseEntity<GroupDTO.DetailResponse> getGroupDetail(@PathVariable("groupId") Long groupId, Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        GroupDTO.DetailResponse response = groupService.getGroupDetail(groupId, memberId);
+        GroupDTO.DetailResponse response = groupService.getGroupRead(groupId, memberId);
         return ResponseEntity.ok(response);
     }
 

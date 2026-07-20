@@ -26,6 +26,11 @@ public class ViewController {
         return "global/oauth2-callback";
     }
 
+    @GetMapping("/auth/terms")
+    public String termsPage() {
+        return "global/terms";
+    }
+
     @GetMapping("/mypage")
     public String mypage() {
         return "member/mypage";

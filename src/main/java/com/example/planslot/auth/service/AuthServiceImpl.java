@@ -20,9 +20,9 @@ public class AuthServiceImpl implements AuthService{
     @Override
     public String login(AuthRequestDTO.Login request) {
         Member member = memberRepository.findByLoginId(request.getLoginId())
-                .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 아이디입니다."));
+                .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호를 확인해주세요."));
         if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
-            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+            throw new IllegalArgumentException("아이디 또는 비밀번호를 확인해주세요.");
         }
         return jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().name(), request.isKeepLogin());
     }

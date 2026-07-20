@@ -122,15 +122,17 @@
             to{opacity:1;transform:none}
         }
 
-        /* 결과 메시지 출력용 스타일 */
-        .msg-box {
-            margin-top: 15px;
-            font-size: 13px;
-            font-weight: bold;
-            text-align: center;
-            color: #075985;
-            white-space: pre-wrap;
-            word-break: break-all;
+        .field-msg {
+            font-size: 12px;
+            font-weight: 600;
+            text-align: left;
+            margin-top: -6px;
+            margin-bottom: 8px;
+            margin-left: 4px;
+            display: none;
+        }
+        .field-msg:not(:empty) {
+            display: block;
         }
     </style>
 </head>
@@ -144,15 +146,14 @@
 
         <div class="form">
             <input type="text" id="loginId" placeholder="아이디">
-            <input type="password" id="loginPw" placeholder="비밀번호">
+            <input type="password" id="loginPw" placeholder="비밀번호" onpaste="return false;" oncopy="return false;">
+            <div id="loginPwMsg" class="field-msg"></div>
             <div style="display:flex; align-items:center; gap:6px; font-size:13px; color:#182B3A;">
                 <input type="checkbox" id="keepLogin" style="width:16px; height:16px; margin:0; padding:0;">
                 <label for="keepLogin" style="cursor:pointer; user-select:none;">로그인 상태 유지</label>
             </div>
             <button class="primary" onclick="doLogin()">로그인</button>
         </div>
-
-        <div id="loginMsg" class="msg-box"></div>
 
         <div class="divider">또는</div>
 
@@ -185,12 +186,20 @@
                 <input type="text" id="signupId" placeholder="아이디 (필수)" style="flex:1; margin:0;">
                 <button type="button" class="ghost" style="padding:0 16px; margin:0;" onclick="checkDuplicateIdBtn()">중복 확인</button>
             </div>
-            <input type="password" id="signupPw" placeholder="비밀번호 (필수)">
-            <input type="password" id="signupPwConfirm" placeholder="비밀번호 재확인 (필수)">
+            <div id="signupIdMsg" class="field-msg"></div>
+            
+            <input type="password" id="signupPw" placeholder="비밀번호 (필수)" onpaste="return false;" oncopy="return false;">
+            <div id="signupPwMsg" class="field-msg"></div>
+            
+            <input type="password" id="signupPwConfirm" placeholder="비밀번호 재확인 (필수)" onpaste="return false;" oncopy="return false;">
+            <div id="signupPwConfirmMsg" class="field-msg"></div>
+            
             <div style="display:flex; gap:8px;">
                 <input type="email" id="signupEmail" placeholder="이메일 (필수)" style="flex:1; margin:0;">
                 <button type="button" class="ghost" style="padding:0 16px; margin:0;" onclick="sendEmailCodeBtn()" id="sendEmailBtn">인증번호 발송</button>
             </div>
+            <div id="signupEmailMsg" class="field-msg"></div>
+            
             <div id="authCodeContainer" style="display:none; gap:8px;">
                 <div style="flex:1; display:flex; align-items:center; position:relative;">
                     <input type="text" id="signupAuthCode" placeholder="인증번호 6자리" style="width:100%; margin:0; padding-right:50px;">
@@ -198,7 +207,10 @@
                 </div>
                 <button type="button" class="ghost" style="padding:0 16px; margin:0;" onclick="verifyEmailCodeBtn()">인증 확인</button>
             </div>
+            <div id="signupAuthCodeMsg" class="field-msg"></div>
+            
             <input type="text" id="signupNickname" placeholder="닉네임 (2~20자)" maxlength="20">
+            <div id="signupNicknameMsg" class="field-msg"></div>
             <div style="display:flex; gap:8px;">
                 <select id="signupSido" style="flex:1; border:2px solid #DCEFFC!important; border-radius:10px; padding:14px; outline:none; font-size:14px; color:#182B3A;">
                     <option value="">시/도 선택</option>
@@ -208,24 +220,6 @@
                 </select>
             </div>
 
-            <!-- 알림 수신 동의 -->
-            <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px; background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
-                <div style="font-size:13px; color:#475569; margin-bottom:4px; font-weight:bold;">알림 수신 동의</div>
-                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
-                    <input type="checkbox" id="agreeSystemNoti" style="width:16px; height:16px; margin:0; cursor:pointer;">
-                    [필수] 시스템 및 보안 중요 알림 수신 동의
-                </label>
-                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
-                    <input type="checkbox" id="allowActivityNoti" checked style="width:16px; height:16px; margin:0; cursor:pointer;">
-                    [선택] 모임 및 일정 활동 알림 수신 동의
-                </label>
-                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
-                    <input type="checkbox" id="allowMarketingNoti" style="width:16px; height:16px; margin:0; cursor:pointer;">
-                    [선택] 혜택 및 이벤트 알림 수신 동의
-                </label>
-            </div>
-
-            <div id="signupMsg" class="msg-box"></div>
 
             <div class="btn-row" style="margin-top:10px;">
                 <button class="primary" onclick="doSignUp()">가입 완료</button>
@@ -239,14 +233,26 @@
 <script>
     const API_BASE = "http://localhost:8080";
 
+    // 메시지 출력 헬퍼 함수
+    function showFieldMsg(id, text, isSuccess = false) {
+        const el = document.getElementById(id);
+        if(el) {
+            el.innerText = text;
+            el.style.color = isSuccess ? '#047857' : '#B91C1C';
+        }
+    }
+
+    function clearAllFieldMsgs() {
+        document.querySelectorAll('.field-msg').forEach(el => el.innerText = '');
+    }
+
     // 화면 전환 함수
     function togglePage(target, updateUrl = true) {
         document.querySelectorAll('.auth-page').forEach(page => page.classList.remove('active'));
         document.getElementById('page-' + target).classList.add('active');
         
         // 화면 전환 시 메시지 초기화
-        document.getElementById('loginMsg').innerText = '';
-        document.getElementById('signupMsg').innerText = '';
+        clearAllFieldMsgs();
 
         // 입력 폼 초기화
         document.querySelectorAll('.auth-container input').forEach(input => {
@@ -275,40 +281,52 @@
         }
     }
 
+    window.addEventListener('DOMContentLoaded', () => {
+        // 아이디 변경 시 중복확인 초기화
+        document.getElementById('signupId').addEventListener('input', () => {
+            isIdVerified = false;
+            showFieldMsg('signupIdMsg', '');
+        });
+
+        // 비밀번호 실시간 검증 이벤트 리스너 등록
+        document.getElementById('signupPw').addEventListener('input', checkPasswordMatch);
+        document.getElementById('signupPwConfirm').addEventListener('input', checkPasswordMatch);
+        
+        if (window.location.pathname.includes('/auth/signup')) {
+            togglePage('signup', false);
+        } else {
+            togglePage('login', false);
+        }
+    });
+
     let isIdVerified = false;
 
     // 아이디 중복 확인 요청
     async function checkDuplicateIdBtn() {
         const id = document.getElementById('signupId').value;
-        const msgBox = document.getElementById('signupMsg');
 
         if (!id) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '아이디를 입력해주세요.';
+            showFieldMsg('signupIdMsg', '아이디를 입력해주세요.');
             return;
         }
 
         try {
-            msgBox.innerText = '중복 확인 중...';
+            clearAllFieldMsgs();
             const response = await fetch(`${API_BASE}/members/checkDuplicate?loginId=${encodeURIComponent(id)}`);
             if (response.ok) {
                 const isDuplicate = await response.json(); // 백엔드에서 true/false 반환
                 if (isDuplicate) {
-                    msgBox.style.color = "#B91C1C";
-                    msgBox.innerText = '이미 사용 중인 아이디입니다.';
+                    showFieldMsg('signupIdMsg', '이미 사용 중인 아이디입니다.');
                     isIdVerified = false;
                 } else {
-                    msgBox.style.color = "#047857";
-                    msgBox.innerText = '사용 가능한 아이디입니다.';
+                    showFieldMsg('signupIdMsg', '사용 가능한 아이디입니다.', true);
                     isIdVerified = true;
                 }
             } else {
-                msgBox.style.color = "#B91C1C";
-                msgBox.innerText = '중복 확인에 실패했습니다.';
+                showFieldMsg('signupIdMsg', '중복 확인에 실패했습니다.');
             }
         } catch (error) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '서버 통신에 실패했습니다.';
+            showFieldMsg('signupIdMsg', '서버 통신에 실패했습니다.');
         }
     }
 
@@ -334,8 +352,7 @@
             updateDisplay();
             if (emailTimeLeft <= 0) {
                 clearInterval(emailTimerInterval);
-                document.getElementById('signupMsg').style.color = "#B91C1C";
-                document.getElementById('signupMsg').innerText = '인증 시간이 만료되었습니다. 인증번호를 다시 발송해주세요.';
+                showFieldMsg('signupAuthCodeMsg', '인증 시간이 만료되었습니다. 인증번호를 다시 발송해주세요.');
                 document.getElementById('authCodeContainer').style.display = 'none';
             }
         }, 1000);
@@ -348,29 +365,27 @@
         document.getElementById('sendEmailBtn').innerText = '인증번호 발송';
         document.getElementById('authCodeContainer').style.display = 'none';
         document.getElementById('signupAuthCode').value = '';
+        showFieldMsg('signupEmailMsg', '');
+        showFieldMsg('signupAuthCodeMsg', '');
     });
 
     // 인증번호 발송 요청
     async function sendEmailCodeBtn() {
         const email = document.getElementById('signupEmail').value;
-        const msgBox = document.getElementById('signupMsg');
 
         if (!email) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '이메일을 입력해주세요.';
+            showFieldMsg('signupEmailMsg', '이메일을 입력해주세요.');
             return;
         }
 
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!emailRegex.test(email)) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '올바른 이메일 형식을 입력해주세요.';
+            showFieldMsg('signupEmailMsg', '올바른 이메일 형식을 입력해주세요.');
             return;
         }
 
         try {
-            msgBox.style.color = "#182B3A";
-            msgBox.innerText = '인증번호 발송 중... (최대 10초 소요)';
+            showFieldMsg('signupEmailMsg', '인증번호 발송 중... (최대 10초 소요)', true);
             const response = await fetch(`${API_BASE}/auth/email/send`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -378,19 +393,16 @@
             });
             
             if (response.ok) {
-                msgBox.style.color = "#047857";
-                msgBox.innerText = '이메일로 인증번호가 발송되었습니다. 5분 안에 입력해주세요.';
+                showFieldMsg('signupEmailMsg', '이메일로 인증번호가 발송되었습니다. 5분 안에 입력해주세요.', true);
                 document.getElementById('authCodeContainer').style.display = 'flex';
                 document.getElementById('sendEmailBtn').innerText = '재발송';
                 startEmailTimer();
             } else {
                 const errorMsg = await response.text();
-                msgBox.style.color = "#B91C1C";
-                msgBox.innerText = errorMsg || '이메일 발송에 실패했습니다. 올바른 주소인지 확인해주세요.';
+                showFieldMsg('signupEmailMsg', errorMsg || '이메일 발송에 실패했습니다. 올바른 주소인지 확인해주세요.');
             }
         } catch (error) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '서버 통신에 실패했습니다.';
+            showFieldMsg('signupEmailMsg', '서버 통신에 실패했습니다.');
         }
     }
 
@@ -398,11 +410,9 @@
     async function verifyEmailCodeBtn() {
         const email = document.getElementById('signupEmail').value;
         const authCode = document.getElementById('signupAuthCode').value;
-        const msgBox = document.getElementById('signupMsg');
 
         if (!authCode) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '인증번호를 입력해주세요.';
+            showFieldMsg('signupAuthCodeMsg', '인증번호를 입력해주세요.');
             return;
         }
 
@@ -414,18 +424,15 @@
             });
 
             if (response.ok) {
-                msgBox.style.color = "#047857";
-                msgBox.innerText = '이메일 인증이 완료되었습니다.';
+                showFieldMsg('signupAuthCodeMsg', '이메일 인증이 완료되었습니다.', true);
                 isEmailVerified = true;
                 clearInterval(emailTimerInterval);
                 document.getElementById('authCodeContainer').style.display = 'none';
             } else {
-                msgBox.style.color = "#B91C1C";
-                msgBox.innerText = '인증 실패: 잘못된 인증번호이거나 만료되었습니다.';
+                showFieldMsg('signupAuthCodeMsg', '인증 실패: 잘못된 인증번호이거나 만료되었습니다.');
             }
         } catch (error) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '서버 통신에 실패했습니다.';
+            showFieldMsg('signupAuthCodeMsg', '서버 통신에 실패했습니다.');
         }
     }
 
@@ -433,55 +440,40 @@
     function checkPasswordMatch() {
         const pw = document.getElementById('signupPw').value;
         const pwConfirm = document.getElementById('signupPwConfirm').value;
-        const msgBox = document.getElementById('signupMsg');
 
         if (pwConfirm.length === 0) {
-            msgBox.innerText = '';
+            showFieldMsg('signupPwConfirmMsg', '');
             return;
         }
 
         if (pw === pwConfirm) {
-            msgBox.style.color = "#047857";
-            msgBox.innerText = '비밀번호가 일치합니다.';
+            showFieldMsg('signupPwConfirmMsg', '비밀번호가 일치합니다.', true);
         } else {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '비밀번호가 서로 일치하지 않습니다.';
+            showFieldMsg('signupPwConfirmMsg', '비밀번호가 서로 일치하지 않습니다.');
         }
     }
 
-    // URL에 따라 초기 화면을 로그인 또는 회원가입으로 자동 설정
-    window.addEventListener('DOMContentLoaded', () => {
-        if (window.location.pathname.includes('/auth/signup')) {
-            togglePage('signup', false);
-        } else {
-            togglePage('login', false);
-        }
-
-        // 아이디 변경 시 중복확인 초기화
-        document.getElementById('signupId').addEventListener('input', () => {
-            isIdVerified = false;
-            document.getElementById('signupMsg').innerText = '';
-        });
-
-        // 비밀번호 실시간 검증 이벤트 리스너 등록
-        document.getElementById('signupPw').addEventListener('input', checkPasswordMatch);
-        document.getElementById('signupPwConfirm').addEventListener('input', checkPasswordMatch);
-    });
+    // Moved DOMContentLoaded to the top
 
     // 로그인 로직
     async function doLogin() {
         const id = document.getElementById('loginId').value;
         const pw = document.getElementById('loginPw').value;
         const keep = document.getElementById('keepLogin').checked;
-        const msgBox = document.getElementById('loginMsg');
 
-        if(!id || !pw) {
-            msgBox.innerText = '아이디와 비밀번호를 입력해주세요.';
+        if(!id && !pw) {
+            showFieldMsg('loginPwMsg', '아이디와 비밀번호를 입력해주세요.');
+            return;
+        } else if(!id) {
+            showFieldMsg('loginPwMsg', '아이디를 입력해주세요.');
+            return;
+        } else if(!pw) {
+            showFieldMsg('loginPwMsg', '비밀번호를 입력해주세요.');
             return;
         }
 
         try {
-            msgBox.innerText = "로그인 요청 중...";
+            clearAllFieldMsgs();
             const response = await fetch(`${API_BASE}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -491,8 +483,7 @@
             const result = await response.text();
 
             if(response.ok) {
-                msgBox.style.color = "#047857";
-                msgBox.innerText = `로그인 성공! 홈 화면으로 이동합니다...`;
+                showFieldMsg('loginPwMsg', `로그인 성공! 홈 화면으로 이동합니다...`, true);
 
                 const tokenStr = result.replace("Bearer ", "").trim();
                 localStorage.setItem("jwtToken", tokenStr);
@@ -500,17 +491,19 @@
 
                 window.location.href = "/planslot";
             } else {
-                msgBox.style.color = "#B91C1C";
-                msgBox.innerText = result || '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.';
+                showFieldMsg('loginPwMsg', result || '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.');
+                document.getElementById('loginPw').value = '';
             }
         } catch (error) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '서버 통신에 실패했습니다.';
+            showFieldMsg('loginPwMsg', '서버 통신에 실패했습니다.');
+            document.getElementById('loginPw').value = '';
         }
     }
 
     // 회원가입 로직
     async function doSignUp() {
+        clearAllFieldMsgs();
+        
         const id = document.getElementById('signupId').value;
         const pw = document.getElementById('signupPw').value;
         const pwConfirm = document.getElementById('signupPwConfirm').value;
@@ -519,89 +512,51 @@
         const sido = document.getElementById('signupSido').value;
         const sigungu = document.getElementById('signupSigungu').value;
         const address = (sido && sigungu) ? `${sido} ${sigungu}` : '';
-        const agreeSystemNoti = document.getElementById('agreeSystemNoti').checked;
-        const allowActivityNoti = document.getElementById('allowActivityNoti').checked;
-        const allowMarketingNoti = document.getElementById('allowMarketingNoti').checked;
-        const msgBox = document.getElementById('signupMsg');
 
         if(!id || !pw || !pwConfirm || !email || !nickname) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '필수 항목(아이디, 비밀번호, 비밀번호 재확인, 이메일, 닉네임)을 모두 입력해주세요.';
+            showFieldMsg('signupNicknameMsg', '필수 항목(아이디, 비밀번호, 비밀번호 재확인, 이메일, 닉네임)을 모두 입력해주세요.');
             return;
         }
 
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!emailRegex.test(email)) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '올바른 이메일 형식을 입력해주세요.';
+            showFieldMsg('signupEmailMsg', '올바른 이메일 형식을 입력해주세요.');
             return;
         }
 
         if(nickname.trim().length < 2 || nickname.trim().length > 20) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '닉네임은 2자 이상 20자 이하로 입력해주세요.';
+            showFieldMsg('signupNicknameMsg', '닉네임은 2자 이상 20자 이하로 입력해주세요.');
             return;
         }
 
 
 
-        if(!agreeSystemNoti) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '[필수] 시스템 및 보안 중요 알림 수신에 동의해주세요.';
-            return;
-        }
 
         if(!isIdVerified) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '아이디 중복 확인을 먼저 진행해주세요.';
+            showFieldMsg('signupIdMsg', '아이디 중복 확인을 먼저 진행해주세요.');
             return;
         }
 
         if(!isEmailVerified) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '이메일 인증을 먼저 진행해주세요.';
+            showFieldMsg('signupEmailMsg', '이메일 인증을 먼저 진행해주세요.');
             return;
         }
 
         if(pw !== pwConfirm) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '비밀번호가 서로 일치하지 않습니다.';
+            showFieldMsg('signupPwConfirmMsg', '비밀번호가 서로 일치하지 않습니다.');
             return;
         }
 
-        try {
-            msgBox.innerText = "회원가입 요청 중...";
-            const response = await fetch(`${API_BASE}/auth/signup`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    loginId: id,
-                    password: pw,
-                    email: email,
-                    nickname: nickname,
-                    address: address,
-                    allowActivityNoti: allowActivityNoti,
-                    allowMarketingNoti: allowMarketingNoti
-                })
-            });
-
-            const result = await response.text();
-
-            if(response.ok) {
-                msgBox.style.color = "#047857";
-                msgBox.innerText = result; // "회원가입 성공" 메시지 출력
-                // 가입 성공 2초 후 로그인 화면으로 전환
-                setTimeout(() => {
-                    togglePage('login');
-                }, 2000);
-            } else {
-                msgBox.style.color = "#B91C1C";
-                msgBox.innerText = '회원가입에 실패했습니다. 입력 정보를 다시 확인해주세요.';
-            }
-        } catch (error) {
-            msgBox.style.color = "#B91C1C";
-            msgBox.innerText = '서버 통신에 실패했습니다.';
-        }
+        // 기존에는 API를 호출했으나, 약관 동의 페이지로 이동시킴
+        const signupData = {
+            loginId: id,
+            password: pw,
+            email: email,
+            nickname: nickname,
+            address: address
+        };
+        sessionStorage.setItem('signupData', JSON.stringify(signupData));
+        window.location.href = '/auth/terms?social=false';
     }
 </script>
 <script src="/js/global/region.js"></script>

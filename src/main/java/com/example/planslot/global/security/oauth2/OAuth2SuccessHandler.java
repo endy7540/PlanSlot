@@ -31,7 +31,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 계정입니다."));
 
         String token = jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().name(), false);
-        String redirectUrl = "/auth/oauth2-callback?token=" + token;
+        boolean isNew = Boolean.TRUE.equals(oAuth2User.getAttributes().get("is_new"));
+        String redirectUrl = "/auth/oauth2-callback?token=" + token + (isNew ? "&isNew=true" : "");
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 }

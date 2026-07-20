@@ -67,7 +67,7 @@ public class Board {
         this.viewCount = 0;
         this.boardType = boardType;
         this.boardStatus = BoardStatus.ACTIVE;
-        this.recruitmentStatus = boardType == BoardType.STUDY || boardType == BoardType.CLUB
+        this.recruitmentStatus = boardType == BoardType.STUDY || boardType == BoardType.GROUP
                 ? BoardRecruitmentStatus.OPEN
                 : null;
     }
@@ -82,7 +82,7 @@ public class Board {
     }
 
     public boolean isRecruitmentBoard() {
-        return boardType == BoardType.STUDY || boardType == BoardType.CLUB;
+        return boardType == BoardType.STUDY || boardType == BoardType.GROUP;
     }
 
     public boolean isRecruitmentOpen() {

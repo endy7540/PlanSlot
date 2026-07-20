@@ -6,8 +6,6 @@ import com.example.planslot.board.dto.BoardMemberDTO;
 import com.example.planslot.board.entity.BoardType;
 import com.example.planslot.board.service.BoardService;
 import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
-import com.example.planslot.member.entity.Member;
-import com.example.planslot.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,7 +29,6 @@ import java.util.Map;
 public class BoardController {
 
     private final BoardService boardService;
-    private final MemberRepository memberRepository;
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handleBoardError(ResponseStatusException exception) {
@@ -48,50 +45,38 @@ public class BoardController {
 
     // 공지사항 화면
     @GetMapping("/notice")
-    public ModelAndView noticePage(Principal principal) {
-        ModelAndView modelAndView = new ModelAndView("board/notice");
-
-        boolean isAdmin = false;
-
-        if (principal != null) {
-            isAdmin = memberRepository.findByEmail(principal.getName())
-                    .map(member -> member.getRole() == Member.Role.ADMIN)
-                    .orElse(false);
-        }
-
-        modelAndView.addObject("isAdmin", isAdmin);
-
-        return modelAndView;
+    public ModelAndView noticePage() {
+        return new ModelAndView("board/board-notice-list");
     }
 
     // 스터디 게시판 화면
     @GetMapping("/study")
     public ModelAndView studyPage() {
-        return new ModelAndView("board/study");
+        return new ModelAndView("board/board-study-list");
     }
 
     // 소모임 게시판 화면
-    @GetMapping("/club")
-    public ModelAndView clubPage() {
-        return new ModelAndView("board/club");
+    @GetMapping("/group")
+    public ModelAndView groupPage() {
+        return new ModelAndView("board/board-group-list");
     }
 
     // 자유게시판 화면
     @GetMapping("/free")
     public ModelAndView freePage() {
-        return new ModelAndView("board/free");
+        return new ModelAndView("board/board-free-list");
     }
 
-    // 게시글 상세 화면
-    @GetMapping("/detail/{boardId}")
-    public ModelAndView boardDetailPage() {
-        return new ModelAndView("board/detail");
+    // 게시글 조회 화면
+    @GetMapping("/read/{boardId}")
+    public ModelAndView boardReadPage() {
+        return new ModelAndView("board/board-read");
     }
 
-    // 게시글 작성 및 수정 화면
-    @GetMapping("/write/{boardType}")
-    public ModelAndView boardWritePage() {
-        return new ModelAndView("board/write");
+    // 게시글 등록 및 수정 화면
+    @GetMapping("/register/{boardType}")
+    public ModelAndView boardRegisterPage() {
+        return new ModelAndView("board/board-register");
     }
 
     // 로그인 회원 조회
@@ -113,7 +98,7 @@ public class BoardController {
     // 게시판 종류별 목록 및 검색
     @GetMapping("/type/{boardType}")
     public ResponseEntity<Page<BoardDTO>> getBoardList(@PathVariable String boardType,
-                                                       @RequestParam(defaultValue = "TITLE_CONTENT") String searchType,
+                                                       @RequestParam(defaultValue = "titleContent") String searchType,
                                                        @RequestParam(required = false) String keyword,
                                                        @PageableDefault(size = 10, sort = "createdAt",
                                                                direction = Sort.Direction.DESC) Pageable pageable) {
@@ -124,13 +109,13 @@ public class BoardController {
         return ResponseEntity.ok(boardList);
     }
 
-    // 게시글 상세 조회
+    // 게시글 조회
     @GetMapping("/{boardId}")
-    public ResponseEntity<BoardDTO> getBoardDetail(@PathVariable Long boardId, Principal principal) {
+    public ResponseEntity<BoardDTO> readBoard(@PathVariable Long boardId, Principal principal) {
         // 비로그인 사용자도 상세 조회 가능하도록 null 허용
         String email = (principal != null && principal.getName() != null && !principal.getName().isBlank())
                 ? principal.getName() : null;
-        return ResponseEntity.ok(boardService.getBoardDetail(boardId, email));
+        return ResponseEntity.ok(boardService.readBoard(boardId, email));
     }
 
     // 게시글 수정

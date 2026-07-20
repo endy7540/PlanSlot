@@ -197,35 +197,54 @@ async function refreshNotificationUI() {
 
     try {
         const [
-            notificationsResponse,
-            unreadResponse
+            unreadResponse,
+            dropdownResponse,
+            fullListResponse
         ] = await Promise.all([
-            fetchNotificationApi(),
-            fetchNotificationApi('/unread-count')
+            fetchNotificationApi('/unread-count'),
+            hasDropdown
+                ? fetchNotificationApi()
+                : Promise.resolve(null),
+            hasFullList
+                ? fetchNotificationApi('?showAll=true')
+                : Promise.resolve(null)
         ]);
-
-        if (!notificationsResponse.ok) {
-            throw new Error('알림 목록 조회에 실패했습니다.');
-        }
 
         if (!unreadResponse.ok) {
             throw new Error('안 읽은 알림 개수 조회에 실패했습니다.');
         }
 
-        const notifications =
-            await notificationsResponse.json();
+        if (dropdownResponse && !dropdownResponse.ok) {
+            throw new Error('알림 드롭다운 조회에 실패했습니다.');
+        }
+
+        if (fullListResponse && !fullListResponse.ok) {
+            throw new Error('전체 알림 목록 조회에 실패했습니다.');
+        }
 
         const unreadCount =
             await unreadResponse.json();
 
+        const dropdownNotifications = dropdownResponse
+            ? await dropdownResponse.json()
+            : [];
+
+        const fullListNotifications = fullListResponse
+            ? await fullListResponse.json()
+            : [];
+
         updateUnreadCount(unreadCount);
 
         if (hasDropdown) {
-            renderDropdownNotifications(notifications);
+            renderDropdownNotifications(
+                dropdownNotifications
+            );
         }
 
         if (hasFullList) {
-            renderFullNotifications(notifications);
+            renderFullNotifications(
+                fullListNotifications
+            );
         }
     } catch (error) {
         console.error(error);

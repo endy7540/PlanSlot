@@ -31,6 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCancelEdit = document.getElementById('btnCancelEdit');
 
     let currentData = {};
+    let notificationSettingsLoaded = false;
+    let currentGroupNotificationSettings = [];
 
     function maskEmail(email) {
         if (!email) return '-';
@@ -50,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Fetch user info
     function loadUserInfo() {
-        fetch('/members/me', {
+        return fetch('/members/me', {
             headers: { 
                 'Authorization': 'Bearer ' + token,
                 'Accept': 'application/json'
@@ -86,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (document.getElementById('toggleMarketingNoti')) {
                 document.getElementById('toggleMarketingNoti').checked = data.allowMarketingNoti;
             }
+            updateNotificationControlState();
             
             if (data.address) {
                 const parts = data.address.split(' ');
@@ -115,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    loadUserInfo();
+    const userInfoPromise = loadUserInfo();
 
     // Toggle Modes
     btnEditMode.addEventListener('click', () => {
@@ -429,43 +432,218 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const activityNotificationToggle = document.getElementById('toggleActivityNoti');
+    const groupNotificationToggle = document.getElementById('toggleGroupNoti');
+
+    activityNotificationToggle?.addEventListener('change', updateNotificationControlState);
+    groupNotificationToggle?.addEventListener('change', updateNotificationControlState);
+
     // Tab Switching
     window.switchTab = function(tabId) {
-        // Update sidebar active state
         document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active'));
         document.querySelector(`.sidebar-menu a[href="#${tabId}"]`).parentElement.classList.add('active');
-
-        // Show selected section
         document.querySelectorAll('.mypage-section').forEach(sec => sec.style.display = 'none');
         document.getElementById(`section-${tabId}`).style.display = 'block';
+
+        if (tabId === 'notifications' && !notificationSettingsLoaded) {
+            loadNotificationSettings();
+        }
     };
 
+    async function fetchMyPageJson(url, options = {}) {
+        const headers = {
+            'Authorization': 'Bearer ' + token,
+            'Accept': 'application/json',
+            ...(options.headers || {})
+        };
+
+        if (options.body && !(options.body instanceof FormData)) {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        const response = await fetch(url, { ...options, headers });
+
+        if (response.status === 401) {
+            localStorage.removeItem('jwtToken');
+            window.location.href = '/auth/login';
+            throw new Error('인증이 만료되었습니다.');
+        }
+
+        if (!response.ok) {
+            const text = await response.text();
+            let message = '알림 설정 처리에 실패했습니다.';
+
+            if (text) {
+                try {
+                    const data = JSON.parse(text);
+                    message = data.detail || data.message || data.error || message;
+                } catch (error) {
+                    message = text;
+                }
+            }
+
+            throw new Error(message);
+        }
+
+        if (response.status === 204) return null;
+
+        const text = await response.text();
+        return text ? JSON.parse(text) : null;
+    }
+
+    async function loadNotificationSettings() {
+        const section = document.getElementById('section-notifications');
+        const groupList = document.getElementById('groupNotificationSettings');
+        const saveButton = document.getElementById('btnSaveNotificationSettings');
+
+        section?.classList.add('is-notification-loading');
+        groupList.innerHTML = '<div class="notification-settings-loading">알림 설정을 불러오는 중...</div>';
+        saveButton.disabled = true;
+
+        try {
+            const [, setting, groupSettings] = await Promise.all([
+                userInfoPromise,
+                fetchMyPageJson('/notification/setting'),
+                fetchMyPageJson('/notification/group-settings')
+            ]);
+
+            document.getElementById('toggleGroupNoti').checked = Boolean(setting.groupEnabled);
+            document.getElementById('toggleScheduleNoti').checked = Boolean(setting.scheduleEnabled);
+            document.getElementById('toggleBoardNoti').checked = Boolean(setting.boardEnabled);
+            document.getElementById('toggleApplicationNoti').checked = Boolean(setting.applicationEnabled);
+            document.getElementById('toggleReminderNoti').checked = Boolean(setting.reminderEnabled);
+
+            currentGroupNotificationSettings = Array.isArray(groupSettings) ? groupSettings : [];
+            renderGroupNotificationSettings();
+            notificationSettingsLoaded = true;
+            saveButton.disabled = false;
+            updateNotificationControlState();
+
+            if (section) {
+                void section.offsetWidth;
+                section.classList.remove('is-notification-loading');
+            }
+        } catch (error) {
+            section?.classList.remove('is-notification-loading');
+            groupList.innerHTML = `<div class="notification-settings-error">${escapeMyPageHtml(error.message)}</div>`;
+            alert(error.message);
+        }
+    }
+
+    function renderGroupNotificationSettings() {
+        const groupList = document.getElementById('groupNotificationSettings');
+        groupList.innerHTML = '';
+
+        if (!currentGroupNotificationSettings.length) {
+            groupList.innerHTML = '<div class="notification-settings-empty">현재 참여 중인 모임이 없습니다.</div>';
+            return;
+        }
+
+        currentGroupNotificationSettings.forEach(setting => {
+            const row = document.createElement('div');
+            row.className = 'group-notification-item';
+
+            const name = document.createElement('div');
+            name.className = 'group-notification-name';
+            name.textContent = setting.groupName || '이름 없는 모임';
+
+            const toggleLabel = document.createElement('label');
+            toggleLabel.className = 'toggle-switch';
+
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = Boolean(setting.enabled);
+            input.dataset.groupNotificationToggle = '';
+            input.dataset.groupId = setting.groupId;
+            input.addEventListener('change', () => {
+                setting.enabled = input.checked;
+            });
+
+            const slider = document.createElement('span');
+            slider.className = 'slider';
+            toggleLabel.append(input, slider);
+            row.append(name, toggleLabel);
+            groupList.appendChild(row);
+        });
+    }
+
+    function updateNotificationControlState() {
+        const activityEnabled = document.getElementById('toggleActivityNoti')?.checked ?? true;
+        const groupEnabled = activityEnabled && (document.getElementById('toggleGroupNoti')?.checked ?? false);
+        const detailSection = document.getElementById('notificationDetailSection');
+        const groupSection = document.getElementById('groupNotificationSection');
+
+        document.querySelectorAll('[data-notification-detail]').forEach(input => {
+            input.disabled = !activityEnabled;
+        });
+
+        document.querySelectorAll('[data-group-notification-toggle]').forEach(input => {
+            input.disabled = !groupEnabled;
+        });
+
+        detailSection?.classList.toggle('is-disabled', !activityEnabled);
+        groupSection?.classList.toggle('is-disabled', !groupEnabled);
+    }
+
+    function escapeMyPageHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
     // Save Notifications
-    window.saveNotificationSettings = function() {
+    window.saveNotificationSettings = async function() {
+        if (!notificationSettingsLoaded) {
+            showToast('알림 세부 설정을 불러온 뒤 다시 시도해 주세요.');
+            return;
+        }
+
+        const saveButton = document.getElementById('btnSaveNotificationSettings');
         const allowActivityNoti = document.getElementById('toggleActivityNoti').checked;
         const allowMarketingNoti = document.getElementById('toggleMarketingNoti').checked;
 
-        fetch('/members/notifications', {
-            method: 'PUT',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                allowActivityNoti,
-                allowMarketingNoti
-            })
-        })
-        .then(async res => {
-            if (res.ok) {
-                showToast("알림 설정이 저장되었습니다.");
-            } else {
-                throw new Error("설정 저장에 실패했습니다.");
-            }
-        })
-        .catch(err => {
-            alert(err.message);
-        });
+        const notificationSetting = {
+            allEnabled: allowActivityNoti,
+            groupEnabled: document.getElementById('toggleGroupNoti').checked,
+            scheduleEnabled: document.getElementById('toggleScheduleNoti').checked,
+            boardEnabled: document.getElementById('toggleBoardNoti').checked,
+            applicationEnabled: document.getElementById('toggleApplicationNoti').checked,
+            reminderEnabled: document.getElementById('toggleReminderNoti').checked
+        };
+
+        saveButton.disabled = true;
+        saveButton.textContent = '저장 중...';
+
+        try {
+            const requests = [
+                fetchMyPageJson('/members/notifications', {
+                    method: 'PUT',
+                    body: JSON.stringify({ allowActivityNoti, allowMarketingNoti })
+                }),
+                fetchMyPageJson('/notification/setting', {
+                    method: 'PUT',
+                    body: JSON.stringify(notificationSetting)
+                }),
+                ...currentGroupNotificationSettings.map(setting =>
+                    fetchMyPageJson(`/notification/group-settings/${encodeURIComponent(setting.groupId)}?enabled=${setting.enabled}`, {
+                        method: 'PATCH'
+                    })
+                )
+            ];
+
+            await Promise.all(requests);
+            currentData.allowActivityNoti = allowActivityNoti;
+            currentData.allowMarketingNoti = allowMarketingNoti;
+            showToast('알림 설정이 저장되었습니다.');
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            saveButton.disabled = false;
+            saveButton.textContent = '알림 설정 저장';
+            updateNotificationControlState();
+        }
     };
 });

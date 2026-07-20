@@ -14,7 +14,9 @@ import java.time.LocalDateTime;
 
 // 특정 모임의 알림 수신 여부를 저장하며 전체·기능별 설정과 함께 확인한다.
 @Entity
-@Table(name = "group_notification_setting")
+@Table(name = "group_notification_setting", uniqueConstraints = {@UniqueConstraint(
+        name = "uk_group_notification_setting_group_member", columnNames = {"group_id", "member_id"}
+)})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)

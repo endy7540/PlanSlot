@@ -7,7 +7,7 @@
   <link rel="stylesheet" th:href="@{/css/notification/notification.css}" href="/css/notification/notification.css">
   <link rel="stylesheet" th:href="@{/css/board/board.css}" href="/css/board/board.css">
 </head>
-<body data-board-page="detail" data-board-type="">
+<body data-board-page="read" data-board-type="">
 
 <div th:replace="~{global/header :: headerFragment}"></div>
 
@@ -15,7 +15,7 @@
   <div class="board-subnav-inner">
     <a data-board-nav="NOTICE" th:href="@{/board/notice}" href="/board/notice">공지사항</a>
     <a data-board-nav="STUDY" th:href="@{/board/study}" href="/board/study">스터디</a>
-    <a data-board-nav="CLUB" th:href="@{/board/club}" href="/board/club">소모임</a>
+    <a data-board-nav="GROUP" th:href="@{/board/group}" href="/board/group">소모임</a>
     <a data-board-nav="FREE" th:href="@{/board/free}" href="/board/free">자유게시판</a>
   </div>
 </nav>
@@ -34,35 +34,35 @@
       <span>상세</span>
     </div>
 
-    <div class="board-card board-auth-panel" id="boardDetailLoading">
+    <div class="board-card board-auth-panel" id="boardReadLoading">
       게시글을 불러오는 중...
     </div>
 
     <article class="board-card board-article" id="boardArticle" hidden>
       <header class="board-article-head">
-        <div class="board-detail-badges">
-          <span class="board-type-badge" id="boardDetailCategory">게시판</span>
-          <div class="board-recruitment-badges" id="boardDetailRecruitmentBadges" hidden></div>
+        <div class="board-read-badges">
+          <span class="board-type-badge" id="boardReadCategory">게시판</span>
+          <div class="board-recruitment-badges" id="boardReadRecruitmentBadges" hidden></div>
         </div>
-        <h1 id="boardDetailTitle"></h1>
+        <h1 id="boardReadTitle"></h1>
         <div class="board-meta">
-          <span id="boardDetailWriter"></span>
-          <span id="boardDetailDate"></span>
-          <span id="boardDetailViews"></span>
+          <span id="boardReadWriter"></span>
+          <span id="boardReadDate"></span>
+          <span id="boardReadViews"></span>
         </div>
       </header>
 
       <div class="board-article-body">
-        <img class="board-article-image" id="boardDetailImage" hidden>
-        <div class="board-article-content" id="boardDetailContent"></div>
+        <img class="board-article-image" id="boardReadImage" hidden>
+        <div class="board-article-content" id="boardReadContent"></div>
       </div>
 
-      <footer class="board-article-actions" id="boardDetailActions"></footer>
+      <footer class="board-article-actions" id="boardReadActions"></footer>
     </article>
 
     <section class="board-card board-comments">
       <div class="board-section-title">
-        <h2>댓글 <span id="boardDetailCommentCount">0</span></h2>
+        <h2>댓글 <span id="boardReadCommentCount">0</span></h2>
       </div>
 
       <div class="board-comment-form">
@@ -94,8 +94,8 @@
       </select>
     </div>
     <div class="board-field">
-      <label for="boardReportDetail">세부내용 <span class="board-required">*</span></label>
-      <textarea class="board-textarea" id="boardReportDetail" maxlength="500" style="min-height:130px" placeholder="신고 이유를 구체적으로 입력해 주세요."></textarea>
+      <label for="boardReportDetail">세부내용</label>
+      <textarea class="board-textarea" id="boardReportDetail" style="min-height:130px" placeholder="필요한 경우 신고 내용을 자세히 입력해 주세요."></textarea>
     </div>
     <div class="board-modal-actions">
       <button class="board-btn board-btn-ghost" id="boardReportCancel" type="button">취소</button>

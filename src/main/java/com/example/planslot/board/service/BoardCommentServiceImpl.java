@@ -210,7 +210,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
                 .targetType(BoardReportTargetType.COMMENT)
                 .targetId(commentId)
                 .reasonCode(reportRequestDTO.getReasonCode())
-                .reasonDetail(reportRequestDTO.getReasonDetail().trim())
+                .reasonDetail(normalizeReportDetail(reportRequestDTO.getReasonDetail()))
                 .build();
 
         return boardReportRepository.save(boardReport).getReportId();
@@ -302,16 +302,11 @@ public class BoardCommentServiceImpl implements BoardCommentService {
         if (reportRequestDTO.getReasonCode() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 사유를 선택해 주세요.");
         }
+    }
 
-        String reasonDetail = reportRequestDTO.getReasonDetail();
-
-        if (reasonDetail == null || reasonDetail.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용을 입력해 주세요.");
-        }
-
-        if (reasonDetail.trim().length() > 500) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용은 500자 이하로 입력해 주세요.");
-        }
+    // 신고 세부내용 정리
+    private String normalizeReportDetail(String reasonDetail) {
+        return reasonDetail == null || reasonDetail.isBlank() ? null : reasonDetail.trim();
     }
 
     // 활성 댓글 DTO 변환

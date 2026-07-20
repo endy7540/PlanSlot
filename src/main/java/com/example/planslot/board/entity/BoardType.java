@@ -5,7 +5,7 @@ import java.util.Locale;
 public enum BoardType {
     NOTICE,
     STUDY,
-    CLUB,
+    GROUP,
     FREE;
 
     // 문자열을 게시판 유형으로 변환

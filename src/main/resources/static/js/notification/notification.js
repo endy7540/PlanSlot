@@ -3,8 +3,8 @@ const NOTIFICATION_LOGIN_URL = '/auth/login';
 
 // 실제 게시글, 모임, 일정 화면 주소가 확정되면 이 부분만 수정
 const NOTIFICATION_TARGET_ROUTES = {
-    POST: targetId => `/board/detail/${encodeURIComponent(targetId)}`,
-    BOARD: targetId => `/board/detail/${encodeURIComponent(targetId)}`,
+    POST: targetId => `/board/read/${encodeURIComponent(targetId)}`,
+    BOARD: targetId => `/board/read/${encodeURIComponent(targetId)}`,
     GROUP: targetId => `/group/detail?id=${encodeURIComponent(targetId)}`,
     GROUP_KICK: () => '/group',
     SCHEDULE: targetId => `/schedule/${encodeURIComponent(targetId)}`

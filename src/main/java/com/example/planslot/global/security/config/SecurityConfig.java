@@ -4,6 +4,7 @@ import com.example.planslot.global.security.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -12,14 +13,14 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.http.HttpMethod;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final com.example.planslot.global.security.oauth2.CustomOAuth2UserService customOAuth2UserService;
     private final com.example.planslot.global.security.oauth2.OAuth2SuccessHandler oAuth2SuccessHandler;
 
@@ -32,16 +33,24 @@ public class SecurityConfig {
                         .requestMatchers(
                                 // 공통 및 정적 리소스
                                 "/", "/planslot", "/error", "/favicon.ico",
-                                "/css/**", "/js/**", "/images/**",
+                                "/css/**", "/js/**", "/images/**", "/uploads/**",
 
                                 // 인증 및 회원가입 관련
-                                "/auth", "/auth/signup", "/auth/login", "/auth/email/send", "/auth/email/verify", "/auth/oauth2-callback", "/auth/terms",
+                                "/auth", "/auth/signup", "/auth/login", "/auth/email/send",
+                                "/auth/email/verify", "/auth/oauth2-callback", "/auth/terms",
                                 "/members/checkDuplicate",
 
                                 // 도메인 화면 및 기타
                                 "/group/**", "/notification/list",
-                                "/board", "/board/notice", "/board/study", "/board/club", "/board/free",
-                                "/board/detail/**", "/board/write/**"
+                                "/board", "/board/notice", "/board/study", "/board/group", "/board/free",
+                                "/board/read/**", "/board/register/**"
+                        ).permitAll()
+                        // 비로그인 게시판 목록 조회
+                        .requestMatchers(HttpMethod.GET, "/board/type/**").permitAll()
+                        // 비로그인 게시글 및 댓글 조회
+                        .requestMatchers(
+                                new RegexRequestMatcher("^/board/\\d+$", "GET"),
+                                new RegexRequestMatcher("^/board/\\d+/comments$", "GET")
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/schedule", "/schedule/*").permitAll()
                         .anyRequest().authenticated()

@@ -62,14 +62,10 @@ window.addEventListener("DOMContentLoaded", function() {
                 }
 
                 if (data.role === 'ADMIN') {
-                    if (!document.getElementById("adminPageLink")) {
-                        const adminLink = document.createElement('a');
-                        adminLink.id = "adminPageLink";
+                    const adminLink = document.getElementById("adminPageLink");
+                    if (adminLink) {
+                        adminLink.style.display = "block";
                         adminLink.href = "/admin";
-                        adminLink.innerText = "관리자 페이지";
-                        adminLink.style.color = "#e11d48";
-                        adminLink.style.fontWeight = "bold";
-                        profileDropdown.insertBefore(adminLink, profileDropdown.firstChild);
                     }
                 }
             })

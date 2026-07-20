@@ -22,12 +22,22 @@
     </div>
   </div>
 
-  <div class="toolbar">
-    <input class="search-box" id="groupSearch" placeholder="모임 이름 검색">
-    <div class="filter-chips">
+  <div class="toolbar-container" style="margin-bottom: 24px;">
+    <div class="filter-chips" style="margin-bottom: 12px; display: flex; gap: 8px;">
       <button class="chip active" data-filter="all">전체</button>
       <button class="chip" data-filter="joined">참여중</button>
       <button class="chip" data-filter="waiting">초대받음</button>
+    </div>
+
+    <div class="group-search-card group-search-toolbar">
+      <div class="group-search">
+        <select id="groupSearchType" class="group-search-select" aria-label="검색 조건">
+          <option value="NAME" selected>모임 이름</option>
+        </select>
+        <input id="groupSearch" type="search" maxlength="100" placeholder="모임 이름을 검색하세요">
+        <button class="group-btn group-btn-sky" id="btnGroupSearch" type="button">검색</button>
+      </div>
+      <div class="group-result-count" id="groupResultCount">총 0개</div>
     </div>
   </div>
 
@@ -60,7 +70,12 @@ function renderGrid(){
   wrap.innerHTML = '';
   const filtered = GROUPS
     .filter(g => activeFilter === 'all' ? true : g.filter === activeFilter)
-    .filter(g => g.name.toLowerCase().includes(q));
+    .filter(g => (g.name || '').toLowerCase().includes(q));
+
+  const resultCountEl = document.getElementById('groupResultCount');
+  if (resultCountEl) {
+    resultCountEl.textContent = `총 ${filtered.length}개`;
+  }
 
   if(!filtered.length){
     wrap.innerHTML = '<div class="empty-note">조건에 맞는 모임이 없어요.</div>';
@@ -77,7 +92,7 @@ function renderGrid(){
     card.href = linkToDetail(g.id);
     card.innerHTML = `
       <div class="top-row">
-        <div class="group-avatar">${initials(g.name)}</div>
+        <div class="group-avatar">${initials(g.name || '')}</div>
         <div>
           <b>${g.name}</b>
           <div class="count">참여자 ${g.members.length}명</div>
@@ -98,6 +113,9 @@ document.querySelectorAll('.chip').forEach(chip => {
   });
 });
 document.getElementById('groupSearch').addEventListener('input', renderGrid);
+if (document.getElementById('btnGroupSearch')) {
+  document.getElementById('btnGroupSearch').addEventListener('click', renderGrid);
+}
 
 document.getElementById('btnNewGroup').addEventListener('click', ()=>{
   document.getElementById('newGroupName').value = '';

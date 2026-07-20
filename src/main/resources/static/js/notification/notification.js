@@ -5,7 +5,7 @@ const NOTIFICATION_LOGIN_URL = '/auth/login';
 const NOTIFICATION_TARGET_ROUTES = {
     POST: targetId => `/board/read/${encodeURIComponent(targetId)}`,
     BOARD: targetId => `/board/read/${encodeURIComponent(targetId)}`,
-    GROUP: targetId => `/group/detail?id=${encodeURIComponent(targetId)}`,
+    GROUP: targetId => `/group/read?id=${encodeURIComponent(targetId)}`,
     GROUP_KICK: () => '/group',
     SCHEDULE: targetId => `/schedule/${encodeURIComponent(targetId)}`
 };

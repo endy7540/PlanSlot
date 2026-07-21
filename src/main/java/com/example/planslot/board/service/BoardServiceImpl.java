@@ -74,6 +74,7 @@ public class BoardServiceImpl implements BoardService {
     @Transactional
     public Long createBoard(BoardType boardType, BoardDTO boardDTO, String memberEmail) {
         Member writer = findMember(memberEmail);
+        validateCommunityAccess(writer);
 
         validateBoardDTO(boardDTO);
         validateNoticeWriter(boardType, writer);
@@ -174,6 +175,7 @@ public class BoardServiceImpl implements BoardService {
         Member member = findMember(memberEmail);
 
         validateWriter(board, member);
+        validateCommunityAccess(member);
         validateBoardDTO(boardDTO);
 
         board.update(boardDTO.getTitle().trim(), boardDTO.getContent().trim());
@@ -203,6 +205,8 @@ public class BoardServiceImpl implements BoardService {
         Board board = findBoard(boardId);
         Member reporter = findMember(reporterEmail);
 
+        validateCommunityAccess(reporter);
+        
         if (Objects.equals(board.getWriter().getId(), reporter.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인이 작성한 게시글은 신고할 수 없습니다.");
         }
@@ -285,6 +289,22 @@ public class BoardServiceImpl implements BoardService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED, "로그인 회원을 찾을 수 없습니다."
                 ));
+    }
+
+    // 커뮤니티 기능(작성 등) 이용 가능 여부 확인
+    private void validateCommunityAccess(Member member) {
+        if (member.getStatus() == Member.Status.BANNED) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "영구 정지된 회원은 커뮤니티 기능을 이용할 수 없습니다.");
+        }
+        if (member.getStatus() == Member.Status.SUSPENDED) {
+            if (member.getSuspendedUntil() != null && java.time.LocalDateTime.now().isBefore(member.getSuspendedUntil())) {
+                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "일시 정지 상태입니다. 정지 해제일: " + member.getSuspendedUntil().format(formatter));
+            } else {
+                member.updateStatus(Member.Status.ACTIVE, null);
+                memberRepository.save(member);
+            }
+        }
     }
 
     // 활성 상태 게시글 조회

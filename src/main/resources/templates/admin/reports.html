@@ -5,198 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>신고 접수함 - PlanSlot Admin</title>
     <link rel="stylesheet" th:href="@{/css/admin/admin_layout.css}">
-    <style>
-        /* 테이블 스타일 */
-        .report-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-            text-align: left;
-        }
-
-        .report-table th {
-            background-color: #f1f5f9;
-            color: #475569;
-            font-weight: 600;
-            padding: 14px 16px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .report-table td {
-            padding: 16px;
-            border-bottom: 1px solid #f1f5f9;
-            color: #334155;
-            vertical-align: middle;
-        }
-
-        .report-table tbody tr:hover {
-            background-color: #f8fafc;
-        }
-
-        .truncate {
-            display: inline-block;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            vertical-align: middle;
-        }
-
-        .truncate-target {
-            max-width: 130px; /* 넓이를 더 줄임 */
-        }
-
-        .truncate-reporter {
-            max-width: 70px;
-        }
-
-        .no-wrap {
-            white-space: nowrap;
-        }
-
-        /* 상태 뱃지와 버튼 크기 통일 */
-        .badge-status {
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            width: 76px;
-            height: 32px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .badge-waiting { background: #fef3c7; color: #d97706; }
-        .badge-processed { background: #dcfce7; color: #16a34a; }
-        .badge-rejected { background: #f1f5f9; color: #64748b; }
-
-        .btn-process {
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            width: 76px;
-            height: 32px;
-            padding: 0;
-            background-color: #0ea5e9;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .btn-process:hover {
-            background-color: #0284c7;
-        }
-        .btn-reject {
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            width: 50px;
-            height: 32px;
-            padding: 0;
-            background-color: #ef4444;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-            margin-left: 4px;
-        }
-        .btn-reject:hover {
-            background-color: #dc2626;
-        }
-        .btn-approve {
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            width: 50px;
-            height: 32px;
-            padding: 0;
-            background-color: #10b981;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .btn-approve:hover {
-            background-color: #059669;
-        }
-        
-        /* Modal Styles */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background: #fff;
-            padding: 24px;
-            border-radius: 8px;
-            width: 400px;
-            max-width: 90%;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        .modal-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #0f172a;
-        }
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: #64748b;
-        }
-        .modal-body {
-            font-size: 14px;
-            color: #334155;
-            line-height: 1.5;
-        }
-        .modal-body-item {
-            margin-bottom: 12px;
-        }
-        .modal-body-label {
-            font-weight: 600;
-            color: #0f172a;
-            margin-bottom: 4px;
-        }
-        .modal-body-content {
-            background: #f8fafc;
-            padding: 8px 12px;
-            border-radius: 4px;
-            border: 1px solid #e2e8f0;
-            word-break: break-all;
-        }
-        
-        .clickable-title {
-            color: #0284c7;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-        .clickable-title:hover {
-            color: #0369a1;
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/admin/admin_tables.css}">
 </head>
 <body>
 
@@ -211,21 +20,36 @@
             <div class="admin-page-title" style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <h1>신고 접수함</h1>
-                    <p>게시판 및 댓글에서 접수된 신고 내역을 확인하고 처리합니다.</p>
-                </div>
-                <div style="font-size: 14px; color: #64748b;">
-                    총 접수 건: <strong style="color:#0ea5e9;" th:text="${reports.size()}">0</strong>건
                 </div>
             </div>
 
-            <table class="report-table">
+            <div class="board-toolbar">
+                <div class="board-search">
+                    <select id="reportSearchType" class="board-search-select">
+                        <option value="ALL">전체</option>
+                        <option value="TITLE">제목</option>
+                        <option value="REASON">사유</option>
+                        <option value="REPORTER">신고자</option>
+                        <option value="REPORTED">피신고자</option>
+                    </select>
+                    <input type="text" id="reportSearchInput" placeholder="검색어를 입력하세요" onkeyup="if(event.key==='Enter') searchReports()">
+                    <button class="board-btn board-btn-sky" onclick="searchReports()">검색</button>
+                </div>
+            </div>
+
+            <div style="font-size: 13px; color: #64748b; margin-bottom: 12px; font-weight: bold;">
+                총 접수 건 <strong style="color:#0ea5e9;" id="totalReportCountSpan" th:text="${reports.size()}">0</strong>건
+            </div>
+
+            <table class="admin-table" id="reportTable">
                 <thead>
                     <tr>
                         <th class="no-wrap" style="width: 50px;">ID</th>
                         <th class="no-wrap" style="width: 60px;">유형</th>
                         <th class="no-wrap" style="width: 150px;">신고 대상 (제목)</th>
                         <th class="no-wrap">신고 사유</th>
-                        <th class="no-wrap" style="width: 90px;">신고자</th>
+                        <th class="no-wrap" style="width: 80px;">신고자</th>
+                        <th class="no-wrap" style="width: 80px;">피신고자</th>
                         <th class="no-wrap" style="width: 90px;">접수일</th>
                         <th class="no-wrap" style="width: 90px;">상태</th>
                         <th class="no-wrap" style="width: 120px;">관리</th>
@@ -237,17 +61,20 @@
                             접수된 신고 내역이 없습니다.
                         </td>
                     </tr>
-                    <tr th:each="report : ${reports}">
+                    <tr th:each="report : ${reports}" class="report-row">
                         <td class="no-wrap" th:text="${report.reportId}">1</td>
                         <td class="no-wrap" th:text="${report.targetType == 'POST' ? '게시글' : '댓글'}">게시글</td>
                         <td>
-                            <div class="truncate truncate-target clickable-title" 
-                                 th:attr="onclick=|openModal('${report.targetType}', '${#strings.escapeJavaScript(report.targetContent)}', '${#strings.escapeJavaScript(report.targetBody != null ? report.targetBody : '')}', '${report.reasonCode}', '${#strings.escapeJavaScript(report.reasonDetail != null ? report.reasonDetail : '없음')}')|" 
+                            <div class="truncate truncate-target clickable-title report-target" 
+                                 th:attr="onclick=|openModal('${report.targetType}', '${#strings.escapeJavaScript(report.targetContent)}', '${#strings.escapeJavaScript(report.targetBody != null ? report.targetBody : '')}', '${report.reasonCode}', '${#strings.escapeJavaScript(report.reasonDetail != null ? report.reasonDetail : '없음')}', '${report.reporterNickname}')|" 
                                  th:text="${report.targetContent}">글 제목이 표시됩니다...</div>
                         </td>
-                        <td class="no-wrap" th:text="${report.reasonCode}">스팸·광고</td>
+                        <td class="no-wrap report-reason" th:text="${report.reasonCode}">스팸·광고</td>
                         <td class="no-wrap">
-                            <div class="truncate truncate-reporter" th:text="${report.reporterNickname}">홍길동</div>
+                            <div class="truncate truncate-reporter report-reporter" th:text="${report.reporterNickname}">홍길동</div>
+                        </td>
+                        <td class="no-wrap">
+                            <div class="truncate truncate-reporter report-reported" th:text="${report.reportedNickname}" style="color: #ef4444; font-weight: 500;">작성자</div>
                         </td>
                         <td class="no-wrap" th:text="${#temporals.format(report.createdAt, 'yyyy-MM-dd')}">2026-07-17</td>
                         <td class="no-wrap">
@@ -264,6 +91,9 @@
                     </tr>
                 </tbody>
             </table>
+            
+            <!-- 페이지네이션 컨트롤 -->
+            <div class="board-pagination" id="paginationContainer"></div>
         </div>
     </main>
 </div>
@@ -276,10 +106,17 @@
             <button class="modal-close" onclick="closeModal(event)">&times;</button>
         </div>
         <div class="modal-body">
-            <div class="modal-body-item">
-                <div class="modal-body-label">신고 사유</div>
-                <div class="modal-body-content" id="modalReasonCode"></div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
+                <div class="modal-body-item" style="margin: 0;">
+                    <div class="modal-body-label">신고 사유</div>
+                    <div id="modalReasonCode" style="color: #ef4444; font-weight: 600;"></div>
+                </div>
+                <div class="modal-body-item" style="margin: 0; text-align: right;">
+                    <div class="modal-body-label">신고자</div>
+                    <div id="modalReporter" style="color: #64748b; font-size: 13px;"></div>
+                </div>
             </div>
+            
             <div class="modal-body-item">
                 <div class="modal-body-label">상세 내용 (신고자 작성)</div>
                 <div class="modal-body-content" id="modalReasonDetail" style="min-height: 40px;"></div>
@@ -304,8 +141,81 @@
 
 </body>
 <script>
-    function openModal(targetType, targetContent, targetBody, reasonCode, reasonDetail) {
+    let allRows = [];
+    let filteredRows = [];
+    let currentPage = 1;
+    const itemsPerPage = 10;
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const rows = document.querySelectorAll('.report-row');
+        allRows = Array.from(rows);
+        filteredRows = [...allRows];
+        renderTable();
+    });
+
+    function searchReports() {
+        const type = document.getElementById('reportSearchType').value;
+        const input = document.getElementById('reportSearchInput').value.toLowerCase();
+        
+        filteredRows = allRows.filter(row => {
+            const target = row.querySelector('.report-target').innerText.toLowerCase();
+            const reason = row.querySelector('.report-reason').innerText.toLowerCase();
+            const reporter = row.querySelector('.report-reporter').innerText.toLowerCase();
+            const reported = row.querySelector('.report-reported').innerText.toLowerCase();
+            
+            if (type === 'ALL') {
+                return target.includes(input) || reason.includes(input) || reporter.includes(input) || reported.includes(input);
+            } else if (type === 'TITLE') {
+                return target.includes(input);
+            } else if (type === 'REASON') {
+                return reason.includes(input);
+            } else if (type === 'REPORTER') {
+                return reporter.includes(input);
+            } else if (type === 'REPORTED') {
+                return reported.includes(input);
+            }
+            return true;
+        });
+
+        currentPage = 1;
+        document.getElementById('totalReportCountSpan').innerText = filteredRows.length;
+        renderTable();
+    }
+
+    function renderTable() {
+        allRows.forEach(row => row.style.display = 'none');
+
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageRows = filteredRows.slice(startIndex, endIndex);
+        
+        pageRows.forEach(row => row.style.display = '');
+
+        renderPagination();
+    }
+
+    function renderPagination() {
+        const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
+        const container = document.getElementById('paginationContainer');
+        container.innerHTML = '';
+
+        if (totalPages <= 1) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'board-page-btn' + (i === currentPage ? ' active' : '');
+            btn.innerText = i;
+            btn.onclick = () => {
+                currentPage = i;
+                renderTable();
+            };
+            container.appendChild(btn);
+        }
+    }
+
+    function openModal(targetType, targetContent, targetBody, reasonCode, reasonDetail, reporterNickname) {
         document.getElementById('modalReasonCode').innerText = reasonCode;
+        document.getElementById('modalReporter').innerText = reporterNickname;
         document.getElementById('modalReasonDetail').innerText = reasonDetail;
         
         document.getElementById('modalTargetLabel').innerText = targetType === 'POST' ? '신고 대상 게시물' : '신고 대상 댓글';

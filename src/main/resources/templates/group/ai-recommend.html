@@ -24,26 +24,50 @@
     </div>
   </div>
 
-  <div class="ai-layout">
-    <section class="card ai-card">
-      <h2>공통 가능 시간 분석</h2>
-      <div class="sub">이번 주 기준, 모임원이 공유한 일정을 바탕으로 계산했어요.</div>
-      <div class="heatmap" id="heatmap"></div>
-      <div class="heat-legend">
-        <span><i class="legend-dot" style="background:var(--busy-bg)"></i>바쁨</span>
-        <span><i class="legend-dot" style="background:var(--mid-bg)"></i>일부 가능</span>
-        <span><i class="legend-dot" style="background:var(--free-bg)"></i>모두 가능</span>
-      </div>
-    </section>
+  <section class="card ai-card">
+    <h2>추천 Top 3</h2>
+    <div class="sub">원하는 추천 방식을 골라보세요.</div>
+    <div class="rec-type-selector" style="margin-bottom:12px;">
+      <select id="recType" class="btn btn-ghost">
+        <option value="SHORT_MEETING">짧은 회의 (1~2시간)</option>
+        <option value="LONG_BLOCK">긴 자유 시간</option>
+        <option value="EARLY_SLOT">오전 우선</option>
+        <option value="EVENING_SLOT">저녁 우선</option>
+        <option value="FULL_DAY">하루 종일 비는 날</option>
+      </select>
+    </div>
 
-    <section class="card ai-card">
-      <h2>추천 Top 3</h2>
-      <div class="sub">전원 가능한 시간이 없으면 최다 인원이 가능한 시간을 대신 추천해요.</div>
-      <div class="rec-list" id="recList"></div>
-      <button class="btn btn-teal" id="btnRegisterRec" style="width:100%;justify-content:center;margin-top:16px">추천 일정 등록</button>
-      <div class="ai-note">등록 전에 시간을 직접 검토하고 수정할 수도 있어요. 등록하면 모임 일정에 바로 반영돼요.</div>
-    </section>
-  </div>
+    <div class="ai-layout">
+      <section class="card ai-card">
+        <h2>공통 가능 시간 분석</h2>
+        <div class="sub">이번 주 기준, 모임원이 공유한 일정을 바탕으로 계산했어요.</div>
+        <div class="heatmap" id="heatmap"></div>
+        <div class="heat-legend">
+          <span><i class="legend-dot" style="background:var(--busy-bg)"></i>바쁨</span>
+          <span><i class="legend-dot" style="background:var(--mid-bg)"></i>일부 가능</span>
+          <span><i class="legend-dot" style="background:var(--free-bg)"></i>모두 가능</span>
+        </div>
+      </section>
+
+      <section class="card ai-card">
+        <h2>추천 Top 3</h2>
+        <div class="sub">원하는 추천 방식을 골라보세요.</div>
+        <div class="rec-type-selector" style="margin-bottom:12px;">
+          <select id="recType" class="btn btn-ghost">
+            <option value="SHORT_MEETING">짧은 회의 (1~2시간)</option>
+            <option value="LONG_BLOCK">긴 자유 시간</option>
+            <option value="EARLY_SLOT">오전 우선</option>
+            <option value="EVENING_SLOT">저녁 우선</option>
+            <option value="FULL_DAY">하루 종일 비는 날</option>
+          </select>
+        </div>
+        <div class="sub">전원 가능한 시간이 없으면 최다 인원이 가능한 시간을 대신 추천해요.</div>
+        <div class="rec-list" id="recList"></div>
+        <button class="btn btn-teal" id="btnRegisterRec" style="width:100%;justify-content:center;margin-top:16px">추천 일정 등록</button>
+        <div class="ai-note">등록 전에 시간을 직접 검토하고 수정할 수도 있어요. 등록하면 모임 일정에 바로 반영돼요.</div>
+      </section>
+    </div>
+  </section>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -51,8 +75,19 @@
 <script th:src="@{/js/group/group-shared.js}" src="../../static/js/group/group-shared.js"></script>
 <script>
 const groupId = getQueryParam('id');
+let heatmapEl, recList, registerBtn;
 
 async function initAiPage() {
+  heatmapEl = document.getElementById('heatmap');
+  recList = document.getElementById('recList');
+  registerBtn = document.getElementById('btnRegisterRec');
+
+  registerBtn.addEventListener('click', ()=>{
+    showToast('추천 일정을 모임 일정에 등록했어요.');
+  });
+
+  document.getElementById('recType').addEventListener('change', loadAiRecommendations);
+
   if (!groupId) {
     alert('잘못된 접근입니다.');
     location.href = '/group/list';
@@ -75,16 +110,14 @@ async function initAiPage() {
 }
 
 async function loadAiRecommendations() {
-  const heatmapEl = document.getElementById('heatmap');
-  const recList = document.getElementById('recList');
-  const registerBtn = document.getElementById('btnRegisterRec');
+  const type = document.getElementById('recType').value;
 
   heatmapEl.innerHTML = '<div style="padding:20px; text-align:center; color:#64748B;">AI가 분석 중입니다... 잠시만 기다려주세요.</div>';
   recList.innerHTML = '';
   registerBtn.disabled = true;
 
   try {
-    const res = await fetchApi(`/group/${groupId}/ai-recommendations`);
+    const res = await fetchApi(`/group/${groupId}/ai-recommendations?type=${type}`);
     if (!res.ok) throw new Error('Failed to load');
     
     const data = await res.json();
@@ -133,9 +166,6 @@ async function loadAiRecommendations() {
 
 initAiPage();
 
-registerBtn.addEventListener('click', ()=>{
-  showToast('추천 일정을 모임 일정에 등록했어요.');
-});
 </script>
 </body>
 </html>

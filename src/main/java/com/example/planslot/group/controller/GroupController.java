@@ -56,9 +56,12 @@ public class GroupController {
     // AI 추천 데이터 API
     @GetMapping("/{groupId}/ai-recommendations")
     @ResponseBody
-    public ResponseEntity<GroupDTO.AiResponse> getAiRecommendations(@PathVariable Long groupId, Authentication authentication) {
+    public ResponseEntity<GroupDTO.AiResponse> getAiRecommendations(
+            @PathVariable Long groupId,
+            @RequestParam(defaultValue = "SHORT_MEETING") String type,
+            Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        return ResponseEntity.ok(groupRecommendationService.getRecommendations(groupId, memberId));
+        return ResponseEntity.ok(groupRecommendationService.getRecommendations(groupId, memberId, type));
     }
 
     // 모임 생성 요청 처리
@@ -183,7 +186,6 @@ public class GroupController {
             @RequestBody Map<String, String> body,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        // groupService.updateMemberDisplayName(groupId, memberId, targetMemberId, body.get("displayName"));
         return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
     }
 

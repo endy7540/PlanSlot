@@ -52,7 +52,7 @@ public class GroupRecommendationService {
     private int maxTokens;
 
     @Transactional(readOnly = true)
-    public GroupDTO.AiResponse getRecommendations(Long groupId, Long memberId) {
+    public GroupDTO.AiResponse getRecommendations(Long groupId, Long memberId, String type) {
         List<GroupMember> groupMembers = groupMemberRepository.findByGroup_Id(groupId);
         boolean isMember = groupMembers.stream()
                 .anyMatch(gm -> gm.getMember().getId().equals(memberId) && gm.getMemberStatus() == GroupMemberStatus.ACTIVE);
@@ -113,22 +113,31 @@ public class GroupRecommendationService {
         System.out.println("====== CLAUDE PROMPT ======");
         System.out.println(promptBuilder.toString());
         System.out.println("===========================");
-        
+
         promptBuilder.append("\nBased on this, generate a JSON response exactly in this format without markdown code blocks:\n");
         promptBuilder.append("{\n");
         promptBuilder.append("  \"heat\": [\n");
         promptBuilder.append("    { \"name\": \"memberName\", \"row\": [\"free\", \"busy\", \"mid\", \"free\", \"free\", \"free\", \"free\"] }\n");
         promptBuilder.append("  ],\n");
         promptBuilder.append("  \"recs\": [\n");
-        promptBuilder.append("    { \"rank\": 1, \"label\": \"7월 25일 (토) 오후 2시\", \"sub\": \"이유 설명\", \"tag\": \"전원 가능\" }\n");
+        promptBuilder.append("    { \"rank\": 1, \"label\": \"날짜 (요일) 시작시간-종료시간\", \"sub\": \"이유 및 겹치는 일정 안내\", \"tag\": \"전원 가능\" }\n");
         promptBuilder.append("  ]\n");
         promptBuilder.append("}\n");
         promptBuilder.append("The 'row' array in 'heat' should have exactly 7 elements, representing today to today+6.\n");
         promptBuilder.append("If someone has a schedule on a day, mark 'busy'. If no schedule, 'free'. If somewhat free, 'mid'.\n");
-        promptBuilder.append("Provide up to 3 recommendations in 'recs'. The values for 'label', 'sub', and 'tag' MUST be in Korean (한국어).\n");
-        promptBuilder.append("For each recommendation, 'label' MUST include both a start time AND an end time (e.g. '7월 25일 (토) 오후 2시 - 오후 4시'), assuming a reasonable meeting duration of 1-2 hours that fits within the members' free time.\n");
-        promptBuilder.append("Check carefully whether any member has an existing schedule that overlaps with part of this recommended time range, even if they are marked 'free' for that day overall (a day can have both free and busy hours).\n");
-        promptBuilder.append("If any member has a partial conflict during the recommended window, mention their name and which part of the time overlaps in the 'sub' field. If everyone is fully free for the whole window, state that clearly in 'sub' instead.\n");
+        promptBuilder.append("Provide up to 3 recommendations in 'recs'.\n");
+        promptBuilder.append("Each 'label' MUST include both start and end time (e.g. '7월 25일 (토) 오후 2시 - 오후 4시').\n");
+        promptBuilder.append("Check whether any member has a partial schedule conflict during the recommended window even if their day is marked 'free' overall, and mention it by name in 'sub'.\n");
+
+        String typeInstruction = switch (type) {
+            case "LONG_BLOCK" -> "Meeting type preference: Prioritize long, uninterrupted free blocks (half a day or more) where all or most members are free at once.";
+            case "EARLY_SLOT" -> "Meeting type preference: Prioritize morning time slots (before 12 PM) where members are free.";
+            case "EVENING_SLOT" -> "Meeting type preference: Prioritize evening time slots (after 6 PM) where members are free.";
+            case "FULL_DAY" -> "Meeting type preference: Prioritize a full day where all members have no schedules at all.";
+            case "SHORT_MEETING" -> "Meeting type preference: Prioritize short 1-2 hour windows suitable for a brief meeting, even if the rest of the day is busy for some members.";
+            default -> "Meeting type preference: Prioritize short 1-2 hour windows suitable for a brief meeting.";
+        };
+        promptBuilder.append(typeInstruction).append("\n");
 
         if (apiKey == null || apiKey.trim().isEmpty() || "your-api-key-here".equals(apiKey)) {
             return generateMockResponse(memberNames);

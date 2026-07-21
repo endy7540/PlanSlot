@@ -384,8 +384,12 @@ function renderMembers(){
     const row = document.createElement('div');
     row.className = 'member-row';
     const canKick = owner && m.id !== group.myMemberId;
+    const avatarHtml = m.profileImageUrl 
+      ? `<img src="${m.profileImageUrl}" alt="${m.name}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+      : initials(m.name);
+      
     row.innerHTML = `
-      <div class="avatar">${initials(m.name)}</div>
+      <div class="avatar">${avatarHtml}</div>
       <div class="member-info">
         <div class="member-name-row">
           <b class="nick-label">${m.name}${m.id === group.myMemberId ? ' (나)' : ''}</b>
@@ -774,8 +778,30 @@ function renderDynamicCalendar() {
     });
     let toRender = Array.from(mergedMap.values());
     
-    if (tempImportSchedule && tempImportSchedule.startDate && tempImportSchedule.startDate.startsWith(dateStr)) {
-      toRender.unshift(tempImportSchedule);
+    if (tempImportSchedule && tempImportSchedule.startDate) {
+      let isMatch = false;
+      const targetDate = new Date(dateStr);
+      const limitStart = new Date(tempImportSchedule.startDate);
+      
+      if (tempImportSchedule.startDate.startsWith(dateStr)) {
+        isMatch = true;
+      } else if (tempImportSchedule.scheduleType !== 'DAILY' && targetDate >= limitStart) {
+        if (tempImportSchedule.scheduleType === 'WEEKLY' && targetDate.getDay() === limitStart.getDay()) {
+          isMatch = true;
+        } else if (tempImportSchedule.scheduleType === 'MONTHLY') {
+          const targetYear = targetDate.getFullYear();
+          const targetMonth = targetDate.getMonth();
+          const maxDayInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+          const actualDay = Math.min(limitStart.getDate(), maxDayInMonth);
+          if (targetDate.getDate() === actualDay) isMatch = true;
+        } else if (tempImportSchedule.scheduleType === 'YEARLY' && targetDate.getMonth() === limitStart.getMonth() && targetDate.getDate() === limitStart.getDate()) {
+          isMatch = true;
+        }
+      }
+      
+      if (isMatch) {
+        toRender.unshift(tempImportSchedule);
+      }
     }
     
     // 최대 3개까지만 표시 (디자인 유지)
@@ -975,7 +1001,8 @@ function previewImportSharedPeerSchedule(shareId) {
     time: s.time,
     nickname: myName,
     isPublic: 'N', // 가상으로 보여줄 때는 비공개 스타일
-    isTemp: true
+    isTemp: true,
+    scheduleType: s.scheduleType
   };
   
   // 달력 렌더링

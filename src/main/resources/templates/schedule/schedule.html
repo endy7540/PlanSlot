@@ -187,6 +187,28 @@
             color: #748898;
             font-weight: 600;
         }
+        /* 검색 적용 시의 일정 칩 스타일 */
+        .event-chip.search-match {
+            border-color: #F59E0B !important;
+            background: #FEF3C7 !important;
+            color: #D97706 !important;
+            transform: scale(1.05);
+            z-index: 5;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+            opacity: 1 !important;
+        }
+        .event-chip.search-mismatch {
+            opacity: 0.15 !important;
+            pointer-events: none;
+        }
+        /* 하단 상세 리스트 검색 일치 스타일 */
+        .selected-event-item.search-match {
+            border-color: #F59E0B !important;
+            background: #FEF9E7 !important;
+        }
+        .selected-event-item.search-mismatch {
+            opacity: 0.25 !important;
+        }
     </style>
 </head>
 <body>
@@ -221,7 +243,12 @@
                 <button class="ghost" onclick="moveMonth(1)">▶</button>
             </div>
             <div class="cal-nav-right">
-                <a class="primary" id="newScheduleBtn" href="/schedule/new">+ 새 일정 등록</a>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <input id="scheduleSearchInput" type="text" placeholder="제목 검색..." style="width: 140px; padding: 8px 12px; font-size: 13px; border: 2px solid #DCEFFC; border-radius: 8px; font-weight: 700; color: #075985; transition: all 0.2s;" onkeyup="handleSearchKeyup(event)">
+                    <button class="ghost" id="searchNextBtn" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; display: none;" onclick="goToNextMatch()">다음</button>
+                    <button class="primary" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; border: 0;" onclick="performSearch()">검색</button>
+                    <button class="ghost" id="searchClearBtn" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; display: none;" onclick="clearSearch()">X</button>
+                </div>
             </div>
         </div>
         <div class="cal-grid" id="dowRow">
@@ -280,6 +307,9 @@
     let viewYear, viewMonth; // viewMonth: 0-11
     let schedulesByDate = {}; // { 'YYYY-MM-DD': [schedule, ...] }
     let selectedDateKey = null;
+    let currentSearchQuery = '';
+    let searchMatches = [];
+    let searchMatchIndex = -1;
 
     // 화면에 표시되던 "요청 로그" 패널은 제거했고, 디버깅용으로 콘솔에만 남겨둡니다.
     function log(label, data) {
@@ -477,9 +507,13 @@
             const isRedDay = isSunday || isHoliday;
             const isSelected = dateKey === selectedDateKey;
 
-            const chips = dayEvents.slice(0, 3).map(s =>
-                `<div class="event-chip${s.isPublic ? ' public' : ''}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${escapeHtml(s.title)}</div>`
-            ).join('');
+            const chips = dayEvents.slice(0, 3).map(s => {
+                const matches = currentSearchQuery && s.title.toLowerCase().includes(currentSearchQuery.toLowerCase());
+                const searchClass = currentSearchQuery 
+                    ? (matches ? ' search-match' : ' search-mismatch') 
+                    : '';
+                return `<div class="event-chip${s.isPublic ? ' public' : ''}${searchClass}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${escapeHtml(s.title)}</div>`;
+            }).join('');
             const more = dayEvents.length > 3 ? `<div class="event-more">+${dayEvents.length - 3}개 더보기</div>` : '';
 
             return `
@@ -525,6 +559,11 @@
         }
 
         list.innerHTML = dayEvents.map(s => {
+            const matches = currentSearchQuery && s.title.toLowerCase().includes(currentSearchQuery.toLowerCase());
+            const searchClass = currentSearchQuery 
+                ? (matches ? ' search-match' : ' search-mismatch') 
+                : '';
+
             let timeText = '하루종일';
             if (s.startDate && s.endDate) {
                 const isAllDay = (s.startDate.includes('T00:00') || s.startDate.includes(' 00:00')) && (s.endDate.includes('T23:59') || s.endDate.includes(' 23:59'));
@@ -535,12 +574,144 @@
                 }
             }
             return `
-                <div class="selected-event-item" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
+                <div class="selected-event-item${searchClass}" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
                     <span class="selected-event-title">${escapeHtml(s.title)}</span>
                     <span class="selected-event-time">${timeText}</span>
                 </div>
             `;
         }).join('');
+    }
+
+    async function performSearch() {
+        const input = document.getElementById('scheduleSearchInput');
+        if (!input) return;
+        
+        const q = input.value.trim();
+        if (!q) {
+            clearSearch();
+            return;
+        }
+        
+        currentSearchQuery = q;
+        const clearBtn = document.getElementById('searchClearBtn');
+        clearBtn.style.display = 'inline-block';
+        
+        try {
+            const currentYear = new Date().getFullYear();
+            const startLimit = `${currentYear - 10}-01-01T00:00:00`;
+            const endLimit = `${currentYear + 10}-12-31T23:59:59`;
+            const url = `${API_BASE}/schedule?start=${encodeURIComponent(startLimit)}&end=${encodeURIComponent(endLimit)}`;
+            
+            const res = await fetch(url, { headers: authHeaders() });
+            if (!res.ok) {
+                showToast('검색 중 일정 조회 실패: ' + res.status, true);
+                return;
+            }
+            const allSchedules = await res.json();
+            
+            searchMatches = allSchedules.filter(s => s.title && s.title.toLowerCase().includes(q.toLowerCase()))
+                                        .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+            
+            if (searchMatches.length === 0) {
+                showToast('검색 결과와 일치하는 일정이 없습니다.', false);
+                document.getElementById('searchNextBtn').style.display = 'none';
+                renderCalendar();
+                if (selectedDateKey) {
+                    renderSelectedDateEvents(selectedDateKey);
+                }
+                return;
+            }
+
+            document.getElementById('searchNextBtn').style.display = 'inline-block';
+
+            const today = new Date();
+            let closestIndex = 0;
+            let minDiff = Infinity;
+
+            searchMatches.forEach((s, idx) => {
+                if (!s.startDate) return;
+                const d = new Date(s.startDate);
+                const diff = Math.abs(d.getTime() - today.getTime());
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestIndex = idx;
+                }
+            });
+
+            searchMatchIndex = closestIndex;
+            const targetSchedule = searchMatches[searchMatchIndex];
+            const targetDate = new Date(targetSchedule.startDate);
+            const padStr = (n) => String(n).padStart(2, '0');
+            const targetDateKey = `${targetDate.getFullYear()}-${padStr(targetDate.getMonth()+1)}-${padStr(targetDate.getDate())}`;
+
+            const isInCurrentMonth = targetDate.getFullYear() === viewYear && targetDate.getMonth() === viewMonth;
+            selectedDateKey = targetDateKey;
+
+            if (!isInCurrentMonth) {
+                viewYear = targetDate.getFullYear();
+                viewMonth = targetDate.getMonth();
+                await loadMonthSchedules();
+                highlightDate(targetDateKey);
+            } else {
+                renderCalendar();
+                highlightDate(targetDateKey);
+                renderSelectedDateEvents(targetDateKey);
+            }
+            
+            showToast(`[${searchMatchIndex + 1}/${searchMatches.length}] 번째 매칭 일정으로 이동했습니다.`, false);
+        } catch (e) {
+            console.error(e);
+            showToast('검색 요청 중 오류가 발생했습니다: ' + e.message, true);
+        }
+    }
+
+    async function goToNextMatch() {
+        if (searchMatches.length === 0 || searchMatchIndex === -1) return;
+
+        searchMatchIndex = (searchMatchIndex + 1) % searchMatches.length;
+        const targetSchedule = searchMatches[searchMatchIndex];
+        if (!targetSchedule || !targetSchedule.startDate) return;
+
+        const targetDate = new Date(targetSchedule.startDate);
+        const padStr = (n) => String(n).padStart(2, '0');
+        const targetDateKey = `${targetDate.getFullYear()}-${padStr(targetDate.getMonth()+1)}-${padStr(targetDate.getDate())}`;
+
+        const isInCurrentMonth = targetDate.getFullYear() === viewYear && targetDate.getMonth() === viewMonth;
+        selectedDateKey = targetDateKey;
+
+        if (!isInCurrentMonth) {
+            viewYear = targetDate.getFullYear();
+            viewMonth = targetDate.getMonth();
+            await loadMonthSchedules();
+            highlightDate(targetDateKey);
+        } else {
+            renderCalendar();
+            highlightDate(targetDateKey);
+            renderSelectedDateEvents(targetDateKey);
+        }
+
+        showToast(`[${searchMatchIndex + 1}/${searchMatches.length}] 번째 매칭 일정으로 이동했습니다.`, false);
+    }
+
+    function clearSearch() {
+        const input = document.getElementById('scheduleSearchInput');
+        if (input) input.value = '';
+        currentSearchQuery = '';
+        searchMatches = [];
+        searchMatchIndex = -1;
+        
+        document.getElementById('searchClearBtn').style.display = 'none';
+        document.getElementById('searchNextBtn').style.display = 'none';
+        renderCalendar();
+        if (selectedDateKey) {
+            renderSelectedDateEvents(selectedDateKey);
+        }
+    }
+
+    function handleSearchKeyup(event) {
+        if (event.key === 'Enter') {
+            performSearch();
+        }
     }
 
     function openSchedule(scheduleId, dateKey) {

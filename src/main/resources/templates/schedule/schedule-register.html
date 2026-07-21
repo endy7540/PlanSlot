@@ -341,11 +341,7 @@
             return;
         }
 
-        const todayStr = new Date().toISOString().slice(0, 10);
-        if (dateVal < todayStr) {
-            showToast('과거 날짜의 일정은 등록할 수 없습니다.', true);
-            return;
-        }
+        // 과거 날짜 일정 등록 허용
 
         if (!isAllDay && startTime && endTime) {
             if (endTime < startTime) {
@@ -397,11 +393,6 @@
         }
     }
 
-    function setDateMinLimit() {
-        const todayStr = new Date().toISOString().slice(0, 10);
-        document.getElementById('f-date').min = todayStr;
-    }
-
     function updateDeadlineMax() {
         const dateVal = document.getElementById('f-date').value;
         if (dateVal) {
@@ -413,7 +404,6 @@
     document.getElementById('f-date').addEventListener('change', updateDeadlineMax);
 
     if (checkAuth()) {
-        setDateMinLimit();
         applyUrlParams();
         updateDeadlineMax();
     }

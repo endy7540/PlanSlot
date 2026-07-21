@@ -12,4 +12,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     boolean existsByLoginId(String loginId);
     boolean existsByEmail(String email);
     boolean existsByNickname(String nickname);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Member m SET m.status = 'ACTIVE', m.suspendedUntil = null WHERE m.status = 'SUSPENDED' AND m.suspendedUntil <= :now")
+    int liftExpiredSuspensions(@org.springframework.data.repository.query.Param("now") java.time.LocalDateTime now);
 }

@@ -70,7 +70,7 @@
                                 <span class="badge-member-status badge-withdrawn">탈퇴 회원</span>
                             </div>
                             <div th:unless="${member.status == 'WITHDRAWN'}">
-                                <select class="select-status" th:onchange="'changeStatus(' + ${member.id} + ', this.value)'">
+                                <select class="select-status" th:attr="onchange=|updateStatus(${member.id}, this.value, this)|" th:data-original="${member.status}">
                                     <option value="ACTIVE" th:selected="${member.status == 'ACTIVE'}">정상 (ACTIVE)</option>
                                     <option value="SUSPENDED" th:selected="${member.status == 'SUSPENDED'}">정지 (SUSPENDED)</option>
                                     <option value="BANNED" th:selected="${member.status == 'BANNED'}">영구 정지 (BANNED)</option>

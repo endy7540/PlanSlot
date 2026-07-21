@@ -22,6 +22,7 @@ import java.util.Map;
 public class GroupController {
 
     private final GroupService groupService;
+    private final com.example.planslot.group.service.GroupRecommendationService groupRecommendationService;
     private final MemberRepository memberRepository;
 
     private Long getAuthenticatedMemberId(Authentication authentication) {
@@ -52,6 +53,13 @@ public class GroupController {
     }
 
 
+    // AI 추천 데이터 API
+    @GetMapping("/{groupId}/ai-recommendations")
+    @ResponseBody
+    public ResponseEntity<GroupDTO.AiResponse> getAiRecommendations(@PathVariable Long groupId, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        return ResponseEntity.ok(groupRecommendationService.getRecommendations(groupId, memberId));
+    }
 
     // 모임 생성 요청 처리
     @PostMapping("/register")

@@ -50,32 +50,88 @@
 
 <script th:src="@{/js/group/group-shared.js}" src="../../static/js/group/group-shared.js"></script>
 <script>
-const group = currentGroup();
+const groupId = getQueryParam('id');
 
-document.getElementById('groupTitle').textContent = `AI 시간 추천 · ${group.name}`;
-document.getElementById('crumbGroup').textContent = group.name;
-document.getElementById('crumbGroup').href = linkToDetail(group.id);
-document.getElementById('btnBack').href = linkToDetail(group.id);
+async function initAiPage() {
+  if (!groupId) {
+    alert('잘못된 접근입니다.');
+    location.href = '/group/list';
+    return;
+  }
+  
+  try {
+    const detailRes = await fetchApi(`/group/${groupId}`);
+    if (detailRes.ok) {
+      const groupData = await detailRes.json();
+      document.getElementById('groupTitle').textContent = `AI 시간 추천 · ${groupData.name}`;
+      document.getElementById('crumbGroup').textContent = groupData.name;
+    }
+  } catch(e) { console.error(e); }
 
-document.getElementById('heatmap').innerHTML = buildHeatmapHTML(group);
-
-const recList = document.getElementById('recList');
-const registerBtn = document.getElementById('btnRegisterRec');
-if(!group.recs.length){
-  recList.innerHTML = '<div class="empty-note">추천할 시간이 아직 없어요. 모임원이 일정을 공유하면 여기에 추천이 나타나요.</div>';
-  registerBtn.disabled = true;
-} else {
-  group.recs.forEach(r => {
-    const el = document.createElement('div');
-    el.className = 'rec' + (r.rank === 1 ? ' best' : '');
-    el.innerHTML = `
-      <div class="rec-rank">${r.rank}순위</div>
-      <b>${r.label}</b>
-      <span>${r.sub}</span>
-      <em>${r.tag}</em>`;
-    recList.appendChild(el);
-  });
+  document.getElementById('crumbGroup').href = linkToDetail(groupId);
+  document.getElementById('btnBack').href = linkToDetail(groupId);
+  
+  await loadAiRecommendations();
 }
+
+async function loadAiRecommendations() {
+  const heatmapEl = document.getElementById('heatmap');
+  const recList = document.getElementById('recList');
+  const registerBtn = document.getElementById('btnRegisterRec');
+
+  heatmapEl.innerHTML = '<div style="padding:20px; text-align:center; color:#64748B;">AI가 분석 중입니다... 잠시만 기다려주세요.</div>';
+  recList.innerHTML = '';
+  registerBtn.disabled = true;
+
+  try {
+    const res = await fetchApi(`/group/${groupId}/ai-recommendations`);
+    if (!res.ok) throw new Error('Failed to load');
+    
+    const data = await res.json();
+    
+    // Build Heatmap
+    if (!data.heat || data.heat.length === 0) {
+      heatmapEl.innerHTML = '<div class="empty-note">아직 공유된 일정이 없어서 분석할 수 없어요.</div>';
+    } else {
+      let html = '';
+      data.heat.forEach(r => {
+        html += `<div class="heat-row"><b>${r.name}</b>${r.row.map(v => `<div class="heat-cell ${heatClass(v)}"></div>`).join('')}</div>`;
+      });
+      const cols = data.heat[0].row.length;
+      const totalRow = [];
+      for(let c=0; c<cols; c++){
+        const freeCount = data.heat.filter(r => r.row[c] === 'free').length;
+        if(freeCount === data.heat.length) totalRow.push('free');
+        else if(freeCount >= Math.ceil(data.heat.length/2)) totalRow.push('mid');
+        else totalRow.push('busy');
+      }
+      html += `<div class="heat-row total"><b>전체</b>${totalRow.map(v => `<div class="heat-cell ${heatClass(v)}"></div>`).join('')}</div>`;
+      heatmapEl.innerHTML = html;
+    }
+
+    // Build Recommendations
+    if (!data.recs || data.recs.length === 0) {
+      recList.innerHTML = '<div class="empty-note">추천할 시간이 아직 없어요. 모임원이 일정을 공유하면 여기에 추천이 나타나요.</div>';
+    } else {
+      data.recs.forEach(r => {
+        const el = document.createElement('div');
+        el.className = 'rec' + (r.rank === 1 ? ' best' : '');
+        el.innerHTML = `
+          <div class="rec-rank">${r.rank}순위</div>
+          <b>${r.label}</b>
+          <span>${r.sub}</span>
+          <em>${r.tag}</em>`;
+        recList.appendChild(el);
+      });
+      registerBtn.disabled = false;
+    }
+  } catch (e) {
+    console.error(e);
+    heatmapEl.innerHTML = '<div class="empty-note">분석 중 오류가 발생했습니다.</div>';
+  }
+}
+
+initAiPage();
 
 registerBtn.addEventListener('click', ()=>{
   showToast('추천 일정을 모임 일정에 등록했어요.');

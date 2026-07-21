@@ -774,6 +774,9 @@ function renderDynamicCalendar() {
         if (displayNick && !existing.nicknames.includes(displayNick)) {
           existing.nicknames.push(displayNick);
         }
+        if (s.isPublic === 'Y') {
+          existing.isPublic = 'Y';
+        }
       }
     });
     let toRender = Array.from(mergedMap.values());
@@ -869,6 +872,9 @@ function showDayDetail(dateStr) {
       const existing = mergedMap.get(key);
       if (displayNick && !existing.nicknames.includes(displayNick)) {
         existing.nicknames.push(displayNick);
+      }
+      if (s.isPublic === 'Y') {
+        existing.isPublic = 'Y';
       }
     }
   });

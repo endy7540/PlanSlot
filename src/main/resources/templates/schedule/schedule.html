@@ -777,7 +777,7 @@
         document.getElementById('aiResultStep').style.display = 'none';
         clearFileSelect();
         document.getElementById('aiPromptType').value = '직접';
-        document.getElementById('aiPromptText').value = '';
+        document.getElementById('aiPromptText').value = '이 이미지를 분석해서 캘린더에 추가해줘';
         onPromptTypeChange();
     }
 
@@ -786,10 +786,10 @@
         const presets = document.getElementById('aiPromptPresets');
         if (type === '예시') {
             presets.style.display = 'flex';
-            document.getElementById('aiPromptText').value = '공부방 수요일 오후 3시 모임';
+            document.getElementById('aiPromptText').value = '이 이미지를 분석해서 캘린더에 추가해줘';
         } else {
             presets.style.display = 'none';
-            document.getElementById('aiPromptText').value = '';
+            document.getElementById('aiPromptText').value = '이 이미지를 분석해서 캘린더에 추가해줘';
         }
     }
 
@@ -1172,10 +1172,10 @@
                 
                 <!-- 추천 예시 원클릭 버튼들 -->
                 <div id="aiPromptPresets" style="display: none; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('공부방 수요일 오후 3시 모임 분석해줘')">수요일 공부방 모임</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('금요일 오후 7시 저녁 식사 약속 분석해줘')">금요일 저녁 식사</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('8월 6일 오전 10시 IT 세미나 분석해줘')">8월 6일 IT 세미나</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('월요일 오전 9시 주간 회의 분석해줘')">월요일 주간 회의</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이 이미지를 분석해서 캘린더에 추가해줘')">이 이미지를 분석해서 캘린더에 추가해줘</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이미지 속 날짜와 시간 정보를 토대로 모든 일정을 추출해서 등록해줘')">모든 일정 추출</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이 스케줄표 이미지에 있는 프로젝트 일정을 내 개인 캘린더에 전부 옮겨줘')">프로젝트 스케줄</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이미지 속에 나오는 수업 시간표를 모두 일정으로 추가해줘')">수업 시간표</button>
                 </div>
             </div>
 

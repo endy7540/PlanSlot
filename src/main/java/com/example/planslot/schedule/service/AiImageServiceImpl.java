@@ -53,8 +53,20 @@ public class AiImageServiceImpl implements AiImageService {
     @Value("${file.upload.ai-image-path:./uploads/ai-image}")
     private String aiImageUploadPath;
 
-    @Value("${anthropic.api-key:YOUR_CLAUDE_API_KEY_HERE}")
+    @Value("${ai.url:https://api.anthropic.com/v1/messages}")
+    private String claudeApiUrl;
+
+    @Value("${ai.api-key:YOUR_CLAUDE_API_KEY_HERE}")
     private String claudeApiKey;
+
+    @Value("${ai.anthropic-version:2023-06-01}")
+    private String claudeApiVersion;
+
+    @Value("${ai.model:claude-3-haiku-20240307}")
+    private String claudeModel;
+
+    @Value("${ai.max-tokens:1024}")
+    private Integer claudeMaxTokens;
 
     @Override
     @Transactional
@@ -109,8 +121,8 @@ public class AiImageServiceImpl implements AiImageService {
 
             // 2. Claude API 요청 JSON 바디 빌드
             Map<String, Object> payload = new HashMap<>();
-            payload.put("model", "claude-3-haiku-20240307");
-            payload.put("max_tokens", 1024);
+            payload.put("model", claudeModel);
+            payload.put("max_tokens", claudeMaxTokens);
 
             Map<String, Object> message = new HashMap<>();
             message.put("role", "user");
@@ -149,9 +161,9 @@ public class AiImageServiceImpl implements AiImageService {
             // 3. HTTP Client로 Claude API 호출
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://api.anthropic.com/v1/messages"))
+                    .uri(URI.create(claudeApiUrl))
                     .header("x-api-key", claudeApiKey)
-                    .header("anthropic-version", "2023-06-01")
+                    .header("anthropic-version", claudeApiVersion)
                     .header("content-type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson))
                     .build();

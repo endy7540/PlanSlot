@@ -1,0 +1,207 @@
+/* admin_tables.css */
+/* --------------------------------------
+   공통 관리자 테이블 스타일 (회원 관리, 신고 접수함)
+--------------------------------------- */
+
+/* 테이블 기본 뼈대 */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    text-align: left;
+}
+.admin-table th {
+    background-color: #f1f5f9;
+    color: #475569;
+    font-weight: 600;
+    padding: 14px 16px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.admin-table td {
+    padding: 16px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    color: #334155;
+}
+.admin-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+/* 유틸리티 */
+.no-wrap {
+    white-space: nowrap;
+}
+.truncate {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+.truncate-target { max-width: 130px; }
+.truncate-reporter { max-width: 70px; }
+
+/* 뱃지 통일 (상태, 권한 등) */
+.badge-status {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 76px;
+    height: 32px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.badge-waiting { background: #fef3c7; color: #d97706; }
+.badge-processed { background: #dcfce7; color: #16a34a; }
+.badge-rejected { background: #f1f5f9; color: #64748b; }
+
+.badge-member-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.badge-active { background-color: #dcfce7; color: #166534; }
+.badge-suspended { background-color: #fef08a; color: #854d0e; }
+.badge-banned { background-color: #fee2e2; color: #991b1b; }
+.badge-withdrawn { background-color: #e2e8f0; color: #475569; }
+.badge-admin { background-color: #e0f2fe; color: #075985; }
+.badge-member { background-color: #f1f5f9; color: #475569; }
+
+/* 테이블 내부 셀렉트, 버튼 */
+.select-status, .select-role {
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #334155;
+    background-color: #fff;
+    outline: none;
+}
+.btn-process {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 76px;
+    height: 32px;
+    padding: 0;
+    background-color: #0ea5e9;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-process:hover { background-color: #0284c7; }
+.btn-reject {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 50px;
+    height: 32px;
+    padding: 0;
+    background-color: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-left: 4px;
+}
+.btn-reject:hover { background-color: #dc2626; }
+.btn-approve {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 50px;
+    height: 32px;
+    padding: 0;
+    background-color: #10b981;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-approve:hover { background-color: #059669; }
+
+/* --------------------------------------
+   게시판 스타일 (검색창, 페이지네이션)
+--------------------------------------- */
+.board-toolbar { padding: 5px 0 10px 0; }
+.board-search { display:flex; align-items:center; gap:8px; flex: 1; }
+.board-search-select { width: 130px; height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 10px; outline: none; font-weight: 500; color: #334155; flex-shrink: 0; background-color: #fff; }
+.board-search-select:focus { border-color: #0ea5e9; box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1); }
+.board-search input { height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 12px; flex: 1; min-width: 0; outline: none; font-size: 14px; }
+.board-search input:focus { border-color: #0ea5e9; box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1); }
+.board-btn { flex-shrink: 0; height: 38px; padding: 0 18px; font-weight: 600; font-size: 14px; border-radius: 6px; border: none; cursor: pointer; transition: 0.2s; }
+.board-btn-sky { background: #334155; color: white; } /* 어드민에 맞게 차분한 슬레이트 계열로 변경 */
+.board-btn-sky:hover { background: #1e293b; }
+
+.board-pagination { display: flex; justify-content: center; gap: 6px; margin-top: 30px; }
+.board-page-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; font-weight: 600; color: #64748b; }
+.board-page-btn.active { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+.board-page-btn:hover:not(.active) { background: #f8fafc; }
+
+/* --------------------------------------
+   모달 (Modal)
+--------------------------------------- */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background: #fff;
+    padding: 24px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.modal-title { font-size: 18px; font-weight: 600; color: #0f172a; }
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #64748b;
+}
+.modal-body { font-size: 14px; color: #334155; line-height: 1.5; }
+.modal-body-item { margin-bottom: 12px; }
+.modal-body-label { font-weight: 600; color: #0f172a; margin-bottom: 4px; }
+.modal-body-content {
+    background: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+    word-break: break-all;
+}
+
+.clickable-title {
+    color: #0284c7;
+    cursor: pointer;
+    text-decoration: underline;
+}
+.clickable-title:hover { color: #0369a1; }
+.suspension-info { font-size: 12px; color: #854d0e; background: #fef08a; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block; }

@@ -57,7 +57,8 @@ public class Member {
     @Column(name = "profile_image_url", length = 255)
     private String profileImageUrl;
 
-
+    @Column(name = "suspended_until")
+    private LocalDateTime suspendedUntil;
 
     @Column(name = "allow_activity_noti", nullable = false)
     @Builder.Default
@@ -110,6 +111,20 @@ public class Member {
             this.loginId = "deleted_" + this.id;
         } else {
             // 제재된 회원은 악용(재가입 등)을 막기 위해 이메일과 아이디를 법적 보관 기간 동안 그대로 유지합니다.
+        }
+    }
+
+    public void updateRole(Role role) {
+        this.role = role;
+    }
+
+    public void updateStatus(Status status, Integer suspendDays) {
+        this.status = status;
+        
+        if (status == Status.SUSPENDED && suspendDays != null) {
+            this.suspendedUntil = LocalDateTime.now().plusDays(suspendDays);
+        } else if (status != Status.SUSPENDED) {
+            this.suspendedUntil = null; // 정지가 풀리거나 영구정지/탈퇴 시 초기화
         }
     }
 }

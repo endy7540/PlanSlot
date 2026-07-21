@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원 관리 - PlanSlot Admin</title>
+    <link rel="stylesheet" th:href="@{/css/admin/admin_layout.css}">
+    <link rel="stylesheet" th:href="@{/css/admin/admin_tables.css}">
+</head>
+<body>
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<div class="admin-layout">
+    <div th:replace="~{admin/admin_sidebar :: adminSidebar('members')}"></div>
+
+    <main class="admin-content">
+        <div class="admin-container">
+            <div class="admin-page-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>회원 관리</h1>
+                </div>
+            </div>
+
+            <div class="board-toolbar">
+                <div class="board-search">
+                    <select id="memberSearchType" class="board-search-select">
+                        <option value="ALL">전체</option>
+                        <option value="NICKNAME">닉네임</option>
+                        <option value="STATUS">상태</option>
+                    </select>
+                    <input type="text" id="memberSearchInput" placeholder="검색어를 입력하세요" onkeyup="if(event.key==='Enter') searchMembers()">
+                    <button class="board-btn board-btn-sky" onclick="searchMembers()">검색</button>
+                </div>
+            </div>
+
+            <div style="font-size: 13px; color: #64748b; margin-bottom: 12px; font-weight: bold;">
+                총 회원 수 <strong style="color:#0ea5e9;" id="totalCountSpan" th:text="${members.size()}">0</strong>명
+            </div>
+
+            <table class="admin-table" id="memberTable">
+                <thead>
+                    <tr>
+                        <th class="no-wrap" style="width: 50px;">ID</th>
+                        <th class="no-wrap" style="width: 150px;">이메일</th>
+                        <th class="no-wrap" style="width: 120px;">닉네임</th>
+                        <th class="no-wrap" style="width: 80px;">제재 횟수</th>
+                        <th class="no-wrap" style="width: 120px;">가입일</th>
+                        <th class="no-wrap" style="width: 250px;">상태 관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(members)}">
+                        <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            회원이 없습니다.
+                        </td>
+                    </tr>
+                    <tr th:each="member : ${members}" class="member-row">
+                        <td class="no-wrap" th:text="${member.id}">1</td>
+                        <td class="no-wrap member-email" th:text="${member.email}">user@test.com</td>
+                        <td class="no-wrap member-nickname" th:text="${member.nickname}">홍길동</td>
+                        <td class="no-wrap">
+                            <span th:if="${member.reportedCount > 0}" style="color: #ef4444; font-weight: bold;" th:text="${member.reportedCount} + '회'">1회</span>
+                            <span th:if="${member.reportedCount == 0}" style="color: #94a3b8;">-</span>
+                        </td>
+                        <td class="no-wrap" th:text="${#temporals.format(member.createdAt, 'yyyy-MM-dd')}">2026-07-20</td>
+                        
+                        <td class="no-wrap">
+                            <div th:if="${member.status == 'WITHDRAWN'}">
+                                <span class="badge-member-status badge-withdrawn">탈퇴 회원</span>
+                            </div>
+                            <div th:unless="${member.status == 'WITHDRAWN'}">
+                                <select class="select-status" th:onchange="'changeStatus(' + ${member.id} + ', this.value)'">
+                                    <option value="ACTIVE" th:selected="${member.status == 'ACTIVE'}">정상 (ACTIVE)</option>
+                                    <option value="SUSPENDED" th:selected="${member.status == 'SUSPENDED'}">정지 (SUSPENDED)</option>
+                                    <option value="BANNED" th:selected="${member.status == 'BANNED'}">영구 정지 (BANNED)</option>
+                                </select>
+                                <div th:if="${member.status == 'SUSPENDED' && member.suspendedUntil != null}" class="suspension-info">
+                                    ~ <span th:text="${#temporals.format(member.suspendedUntil, 'yyyy-MM-dd HH:mm')}"></span> 까지
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <!-- 페이지네이션 컨트롤 -->
+            <div class="board-pagination" id="paginationContainer"></div>
+        </div>
+    </main>
+</div>
+
+</body>
+<script>
+    let allRows = [];
+    let filteredRows = [];
+    let currentPage = 1;
+    const itemsPerPage = 10;
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const rows = document.querySelectorAll('.member-row');
+        allRows = Array.from(rows);
+        filteredRows = [...allRows];
+        renderTable();
+    });
+
+    function searchMembers() {
+        const type = document.getElementById('memberSearchType').value;
+        const input = document.getElementById('memberSearchInput').value.toLowerCase();
+        
+        filteredRows = allRows.filter(row => {
+            const nickname = row.querySelector('.member-nickname').innerText.toLowerCase();
+            let status = "";
+            const statusSelect = row.querySelector('.select-status');
+            if (statusSelect) {
+                status = statusSelect.options[statusSelect.selectedIndex].text.toLowerCase();
+            } else if (row.querySelector('.badge-withdrawn')) {
+                status = "탈퇴 회원";
+            }
+            
+            if (type === 'ALL') {
+                return nickname.includes(input) || status.includes(input);
+            } else if (type === 'NICKNAME') {
+                return nickname.includes(input);
+            } else if (type === 'STATUS') {
+                return status.includes(input);
+            }
+            return true;
+        });
+
+        currentPage = 1; // 검색 시 첫 페이지로
+        document.getElementById('totalCountSpan').innerText = filteredRows.length;
+        renderTable();
+    }
+
+    function renderTable() {
+        // 모든 행 숨기기
+        allRows.forEach(row => row.style.display = 'none');
+
+        // 현재 페이지에 해당하는 행만 표시
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageRows = filteredRows.slice(startIndex, endIndex);
+        
+        pageRows.forEach(row => row.style.display = '');
+
+        renderPagination();
+    }
+
+    function renderPagination() {
+        const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
+        const container = document.getElementById('paginationContainer');
+        container.innerHTML = '';
+
+        if (totalPages <= 1) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'board-page-btn' + (i === currentPage ? ' active' : '');
+            btn.innerText = i;
+            btn.onclick = () => {
+                currentPage = i;
+                renderTable();
+            };
+            container.appendChild(btn);
+        }
+    }
+
+    async function updateStatus(memberId, status, selectElement) {
+        let msg = '해당 회원의 상태를 정상으로 변경하시겠습니까?';
+        let suspendDays = null;
+        
+        if (status === 'SUSPENDED') {
+            const daysInput = prompt('일시 정지할 기간(일)을 숫자로 입력하세요.\n(예: 1=하루, 7=일주일, 30=한달)');
+            if (!daysInput || isNaN(daysInput) || parseInt(daysInput) <= 0) {
+                alert('올바른 기간을 입력하지 않아 취소되었습니다.');
+                selectElement.value = selectElement.getAttribute('data-original');
+                return;
+            }
+            suspendDays = parseInt(daysInput);
+            msg = `해당 회원을 ${suspendDays}일 동안 일시 정지 처리하시겠습니까?`;
+        } else if (status === 'BANNED') {
+            msg = '해당 회원을 영구 정지(BANNED) 처리하시겠습니까? (사이트 이용 영구 제한)';
+        }
+        
+        if(!confirm(msg)) {
+            selectElement.value = selectElement.getAttribute('data-original');
+            return;
+        }
+
+        try {
+            const payload = { status: status };
+            if (suspendDays !== null) {
+                payload.suspendDays = suspendDays.toString();
+            }
+            
+            const response = await fetch(`/api/admin/members/${memberId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                alert('상태가 변경되었습니다.');
+                window.location.reload();
+            } else {
+                alert('오류가 발생했습니다.');
+                selectElement.value = selectElement.getAttribute('data-original');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('네트워크 오류가 발생했습니다.');
+            selectElement.value = selectElement.getAttribute('data-original');
+        }
+    }
+</script>
+</html>

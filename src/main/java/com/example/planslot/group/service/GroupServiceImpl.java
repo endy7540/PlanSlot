@@ -103,7 +103,8 @@ public class GroupServiceImpl implements GroupService {
                 waiting.add(new GroupDTO.WaitingInfo(mId, gm.getMember().getEmail(), group.getOwner().getNickname(), isMe));
             } else if (gm.getMemberStatus().name().equals("ACTIVE")) {
                 String role = ownerIdStr.equals(mId) ? "owner" : "member";
-                members.add(new GroupDTO.MemberInfo(mId, mName, role));
+                String profileImageUrl = gm.getMember().getProfileImageUrl();
+                members.add(new GroupDTO.MemberInfo(mId, mName, role, profileImageUrl));
             }
         }
 

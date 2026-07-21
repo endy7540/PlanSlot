@@ -286,7 +286,8 @@
             document.getElementById('detail-type').textContent = s.scheduleType;
             
             const pubSpan = document.getElementById('detail-public');
-            if (s.isPublic) {
+            const isPub = (s.isPublic === true || s.isPublic === 'Y' || s.public === true || s.public === 'Y');
+            if (isPub) {
                 pubSpan.textContent = '공개 일정';
                 pubSpan.className = 'badge public';
             } else {

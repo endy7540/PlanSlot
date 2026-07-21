@@ -187,6 +187,28 @@
             color: #748898;
             font-weight: 600;
         }
+        /* 검색 적용 시의 일정 칩 스타일 */
+        .event-chip.search-match {
+            border-color: #F59E0B !important;
+            background: #FEF3C7 !important;
+            color: #D97706 !important;
+            transform: scale(1.05);
+            z-index: 5;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+            opacity: 1 !important;
+        }
+        .event-chip.search-mismatch {
+            opacity: 0.15 !important;
+            pointer-events: none;
+        }
+        /* 하단 상세 리스트 검색 일치 스타일 */
+        .selected-event-item.search-match {
+            border-color: #F59E0B !important;
+            background: #FEF9E7 !important;
+        }
+        .selected-event-item.search-mismatch {
+            opacity: 0.25 !important;
+        }
     </style>
 </head>
 <body>
@@ -212,8 +234,11 @@
     <!-- 캘린더 -->
     <div class="panel" id="calendarPanel" style="display:none">
         <div class="cal-nav">
-            <div class="cal-nav-left">
+            <div class="cal-nav-left" style="display: flex; gap: 6px;">
                 <button class="ghost" onclick="goToday()">오늘</button>
+                <button class="primary" style="background: linear-gradient(135deg, #6366F1, #3B82F6); border: 0; color: white; padding: 8px 12px; font-size: 13px; border-radius: 8px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);" onclick="openAiImageModal()">
+                    <span>✨ AI 일정 자동 등록</span>
+                </button>
             </div>
             <div class="cal-nav-center">
                 <button class="ghost" onclick="moveMonth(-1)">◀</button>
@@ -221,7 +246,12 @@
                 <button class="ghost" onclick="moveMonth(1)">▶</button>
             </div>
             <div class="cal-nav-right">
-                <a class="primary" id="newScheduleBtn" href="/schedule/new">+ 새 일정 등록</a>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <input id="scheduleSearchInput" type="text" placeholder="제목 검색..." style="width: 140px; padding: 8px 12px; font-size: 13px; border: 2px solid #DCEFFC; border-radius: 8px; font-weight: 700; color: #075985; transition: all 0.2s;" onkeyup="handleSearchKeyup(event)">
+                    <button class="ghost" id="searchNextBtn" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; display: none;" onclick="goToNextMatch()">다음</button>
+                    <button class="primary" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; border: 0;" onclick="performSearch()">검색</button>
+                    <button class="ghost" id="searchClearBtn" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; display: none;" onclick="clearSearch()">X</button>
+                </div>
             </div>
         </div>
         <div class="cal-grid" id="dowRow">
@@ -280,6 +310,9 @@
     let viewYear, viewMonth; // viewMonth: 0-11
     let schedulesByDate = {}; // { 'YYYY-MM-DD': [schedule, ...] }
     let selectedDateKey = null;
+    let currentSearchQuery = '';
+    let searchMatches = [];
+    let searchMatchIndex = -1;
 
     // 화면에 표시되던 "요청 로그" 패널은 제거했고, 디버깅용으로 콘솔에만 남겨둡니다.
     function log(label, data) {
@@ -477,9 +510,14 @@
             const isRedDay = isSunday || isHoliday;
             const isSelected = dateKey === selectedDateKey;
 
-            const chips = dayEvents.slice(0, 3).map(s =>
-                `<div class="event-chip${s.isPublic ? ' public' : ''}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${escapeHtml(s.title)}</div>`
-            ).join('');
+            const chips = dayEvents.slice(0, 3).map(s => {
+                const matches = currentSearchQuery && s.title.toLowerCase().includes(currentSearchQuery.toLowerCase());
+                const searchClass = currentSearchQuery 
+                    ? (matches ? ' search-match' : ' search-mismatch') 
+                    : '';
+                const isPub = (s.isPublic === true || s.isPublic === 'Y' || s.public === true || s.public === 'Y');
+                return `<div class="event-chip${isPub ? ' public' : ''}${searchClass}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${escapeHtml(s.title)}</div>`;
+            }).join('');
             const more = dayEvents.length > 3 ? `<div class="event-more">+${dayEvents.length - 3}개 더보기</div>` : '';
 
             return `
@@ -525,6 +563,11 @@
         }
 
         list.innerHTML = dayEvents.map(s => {
+            const matches = currentSearchQuery && s.title.toLowerCase().includes(currentSearchQuery.toLowerCase());
+            const searchClass = currentSearchQuery 
+                ? (matches ? ' search-match' : ' search-mismatch') 
+                : '';
+
             let timeText = '하루종일';
             if (s.startDate && s.endDate) {
                 const isAllDay = (s.startDate.includes('T00:00') || s.startDate.includes(' 00:00')) && (s.endDate.includes('T23:59') || s.endDate.includes(' 23:59'));
@@ -535,12 +578,144 @@
                 }
             }
             return `
-                <div class="selected-event-item" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
+                <div class="selected-event-item${searchClass}" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
                     <span class="selected-event-title">${escapeHtml(s.title)}</span>
                     <span class="selected-event-time">${timeText}</span>
                 </div>
             `;
         }).join('');
+    }
+
+    async function performSearch() {
+        const input = document.getElementById('scheduleSearchInput');
+        if (!input) return;
+        
+        const q = input.value.trim();
+        if (!q) {
+            clearSearch();
+            return;
+        }
+        
+        currentSearchQuery = q;
+        const clearBtn = document.getElementById('searchClearBtn');
+        clearBtn.style.display = 'inline-block';
+        
+        try {
+            const currentYear = new Date().getFullYear();
+            const startLimit = `${currentYear - 10}-01-01T00:00:00`;
+            const endLimit = `${currentYear + 10}-12-31T23:59:59`;
+            const url = `${API_BASE}/schedule?start=${encodeURIComponent(startLimit)}&end=${encodeURIComponent(endLimit)}`;
+            
+            const res = await fetch(url, { headers: authHeaders() });
+            if (!res.ok) {
+                showToast('검색 중 일정 조회 실패: ' + res.status, true);
+                return;
+            }
+            const allSchedules = await res.json();
+            
+            searchMatches = allSchedules.filter(s => s.title && s.title.toLowerCase().includes(q.toLowerCase()))
+                                        .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+            
+            if (searchMatches.length === 0) {
+                showToast('검색 결과와 일치하는 일정이 없습니다.', false);
+                document.getElementById('searchNextBtn').style.display = 'none';
+                renderCalendar();
+                if (selectedDateKey) {
+                    renderSelectedDateEvents(selectedDateKey);
+                }
+                return;
+            }
+
+            document.getElementById('searchNextBtn').style.display = 'inline-block';
+
+            const today = new Date();
+            let closestIndex = 0;
+            let minDiff = Infinity;
+
+            searchMatches.forEach((s, idx) => {
+                if (!s.startDate) return;
+                const d = new Date(s.startDate);
+                const diff = Math.abs(d.getTime() - today.getTime());
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestIndex = idx;
+                }
+            });
+
+            searchMatchIndex = closestIndex;
+            const targetSchedule = searchMatches[searchMatchIndex];
+            const targetDate = new Date(targetSchedule.startDate);
+            const padStr = (n) => String(n).padStart(2, '0');
+            const targetDateKey = `${targetDate.getFullYear()}-${padStr(targetDate.getMonth()+1)}-${padStr(targetDate.getDate())}`;
+
+            const isInCurrentMonth = targetDate.getFullYear() === viewYear && targetDate.getMonth() === viewMonth;
+            selectedDateKey = targetDateKey;
+
+            if (!isInCurrentMonth) {
+                viewYear = targetDate.getFullYear();
+                viewMonth = targetDate.getMonth();
+                await loadMonthSchedules();
+                highlightDate(targetDateKey);
+            } else {
+                renderCalendar();
+                highlightDate(targetDateKey);
+                renderSelectedDateEvents(targetDateKey);
+            }
+            
+            showToast(`[${searchMatchIndex + 1}/${searchMatches.length}] 번째 매칭 일정으로 이동했습니다.`, false);
+        } catch (e) {
+            console.error(e);
+            showToast('검색 요청 중 오류가 발생했습니다: ' + e.message, true);
+        }
+    }
+
+    async function goToNextMatch() {
+        if (searchMatches.length === 0 || searchMatchIndex === -1) return;
+
+        searchMatchIndex = (searchMatchIndex + 1) % searchMatches.length;
+        const targetSchedule = searchMatches[searchMatchIndex];
+        if (!targetSchedule || !targetSchedule.startDate) return;
+
+        const targetDate = new Date(targetSchedule.startDate);
+        const padStr = (n) => String(n).padStart(2, '0');
+        const targetDateKey = `${targetDate.getFullYear()}-${padStr(targetDate.getMonth()+1)}-${padStr(targetDate.getDate())}`;
+
+        const isInCurrentMonth = targetDate.getFullYear() === viewYear && targetDate.getMonth() === viewMonth;
+        selectedDateKey = targetDateKey;
+
+        if (!isInCurrentMonth) {
+            viewYear = targetDate.getFullYear();
+            viewMonth = targetDate.getMonth();
+            await loadMonthSchedules();
+            highlightDate(targetDateKey);
+        } else {
+            renderCalendar();
+            highlightDate(targetDateKey);
+            renderSelectedDateEvents(targetDateKey);
+        }
+
+        showToast(`[${searchMatchIndex + 1}/${searchMatches.length}] 번째 매칭 일정으로 이동했습니다.`, false);
+    }
+
+    function clearSearch() {
+        const input = document.getElementById('scheduleSearchInput');
+        if (input) input.value = '';
+        currentSearchQuery = '';
+        searchMatches = [];
+        searchMatchIndex = -1;
+        
+        document.getElementById('searchClearBtn').style.display = 'none';
+        document.getElementById('searchNextBtn').style.display = 'none';
+        renderCalendar();
+        if (selectedDateKey) {
+            renderSelectedDateEvents(selectedDateKey);
+        }
+    }
+
+    function handleSearchKeyup(event) {
+        if (event.key === 'Enter') {
+            performSearch();
+        }
     }
 
     function openSchedule(scheduleId, dateKey) {
@@ -579,6 +754,483 @@
         el.scrollIntoView({ block: 'center', behavior: 'smooth' });
         setTimeout(() => el.classList.remove('just-added'), 2500);
     }
+
+    // ===== AI 이미지 일정 분석 모달 연동 스크립트 =====
+    let aiSelectedFile = null;
+
+    function openAiImageModal() {
+        if (!token) {
+            showToast('로그인이 필요합니다. 먼저 로그인 해주세요.', true);
+            return;
+        }
+        document.getElementById('aiImageModal').style.display = 'flex';
+        resetStep();
+    }
+
+    function closeAiImageModal() {
+        document.getElementById('aiImageModal').style.display = 'none';
+    }
+
+    function resetStep() {
+        document.getElementById('aiUploadStep').style.display = 'block';
+        document.getElementById('aiLoadingStep').style.display = 'none';
+        document.getElementById('aiResultStep').style.display = 'none';
+        clearFileSelect();
+        document.getElementById('aiPromptType').value = '직접';
+        document.getElementById('aiPromptText').value = '';
+        onPromptTypeChange();
+    }
+
+    function onPromptTypeChange() {
+        const type = document.getElementById('aiPromptType').value;
+        const presets = document.getElementById('aiPromptPresets');
+        if (type === '예시') {
+            presets.style.display = 'flex';
+            document.getElementById('aiPromptText').value = '공부방 수요일 오후 3시 모임';
+        } else {
+            presets.style.display = 'none';
+            document.getElementById('aiPromptText').value = '';
+        }
+    }
+
+    function applyPreset(text) {
+        document.getElementById('aiPromptText').value = text;
+    }
+
+    function triggerFileInput() {
+        document.getElementById('aiImageFileInput').click();
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        document.getElementById('dropzone').style.borderColor = '#6366F1';
+        document.getElementById('dropzone').style.background = '#EEF2F6';
+    }
+
+    function handleDragLeave(e) {
+        e.preventDefault();
+        document.getElementById('dropzone').style.borderColor = '#CBD5E1';
+        document.getElementById('dropzone').style.background = '#F8FAFC';
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        handleDragLeave(e);
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            setFile(files[0]);
+        }
+    }
+
+    function handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            setFile(files[0]);
+        }
+    }
+
+    function setFile(file) {
+        if (!file.type.startsWith('image/')) {
+            showToast('이미지 파일만 업로드할 수 있습니다.', true);
+            return;
+        }
+        aiSelectedFile = file;
+        document.getElementById('uploadText').innerText = file.name;
+        document.getElementById('uploadIcon').innerText = '🖼️';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('aiImagePreview').src = e.target.result;
+            document.getElementById('aiImagePreviewContainer').style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    }
+
+    function clearFileSelect() {
+        aiSelectedFile = null;
+        document.getElementById('aiImageFileInput').value = '';
+        document.getElementById('uploadText').innerText = '이미지 파일을 드래그 앤 드롭하거나 클릭하여 선택하세요.';
+        document.getElementById('uploadIcon').innerText = '📁';
+        document.getElementById('aiImagePreviewContainer').style.display = 'none';
+        document.getElementById('aiImagePreview').src = '';
+    }
+
+    async function submitAiAnalysis() {
+        if (!aiSelectedFile) {
+            showToast('분석할 이미지 파일을 선택해 주세요.', true);
+            return;
+        }
+
+        const promptType = document.getElementById('aiPromptType').value;
+        const promptText = document.getElementById('aiPromptText').value.trim();
+
+        // 1단계: 업로드 로딩 켜기
+        document.getElementById('aiUploadStep').style.display = 'none';
+        document.getElementById('aiLoadingStep').style.display = 'block';
+        document.getElementById('aiProgressTitle').innerText = '이미지 업로드 중...';
+        document.getElementById('aiProgressDesc').innerText = '파일을 서버로 업로드하고 요청을 생성하고 있습니다.';
+
+        const formData = new FormData();
+        formData.append('image', aiSelectedFile);
+        formData.append('promptType', promptType);
+        formData.append('promptText', promptText);
+
+        try {
+            // A. 이미지 업로드 API 호출
+            const uploadRes = await fetch(`${API_BASE}/ai-image-schedule`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            if (!uploadRes.ok) {
+                const err = await uploadRes.json();
+                throw new Error(err.message || '업로드 실패');
+            }
+
+            const uploadData = await uploadRes.json();
+            const requestId = uploadData.id;
+
+            // B. 분석 의뢰 로딩 갱신
+            document.getElementById('aiProgressTitle').innerText = 'AI 일정 분석 중...';
+            document.getElementById('aiProgressDesc').innerText = 'AI가 이미지를 토대로 일정을 정밀하게 파싱하고 있습니다.';
+
+            // C. 분석 실행 API 호출
+            const analyzeRes = await fetch(`${API_BASE}/ai-image-schedule/${requestId}/analyze`, {
+                method: 'POST',
+                headers: authHeaders()
+            });
+
+            if (!analyzeRes.ok) {
+                throw new Error('AI 분석 도중 에러가 발생했습니다.');
+            }
+
+            const resultData = await analyzeRes.json();
+
+            // AI 분석 중 백엔드 예외 또는 API 통신 실패가 난 경우
+            if (resultData.status === 'FAILED') {
+                showToast('AI 분석 실패: ' + (resultData.failReason || '알 수 없는 이유'), true);
+                resetStep();
+                return;
+            }
+
+            // 3단계: 분석 결과 표시
+            displayAnalysisResult(resultData);
+
+        } catch (e) {
+            console.error(e);
+            showToast('에러: ' + e.message, true);
+            resetStep();
+        }
+    }
+
+    let currentExtractedList = [];
+
+    function displayAnalysisResult(data) {
+        document.getElementById('aiLoadingStep').style.display = 'none';
+        document.getElementById('aiResultStep').style.display = 'block';
+
+        document.getElementById('aiRequestId').value = data.id;
+        document.getElementById('aiConfidenceBadge').innerText = `신뢰도: ${data.confidenceScore ? data.confidenceScore.toFixed(2) : '95.00'}%`;
+        
+        currentExtractedList = data.extractedSchedules || [];
+        document.getElementById('aiResultSummaryText').innerText = `AI 일정 추출 완료 (${currentExtractedList.length}건)`;
+
+        const container = document.getElementById('aiSchedulesContainer');
+        container.innerHTML = '';
+
+        if (currentExtractedList.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding: 20px; color:#64748B; font-size:13px;">추출된 일정이 없습니다.</div>';
+            return;
+        }
+
+        currentExtractedList.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = 'ai-schedule-card';
+            card.style = 'background: white; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left;';
+            
+            const startVal = item.startDate ? item.startDate.slice(0, 16) : '';
+            const endVal = item.endDate ? item.endDate.slice(0, 16) : '';
+
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; font-weight: 800; color: #6366F1; background: #EEF2F6; padding: 2px 6px; border-radius: 4px;">일정 #${index + 1}</span>
+                    <button style="background:none; border:0; color:#EF4444; font-size:12px; font-weight:bold; cursor:pointer;" onclick="removeExtractedItem(${index})">삭제</button>
+                </div>
+                <div>
+                    <input type="text" placeholder="일정 제목" class="ai-item-title" value="${escapeHtml(item.title)}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 13px; font-weight: 700; color: #334155; box-sizing: border-box;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div>
+                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">시작일시</label>
+                        <input type="datetime-local" class="ai-item-start" value="${startVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">종료일시</label>
+                        <input type="datetime-local" class="ai-item-end" value="${endVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 8px;">
+                    <input type="text" placeholder="장소 (선택)" class="ai-item-location" value="${escapeHtml(item.location)}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
+                    <select class="ai-item-type" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
+                        <option value="DAILY">당일 일정</option>
+                        <option value="WEEKLY">주간 반복</option>
+                        <option value="MONTHLY">월간 반복</option>
+                    </select>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function removeExtractedItem(index) {
+        syncCurrentExtractedList();
+        currentExtractedList.splice(index, 1);
+        displayAnalysisResult({
+            id: document.getElementById('aiRequestId').value,
+            confidenceScore: parseFloat(document.getElementById('aiConfidenceBadge').innerText.replace(/[^0-9.]/g, '')),
+            extractedSchedules: currentExtractedList
+        });
+    }
+
+    function syncCurrentExtractedList() {
+        const container = document.getElementById('aiSchedulesContainer');
+        const cards = container.querySelectorAll('.ai-schedule-card');
+        
+        currentExtractedList = [];
+        cards.forEach(card => {
+            const title = card.querySelector('.ai-item-title').value.trim();
+            const start = card.querySelector('.ai-item-start').value;
+            const end = card.querySelector('.ai-item-end').value;
+            const location = card.querySelector('.ai-item-location').value.trim();
+            
+            currentExtractedList.push({
+                title: title,
+                startDate: start ? `${start}:00` : null,
+                endDate: end ? `${end}:00` : null,
+                location: location || null
+            });
+        });
+    }
+
+    async function reAnalyze() {
+        const requestId = document.getElementById('aiRequestId').value;
+        const promptText = "일정 재분석 요청";
+
+        document.getElementById('aiResultStep').style.display = 'none';
+        document.getElementById('aiLoadingStep').style.display = 'block';
+        document.getElementById('aiProgressTitle').innerText = 'AI 일정 재분석 중...';
+        document.getElementById('aiProgressDesc').innerText = '요청하신 정보에 맞춰 일정을 재파싱하고 있습니다.';
+
+        try {
+            const res = await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
+                method: 'PATCH',
+                headers: {
+                    ...authHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    promptText: promptText,
+                    promptType: '직접'
+                })
+            });
+
+            if (!res.ok) {
+                throw new Error('재분석 요청 실패');
+            }
+
+            const data = await res.json();
+            displayAnalysisResult(data);
+        } catch (e) {
+            console.error(e);
+            showToast('재분석 오류: ' + e.message, true);
+            document.getElementById('aiLoadingStep').style.display = 'none';
+            document.getElementById('aiResultStep').style.display = 'block';
+        }
+    }
+
+    async function confirmSchedule() {
+        const requestId = document.getElementById('aiRequestId').value;
+        const container = document.getElementById('aiSchedulesContainer');
+        const cards = container.querySelectorAll('.ai-schedule-card');
+        
+        if (cards.length === 0) {
+            showToast('등록할 일정이 없습니다.', true);
+            return;
+        }
+
+        const confirmRequests = [];
+        let hasError = false;
+
+        cards.forEach((card, index) => {
+            const title = card.querySelector('.ai-item-title').value.trim();
+            const start = card.querySelector('.ai-item-start').value;
+            const end = card.querySelector('.ai-item-end').value;
+            const location = card.querySelector('.ai-item-location').value.trim();
+            const type = card.querySelector('.ai-item-type').value;
+
+            if (!title) {
+                showToast(`일정 #${index + 1}의 제목은 필수입니다.`, true);
+                hasError = true;
+                return;
+            }
+            if (!start || !end) {
+                showToast(`일정 #${index + 1}의 시작/종료 일시는 필수입니다.`, true);
+                hasError = true;
+                return;
+            }
+
+            confirmRequests.push({
+                title: title,
+                description: "AI 이미지 분석 등록",
+                scheduleType: type,
+                startDate: start.includes('T') ? `${start}:00` : `${start}T00:00:00`,
+                endDate: end.includes('T') ? `${end}:00` : `${end}T00:00:00`,
+                location: location || null,
+                isPublic: false
+            });
+        });
+
+        if (hasError) return;
+
+        try {
+            const res = await fetch(`${API_BASE}/ai-image-schedule/${requestId}/confirm`, {
+                method: 'POST',
+                headers: {
+                    ...authHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(confirmRequests)
+            });
+
+            if (!res.ok) {
+                throw new Error('캘린더 등록에 실패했습니다.');
+            }
+
+            showToast(`🎉 총 ${confirmRequests.length}개의 일정이 성공적으로 개인 캘린더에 추가되었습니다!`);
+            closeAiImageModal();
+            
+            if (typeof loadMonthSchedules === 'function') {
+                await loadMonthSchedules();
+            } else {
+                location.reload();
+            }
+
+        } catch (e) {
+            console.error(e);
+            showToast('확정 등록 오류: ' + e.message, true);
+        }
+    }
 </script>
+
+<!-- AI 이미지 일정 등록 모달 HTML -->
+<div id="aiImageModal" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="panel" style="width: 100%; max-width: 550px; border-radius: 16px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.5); padding: 24px; position: relative;">
+        <!-- 닫기 버튼 -->
+        <button style="position: absolute; top: 16px; right: 16px; background: none; border: 0; font-size: 20px; color: #64748B; cursor: pointer; font-weight: bold;" onclick="closeAiImageModal()">×</button>
+        
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+            <span style="font-size: 24px;">🔮</span>
+            <h3 style="margin: 0; font-size: 20px; font-weight: 800; color: #1E293B;">AI 일정 이미지 분석 등록</h3>
+        </div>
+        
+        <p style="color: #64748B; font-size: 13px; margin: 0 0 20px; line-height: 1.5;">
+            일정이 표시된 캘린더/스케줄 이미지 파일을 업로드하고 간단한 분석 프롬프트를 작성하여 AI 기반으로 일정을 자동으로 추출하고 캘린더에 바로 등록하세요.
+        </p>
+
+        <!-- 1단계: 업로드 및 프롬프트 작성 영역 -->
+        <div id="aiUploadStep">
+            <!-- 파일 드롭존 -->
+            <div id="dropzone" style="border: 2px dashed #CBD5E1; border-radius: 12px; padding: 30px 16px; text-align: center; background: #F8FAFC; cursor: pointer; transition: all 0.2s;" onclick="triggerFileInput()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                <input type="file" id="aiImageFileInput" accept="image/png, image/jpeg, image/jpg" style="display: none;" onchange="handleFileSelect(event)">
+                <span id="uploadIcon" style="font-size: 32px; display: block; margin-bottom: 8px;">📁</span>
+                <span id="uploadText" style="font-size: 14px; font-weight: 700; color: #475569; display: block;">이미지 파일을 드래그 앤 드롭하거나 클릭하여 선택하세요.</span>
+                <span style="font-size: 12px; color: #94A3B8; display: block; margin-top: 4px;">지원 포맷: JPG, JPEG, PNG (최대 10MB)</span>
+            </div>
+            
+            <!-- 파일 선택 시 프리뷰 -->
+            <div id="aiImagePreviewContainer" style="display: none; margin-top: 12px; text-align: center; position: relative;">
+                <img id="aiImagePreview" src="" alt="preview" style="max-height: 150px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #E2E8F0;">
+                <button style="position: absolute; top: -6px; right: 50%; transform: translateX(75px); background: #EF4444; color: white; border: 0; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 12px; font-weight: bold;" onclick="clearFileSelect()">×</button>
+            </div>
+
+            <!-- 프롬프트 타입 -->
+            <div style="margin-top: 16px;">
+                <label style="font-size: 13px; font-weight: 800; color: #334155; display: block; margin-bottom: 6px;">프롬프트 타입</label>
+                <select id="aiPromptType" style="width: 100%; padding: 10px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 13px; font-weight: 700; color: #334155;" onchange="onPromptTypeChange()">
+                    <option value="직접">직접 작성</option>
+                    <option value="예시">추천 예시 활용</option>
+                </select>
+            </div>
+
+            <!-- 프롬프트 텍스트 -->
+            <div style="margin-top: 16px;">
+                <label style="font-size: 13px; font-weight: 800; color: #334155; display: block; margin-bottom: 6px;">분석 프롬프트 (요청사항)</label>
+                <textarea id="aiPromptText" placeholder="분석할 일정에 대한 프롬프트 또는 요청사항을 자유롭게 적어주세요. (예: 다가오는 수요일 오후 3시 공부방 모임 분석해줘)" style="width: 100%; height: 80px; padding: 10px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 13px; font-weight: 700; color: #334155; resize: none;"></textarea>
+                
+                <!-- 추천 예시 원클릭 버튼들 -->
+                <div id="aiPromptPresets" style="display: none; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('공부방 수요일 오후 3시 모임 분석해줘')">수요일 공부방 모임</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('금요일 오후 7시 저녁 식사 약속 분석해줘')">금요일 저녁 식사</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('8월 6일 오전 10시 IT 세미나 분석해줘')">8월 6일 IT 세미나</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('월요일 오전 9시 주간 회의 분석해줘')">월요일 주간 회의</button>
+                </div>
+            </div>
+
+            <div style="margin-top: 24px; text-align: right;">
+                <button class="ghost" onclick="closeAiImageModal()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; margin-right: 6px; cursor: pointer;">취소</button>
+                <button class="primary" onclick="submitAiAnalysis()" style="padding: 10px 20px; font-size: 13px; border-radius: 8px; border: 0; background: linear-gradient(135deg, #6366F1, #3B82F6); color: white; cursor: pointer; font-weight: bold;">🚀 AI 분석 요청</button>
+            </div>
+        </div>
+
+        <!-- 2단계: 로딩 및 진행 중 상태 영역 -->
+        <div id="aiLoadingStep" style="display: none; text-align: center; padding: 40px 0;">
+            <div style="border: 4px solid #F3F4F6; border-top: 4px solid #6366F1; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+            <h4 style="margin: 0 0 8px; color: #1E293B; font-weight: 800;" id="aiProgressTitle">이미지 업로드 중...</h4>
+            <p style="color: #64748B; font-size: 13px; margin: 0;" id="aiProgressDesc">파일을 서버로 업로드하고 AI 분석을 의뢰하고 있습니다.</p>
+        </div>
+
+        <!-- 3단계: 분석 완료 및 결과 검토 / 직접 수정 영역 (다중 일정 지원) -->
+        <div id="aiResultStep" style="display: none;">
+            <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 12px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">✅</span>
+                    <span style="font-size: 13px; font-weight: 800; color: #065F46;" id="aiResultSummaryText">AI 일정 추출 완료</span>
+                </div>
+                <span id="aiConfidenceBadge" style="background: #10B981; color: white; padding: 2px 8px; font-size: 11px; border-radius: 9999px; font-weight: bold;">신뢰도: 95.50%</span>
+            </div>
+
+            <!-- 추출된 필드 확인 및 수정 폼 -->
+            <input type="hidden" id="aiRequestId">
+            
+            <!-- 다중 일정 목록 컨테이너 -->
+            <div id="aiSchedulesContainer" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 4px; border: 1px solid #E2E8F0; border-radius: 8px; background: #F8FAFC; margin-bottom: 16px;">
+                <!-- 동적으로 일정 리스트가 삽입됩니다 -->
+            </div>
+
+            <div style="margin-top: 24px; text-align: right; display: flex; justify-content: space-between; align-items: center;">
+                <button class="ghost" onclick="reAnalyze()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; color: #4F46E5; border: 2px solid #E2E8F0; font-weight: bold; background: white; cursor: pointer;">🔄 다시 분석</button>
+                <div style="display: flex; gap: 6px;">
+                    <button class="ghost" onclick="resetStep()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; cursor: pointer;">처음으로</button>
+                    <button class="primary" onclick="confirmSchedule()" style="padding: 10px 20px; font-size: 13px; border-radius: 8px; border: 0; background: linear-gradient(135deg, #10B981, #059669); color: white; font-weight: bold; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); cursor: pointer;">📅 캘린더 등록 확정</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+#aiImageModal {
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+</style>
 </body>
 </html>

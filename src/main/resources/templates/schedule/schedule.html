@@ -512,7 +512,8 @@
                 const searchClass = currentSearchQuery 
                     ? (matches ? ' search-match' : ' search-mismatch') 
                     : '';
-                return `<div class="event-chip${s.isPublic ? ' public' : ''}${searchClass}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${escapeHtml(s.title)}</div>`;
+                const isPub = (s.isPublic === true || s.isPublic === 'Y' || s.public === true || s.public === 'Y');
+                return `<div class="event-chip${isPub ? ' public' : ''}${searchClass}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${escapeHtml(s.title)}</div>`;
             }).join('');
             const more = dayEvents.length > 3 ? `<div class="event-more">+${dayEvents.length - 3}개 더보기</div>` : '';
 

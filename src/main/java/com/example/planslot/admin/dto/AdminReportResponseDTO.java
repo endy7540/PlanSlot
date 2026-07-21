@@ -20,11 +20,13 @@ public class AdminReportResponseDTO {
     
     private String targetContent;
     private String targetBody;
+    private String reportedNickname;
 
-    public static AdminReportResponseDTO fromEntity(BoardReport report, String targetContent, String targetBody) {
+    public static AdminReportResponseDTO fromEntity(BoardReport report, String targetContent, String targetBody, String reportedNickname) {
         return AdminReportResponseDTO.builder()
                 .reportId(report.getReportId())
                 .reporterNickname(report.getReporter().getNickname())
+                .reportedNickname(reportedNickname)
                 .targetType(report.getTargetType().name())
                 .targetId(report.getTargetId())
                 .reasonCode(report.getReasonCode().getDescription())

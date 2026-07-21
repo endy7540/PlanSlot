@@ -13,15 +13,22 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public class AdminController {
 
     private final AdminReportService adminReportService;
+    private final com.example.planslot.admin.service.AdminMemberService adminMemberService;
 
     @GetMapping
     public String adminDashboard() {
-        return "admin/dashboard";
+        return "redirect:/admin/reports";
     }
 
     @GetMapping("/reports")
     public String adminReports(Model model) {
         model.addAttribute("reports", adminReportService.getAllReports());
         return "admin/reports";
+    }
+
+    @GetMapping("/members")
+    public String adminMembers(Model model) {
+        model.addAttribute("members", adminMemberService.getAllMembers());
+        return "admin/members";
     }
 }

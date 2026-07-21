@@ -47,6 +47,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
     public Long createComment(Long boardId, BoardCommentDTO commentDTO, String memberEmail) {
         Board board = findBoard(boardId);
         Member writer = findMember(memberEmail);
+        validateCommunityAccess(writer);
 
         validateCommentDTO(commentDTO);
 
@@ -164,6 +165,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
         Member member = findMember(memberEmail);
 
         validateWriter(comment, member);
+        validateCommunityAccess(member);
         validateCommentDTO(commentDTO);
 
         comment.update(commentDTO.getContent().trim());
@@ -189,6 +191,8 @@ public class BoardCommentServiceImpl implements BoardCommentService {
     public Long reportComment(Long commentId, BoardReportRequestDTO reportRequestDTO, String reporterEmail) {
         BoardComment comment = findActiveComment(commentId);
         Member reporter = findMember(reporterEmail);
+
+        validateCommunityAccess(reporter);
 
         if (Objects.equals(comment.getWriter().getId(), reporter.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인이 작성한 댓글은 신고할 수 없습니다.");
@@ -237,6 +241,22 @@ public class BoardCommentServiceImpl implements BoardCommentService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED, "로그인 회원을 찾을 수 없습니다."
                 ));
+    }
+
+    // 커뮤니티 기능(작성 등) 이용 가능 여부 확인
+    private void validateCommunityAccess(Member member) {
+        if (member.getStatus() == Member.Status.BANNED) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "영구 정지된 회원은 커뮤니티 기능을 이용할 수 없습니다.");
+        }
+        if (member.getStatus() == Member.Status.SUSPENDED) {
+            if (member.getSuspendedUntil() != null && java.time.LocalDateTime.now().isBefore(member.getSuspendedUntil())) {
+                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "일시 정지 상태입니다. 정지 해제일: " + member.getSuspendedUntil().format(formatter));
+            } else {
+                member.updateStatus(Member.Status.ACTIVE, null);
+                memberRepository.save(member);
+            }
+        }
     }
 
     // 활성 댓글 조회

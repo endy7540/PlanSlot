@@ -50,31 +50,42 @@ function initializeBoardHeader() {
   if (!authButton) return;
 
   authButton.addEventListener('click', () => {
-    if (!getBoardToken()) {
+    if (!currentBoardMember) {
       location.href = '/auth/login';
       return;
     }
 
-    localStorage.removeItem('jwtToken');
+    clearBoardAuthentication();
     location.href = '/home';
   });
 }
 
 async function loadCurrentBoardMember() {
   try {
-    currentBoardMember = await fetchBoardJson('/board/me');
+    const member = await fetchBoardJson('/board/me');
+
+    if (!member || typeof member !== 'object' || !member.memberId) {
+      const error = new Error('로그인 정보를 확인할 수 없습니다.');
+      error.status = 401;
+      throw error;
+    }
+
+    currentBoardMember = member;
   } catch (error) {
     currentBoardMember = null;
-
-    if (error.status === 401 || error.status === 403) {
-      localStorage.removeItem('jwtToken');
-    }
+    if (error.status === 401 || error.status === 403) clearBoardAuthentication();
   }
+}
+
+function clearBoardAuthentication() {
+  localStorage.removeItem('jwtToken');
+  currentBoardMember = null;
+  updateBoardHeaderState();
 }
 
 function updateBoardHeaderState() {
   const authButton = document.getElementById('authBtn');
-  if (authButton) authButton.textContent = getBoardToken() ? '로그아웃' : '로그인 / 회원가입';
+  if (authButton) authButton.textContent = currentBoardMember ? '로그아웃' : '로그인 / 회원가입';
 }
 
 function initializeReportModal() {
@@ -387,6 +398,7 @@ async function initializeBoardRead() {
   document.getElementById('boardCommentSubmit')?.addEventListener('click', () => createBoardComment(boardId));
   document.getElementById('boardBackButton')?.addEventListener('click', () => history.back());
   document.getElementById('boardCommentList')?.addEventListener('click', event => handleCommentAction(event, boardId));
+  updateBoardCommentFormState();
 
   const readLoaded = await loadBoardRead(boardId);
 
@@ -501,23 +513,34 @@ function initializeBoardProfileImages(container) {
 
 function renderBoardReadActions(board) {
   const actions = document.getElementById('boardReadActions');
-  const isWriter = currentBoardMember && Number(currentBoardMember.memberId) === Number(board.writerId);
+  const isLoggedIn = Boolean(currentBoardMember);
+  const isWriter = isLoggedIn && Number(currentBoardMember.memberId) === Number(board.writerId);
   const recruitmentBoard = isRecruitmentBoard(board.boardType);
   const recruitmentOpen = board.recruitmentStatus === 'OPEN';
-  const canOpenGroup = board.groupId && (isWriter || board.myGroupMemberStatus === 'ACTIVE' || board.myGroupMemberStatus === 'WAITING');
+  const canOpenGroup = isLoggedIn && board.groupId && (isWriter || board.myGroupMemberStatus === 'ACTIVE' || board.myGroupMemberStatus === 'WAITING');
   let recruitmentActions = '';
+  let managementActions = '';
 
-  if (recruitmentBoard && isWriter && recruitmentOpen) {
+  if (isLoggedIn && recruitmentBoard && isWriter && recruitmentOpen) {
     recruitmentActions += '<button class="board-btn board-btn-sky" type="button" id="boardGroupOpenButton">모임 만들기</button>';
   }
   if (recruitmentBoard && !isWriter && recruitmentOpen && !board.myApplicationStatus) {
     recruitmentActions += '<button class="board-btn board-btn-sky" type="button" id="boardApplyButton">신청하기</button>';
   }
-  if (recruitmentBoard && !isWriter && recruitmentOpen && board.myApplicationStatus === 'PENDING') {
+  if (isLoggedIn && recruitmentBoard && !isWriter && recruitmentOpen && board.myApplicationStatus === 'PENDING') {
     recruitmentActions += '<button class="board-btn board-btn-ghost" type="button" id="boardApplicationCancelButton">신청 취소</button>';
   }
   if (canOpenGroup) {
     recruitmentActions += '<button class="board-btn board-btn-primary" type="button" id="boardGroupViewButton">모임 보기</button>';
+  }
+
+  if (isWriter) {
+    managementActions = `
+      <a class="board-btn board-btn-ghost" href="/board/register/${BOARD_TYPE_INFO[board.boardType].path}?boardId=${board.boardId}">수정</a>
+      <button class="board-btn board-btn-danger" type="button" id="boardDeleteButton">삭제</button>
+    `;
+  } else {
+    managementActions = '<button class="board-btn board-btn-danger" type="button" id="boardReportButton">신고</button>';
   }
 
   actions.innerHTML = `
@@ -525,12 +548,7 @@ function renderBoardReadActions(board) {
       <button class="board-btn board-btn-ghost" type="button" id="boardReadListButton">목록으로</button>
       ${recruitmentActions}
     </div>
-    <div class="board-action-group">
-      ${isWriter ? `
-        <a class="board-btn board-btn-ghost" href="/board/register/${BOARD_TYPE_INFO[board.boardType].path}?boardId=${board.boardId}">수정</a>
-        <button class="board-btn board-btn-danger" type="button" id="boardDeleteButton">삭제</button>
-      ` : '<button class="board-btn board-btn-danger" type="button" id="boardReportButton">신고</button>'}
-    </div>
+    <div class="board-action-group">${managementActions}</div>
   `;
 
   document.getElementById('boardReadListButton').addEventListener('click', () => {
@@ -542,6 +560,11 @@ function renderBoardReadActions(board) {
   document.getElementById('boardApplicationCancelButton')?.addEventListener('click', () => cancelBoardApplication(board.boardId));
   document.getElementById('boardGroupOpenButton')?.addEventListener('click', () => openBoardGroupModal(board));
   document.getElementById('boardGroupViewButton')?.addEventListener('click', () => location.href = `/group/read?id=${board.groupId}`);
+}
+
+function updateBoardCommentFormState() {
+  const form = document.getElementById('boardCommentForm');
+  if (form) form.hidden = false;
 }
 
 function isRecruitmentBoard(boardType) {
@@ -776,7 +799,7 @@ function renderBoardComments(comments) {
   const list = document.getElementById('boardCommentList');
 
   if (!comments.length) {
-    list.innerHTML = '<div class="board-empty">첫 댓글을 남겨보세요.</div>';
+    list.innerHTML = `<div class="board-empty">${currentBoardMember ? '첫 댓글을 남겨보세요.' : '등록된 댓글이 없습니다.'}</div>`;
     return;
   }
 
@@ -823,8 +846,21 @@ function renderSingleComment(comment, reply) {
     return `<div class="board-comment deleted" data-comment-id="${comment.commentId}">${escapeBoardHtml(comment.content)}</div>`;
   }
 
-  const isWriter = currentBoardMember && Number(currentBoardMember.memberId) === Number(comment.writerId);
+  const isLoggedIn = Boolean(currentBoardMember);
+  const isWriter = isLoggedIn && Number(currentBoardMember.memberId) === Number(comment.writerId);
   const nickname = comment.writerNickname || '알 수 없음';
+  let actionButtons = '';
+
+  if (!reply) actionButtons += '<button class="board-text-button" data-comment-action="reply">답글</button>';
+
+  if (isWriter) {
+    actionButtons += `
+      <button class="board-text-button" data-comment-action="edit">수정</button>
+      <button class="board-text-button danger" data-comment-action="delete">삭제</button>
+    `;
+  } else {
+    actionButtons += '<button class="board-text-button danger" data-comment-action="report">신고</button>';
+  }
 
   return `
     <article class="board-comment ${reply ? 'reply' : ''}" data-comment-id="${comment.commentId}" data-comment-content="${escapeBoardAttribute(comment.content)}">
@@ -833,15 +869,7 @@ function renderSingleComment(comment, reply) {
           ${renderBoardProfileAvatar(comment.writerProfileImageUrl, nickname, 'board-comment-avatar')}
           <span>${escapeBoardHtml(nickname)}<small class="board-comment-time">${formatBoardDateTimeWithModified(comment.createdAt, comment.updatedAt)}</small></span>
         </div>
-        <div class="board-comment-actions">
-          ${!reply ? '<button class="board-text-button" data-comment-action="reply">답글</button>' : ''}
-          ${isWriter ? `
-            <button class="board-text-button" data-comment-action="edit">수정</button>
-            <button class="board-text-button danger" data-comment-action="delete">삭제</button>
-          ` : `
-            <button class="board-text-button danger" data-comment-action="report">신고</button>
-          `}
-        </div>
+        ${actionButtons ? `<div class="board-comment-actions">${actionButtons}</div>` : ''}
       </div>
       <div class="board-comment-content">${escapeBoardHtml(comment.content)}</div>
       <div class="board-inline-slot"></div>
@@ -1269,25 +1297,40 @@ async function fetchBoardJson(url, options = {}) {
   if (options.body && !(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
 
   const response = await fetch(url, { ...options, headers });
+  const redirectedPath = response.redirected ? new URL(response.url, location.origin).pathname : '';
+
+  if (redirectedPath === '/auth/login') {
+    clearBoardAuthentication();
+    const error = new Error('로그인이 필요합니다.');
+    error.status = 401;
+    throw error;
+  }
 
   if (!response.ok) {
     const message = await readBoardError(response);
     const error = new Error(message || '요청 처리에 실패했습니다.');
 
     error.status = response.status;
+    if (response.status === 401) clearBoardAuthentication();
     throw error;
   }
 
   if (response.status === 204) return null;
 
   const text = await response.text();
-
   if (!text) return null;
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json') && !contentType.includes('+json')) {
+    const error = new Error('서버 응답 형식을 확인할 수 없습니다.');
+    error.status = response.status;
+    throw error;
+  }
 
   try {
     return JSON.parse(text);
   } catch (error) {
-    return text;
+    throw new Error('서버 응답을 처리할 수 없습니다.');
   }
 }
 
@@ -1296,11 +1339,18 @@ async function readBoardError(response) {
 
   if (!text) return `요청 처리에 실패했습니다. (${response.status})`;
 
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json') && !contentType.includes('+json')) {
+    return response.status === 401 || response.status === 403
+        ? '로그인이 필요합니다.'
+        : `요청 처리에 실패했습니다. (${response.status})`;
+  }
+
   try {
     const data = JSON.parse(text);
     return data.detail || data.message || data.error || `요청 처리에 실패했습니다. (${response.status})`;
   } catch (error) {
-    return text;
+    return `요청 처리에 실패했습니다. (${response.status})`;
   }
 }
 

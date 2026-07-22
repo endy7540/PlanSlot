@@ -122,7 +122,6 @@ async function loadAiRecommendations() {
 
     const data = await res.json();
 
-    // Build Heatmap
     if (!data.heat || data.heat.length === 0) {
       heatmapEl.innerHTML = '<div class="empty-note">아직 공유된 일정이 없어서 분석할 수 없어요.</div>';
     } else {

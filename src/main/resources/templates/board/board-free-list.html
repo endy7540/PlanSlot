@@ -28,17 +28,11 @@
       <p>학교생활과 일상의 다양한 이야기를 자유롭게 나눠보세요.</p>
     </div>
     <div class="board-head-actions">
-      <button class="board-btn board-btn-primary" id="boardRegisterButton" type="button">+ 글쓰기</button>
+      <button class="board-btn board-btn-primary" id="boardRegisterButton" type="button" hidden>+ 글쓰기</button>
     </div>
   </div>
 
-  <section class="board-card board-auth-panel" id="boardLoginPanel" hidden>
-    <h2>로그인이 필요합니다</h2>
-    <p>게시판의 글과 댓글을 확인하려면 먼저 로그인해 주세요.</p>
-    <a class="board-btn board-btn-primary" th:href="@{/auth/login}" href="/auth/login">로그인 페이지로 이동</a>
-  </section>
-
-  <section data-board-auth-content>
+  <section>
     <div class="board-card board-toolbar">
       <div class="board-search">
         <select id="boardSearchType" class="board-search-select" aria-label="검색 조건">

@@ -50,7 +50,7 @@ public class SecurityConfig {
                         // 비로그인 게시글 및 댓글 조회
                         .requestMatchers(
                                 new RegexRequestMatcher("^/board/\\d+$", "GET"),
-                                new RegexRequestMatcher("^/board/\\d+/comments$", "GET")
+                                new RegexRequestMatcher("^/board/\\d+/comments(?:\\?.*)?$", "GET")
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/schedule", "/schedule/*").permitAll()
                         .anyRequest().authenticated()

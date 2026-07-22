@@ -80,6 +80,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .board-page-head p{margin:7px 0 0;color:var(--board-muted);font-size:13px;line-height:1.6}
 .board-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 
+[hidden]{display:none !important}
+
 .board-btn{
   min-height:40px;
   display:inline-flex;
@@ -377,6 +379,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .board-section-title h2{margin:0;font-size:17px}
 .board-section-title span{color:var(--board-sky);font-weight:950}
 .board-comment-form{display:flex;gap:8px;align-items:flex-end;padding:13px;background:var(--board-surface);border:2px solid var(--board-border);border-radius:12px;margin-bottom:16px}
+.board-comment-login{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;background:var(--board-surface);border:2px solid var(--board-border);border-radius:12px;margin-bottom:16px}
+.board-comment-login p{margin:0;color:var(--board-muted);font-size:13px;font-weight:800}
 .board-comment-form textarea,.board-inline-form textarea{
   flex:1;
   min-height:74px;
@@ -697,6 +701,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .board-search{min-width:100%}
   .board-toolbar{align-items:stretch}
   .board-comment-form,.board-inline-form{align-items:stretch;flex-direction:column}
+  .board-comment-login{align-items:stretch;flex-direction:column}
   .board-comment.reply{margin-left:18px}
   .board-comment-content,.board-inline-form{margin-left:0}
   .board-article-head,.board-article-body{padding:20px}

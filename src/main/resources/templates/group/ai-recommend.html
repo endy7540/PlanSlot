@@ -24,50 +24,41 @@
     </div>
   </div>
 
-  <section class="card ai-card">
-    <h2>추천 Top 3</h2>
-    <div class="sub">원하는 추천 방식을 골라보세요.</div>
-    <div class="rec-type-selector" style="margin-bottom:12px;">
-      <select id="recType" class="btn btn-ghost">
-        <option value="SHORT_MEETING">짧은 회의 (1~2시간)</option>
-        <option value="LONG_BLOCK">긴 자유 시간</option>
-        <option value="EARLY_SLOT">오전 우선</option>
-        <option value="EVENING_SLOT">저녁 우선</option>
-        <option value="FULL_DAY">하루 종일 비는 날</option>
-      </select>
-    </div>
+  <div class="ai-layout">
+    <section class="card ai-card">
+      <h2>공통 가능 시간 분석</h2>
+      <div class="sub">이번 주 기준, 모임원이 공유한 일정을 바탕으로 계산했어요.</div>
+      <div class="heatmap" id="heatmap">
+        <div class="empty-note">추천 방식을 선택하고 추천받기를 눌러주세요.</div>
+      </div>
+      <div class="heat-legend" id="heatLegend" style="display: none;">
+        <span><i class="legend-dot" style="background:var(--busy-bg)"></i>바쁨</span>
+        <span><i class="legend-dot" style="background:var(--mid-bg)"></i>일부 가능</span>
+        <span><i class="legend-dot" style="background:var(--free-bg)"></i>모두 가능</span>
+      </div>
+    </section>
 
-    <div class="ai-layout">
-      <section class="card ai-card">
-        <h2>공통 가능 시간 분석</h2>
-        <div class="sub">이번 주 기준, 모임원이 공유한 일정을 바탕으로 계산했어요.</div>
-        <div class="heatmap" id="heatmap"></div>
-        <div class="heat-legend">
-          <span><i class="legend-dot" style="background:var(--busy-bg)"></i>바쁨</span>
-          <span><i class="legend-dot" style="background:var(--mid-bg)"></i>일부 가능</span>
-          <span><i class="legend-dot" style="background:var(--free-bg)"></i>모두 가능</span>
-        </div>
-      </section>
-
-      <section class="card ai-card">
-        <h2>추천 Top 3</h2>
-        <div class="sub">원하는 추천 방식을 골라보세요.</div>
-        <div class="rec-type-selector" style="margin-bottom:12px;">
-          <select id="recType" class="btn btn-ghost">
-            <option value="SHORT_MEETING">짧은 회의 (1~2시간)</option>
-            <option value="LONG_BLOCK">긴 자유 시간</option>
-            <option value="EARLY_SLOT">오전 우선</option>
-            <option value="EVENING_SLOT">저녁 우선</option>
-            <option value="FULL_DAY">하루 종일 비는 날</option>
-          </select>
-        </div>
-        <div class="sub">전원 가능한 시간이 없으면 최다 인원이 가능한 시간을 대신 추천해요.</div>
-        <div class="rec-list" id="recList"></div>
-        <button class="btn btn-teal" id="btnRegisterRec" style="width:100%;justify-content:center;margin-top:16px">추천 일정 등록</button>
-        <div class="ai-note">등록 전에 시간을 직접 검토하고 수정할 수도 있어요. 등록하면 모임 일정에 바로 반영돼요.</div>
-      </section>
-    </div>
-  </section>
+    <section class="card ai-card">
+      <h2>추천 Top 3</h2>
+      <div class="sub">원하는 추천 방식을 고르고 추천을 받아보세요.</div>
+      <div class="rec-type-selector" style="margin-bottom:12px; display:flex; gap:8px;">
+        <select id="recType" class="btn btn-ghost" style="flex:1;">
+          <option value="SHORT_MEETING">짧은 회의 (1~2시간)</option>
+          <option value="LONG_BLOCK">긴 자유 시간</option>
+          <option value="EARLY_SLOT">오전 우선</option>
+          <option value="EVENING_SLOT">저녁 우선</option>
+          <option value="FULL_DAY">하루 종일 비는 날</option>
+        </select>
+        <button id="btnRecommend" class="btn btn-teal">추천받기</button>
+      </div>
+      <div class="sub">전원 가능한 시간이 없으면 최다 인원이 가능한 시간을 대신 추천해요.</div>
+      <div class="rec-list" id="recList">
+        <div class="empty-note">결과가 여기에 표시됩니다.</div>
+      </div>
+      <button class="btn btn-teal" id="btnRegisterRec" style="width:100%;justify-content:center;margin-top:16px; display: none;">추천 일정 등록</button>
+      <div class="ai-note">등록 전에 시간을 직접 검토하고 수정할 수도 있어요. 등록하면 모임 일정에 바로 반영돼요.</div>
+    </section>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -75,18 +66,46 @@
 <script th:src="@{/js/group/group-shared.js}" src="../../static/js/group/group-shared.js"></script>
 <script>
 const groupId = getQueryParam('id');
-let heatmapEl, recList, registerBtn;
+let heatmapEl, recList, registerBtn, heatLegend, btnRecommend;
+let selectedRec = null;
 
 async function initAiPage() {
   heatmapEl = document.getElementById('heatmap');
   recList = document.getElementById('recList');
   registerBtn = document.getElementById('btnRegisterRec');
+  heatLegend = document.getElementById('heatLegend');
+  btnRecommend = document.getElementById('btnRecommend');
 
-  registerBtn.addEventListener('click', ()=>{
-    showToast('추천 일정을 모임 일정에 등록했어요.');
+  registerBtn.addEventListener('click', async ()=>{
+    if (!selectedRec) {
+      alert('등록할 추천 일정을 먼저 선택해주세요.');
+      return;
+    }
+    try {
+      registerBtn.disabled = true;
+      registerBtn.textContent = '등록 중...';
+      const res = await fetchApi(`/group/${groupId}/schedules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `[추천] ${selectedRec.label}`,
+          date: selectedRec.date,
+          time: selectedRec.time,
+          visibility: 'public'
+        })
+      });
+      if (!res.ok) throw new Error('Failed to register');
+      showToast('추천 일정을 모임 일정에 등록했어요.');
+      setTimeout(() => location.href = linkToDetail(groupId), 1000);
+    } catch(e) {
+      console.error(e);
+      alert('일정 등록에 실패했습니다.');
+      registerBtn.disabled = false;
+      registerBtn.textContent = '추천 일정 등록';
+    }
   });
 
-  document.getElementById('recType').addEventListener('change', loadAiRecommendations);
+  btnRecommend.addEventListener('click', loadAiRecommendations);
 
   if (!groupId) {
     alert('잘못된 접근입니다.');
@@ -105,8 +124,6 @@ async function initAiPage() {
 
   document.getElementById('crumbGroup').href = linkToDetail(groupId);
   document.getElementById('btnBack').href = linkToDetail(groupId);
-
-  await loadAiRecommendations();
 }
 
 async function loadAiRecommendations() {
@@ -114,7 +131,10 @@ async function loadAiRecommendations() {
 
   heatmapEl.innerHTML = '<div style="padding:20px; text-align:center; color:#64748B;">AI가 분석 중입니다... 잠시만 기다려주세요.</div>';
   recList.innerHTML = '';
-  registerBtn.disabled = true;
+  registerBtn.style.display = 'none';
+  heatLegend.style.display = 'none';
+  btnRecommend.disabled = true;
+  btnRecommend.textContent = '분석 중...';
 
   try {
     const res = await fetchApi(`/group/${groupId}/ai-recommendations?type=${type}`);
@@ -139,6 +159,7 @@ async function loadAiRecommendations() {
       }
       html += `<div class="heat-row total"><b>전체</b>${totalRow.map(v => `<div class="heat-cell ${heatClass(v)}"></div>`).join('')}</div>`;
       heatmapEl.innerHTML = html;
+      heatLegend.style.display = '';
     }
 
     // Build Recommendations
@@ -148,18 +169,28 @@ async function loadAiRecommendations() {
       data.recs.forEach(r => {
         const el = document.createElement('div');
         el.className = 'rec' + (r.rank === 1 ? ' best' : '');
+        el.style.cursor = 'pointer';
         el.innerHTML = `
           <div class="rec-rank">${r.rank}순위</div>
           <b>${r.label}</b>
           <span>${r.sub}</span>
           <em>${r.tag}</em>`;
+        el.addEventListener('click', () => {
+          document.querySelectorAll('.rec').forEach(n => n.style.borderColor = 'var(--border)');
+          el.style.borderColor = 'var(--teal)';
+          selectedRec = r;
+        });
         recList.appendChild(el);
       });
+      registerBtn.style.display = '';
       registerBtn.disabled = false;
     }
   } catch (e) {
     console.error(e);
     heatmapEl.innerHTML = '<div class="empty-note">분석 중 오류가 발생했습니다.</div>';
+  } finally {
+    btnRecommend.disabled = false;
+    btnRecommend.textContent = '추천받기';
   }
 }
 

@@ -120,10 +120,11 @@ public class GroupRecommendationService {
         promptBuilder.append("    { \"name\": \"memberName\", \"row\": [\"free\", \"busy\", \"mid\", \"free\", \"free\", \"free\", \"free\"] }\n");
         promptBuilder.append("  ],\n");
         promptBuilder.append("  \"recs\": [\n");
-        promptBuilder.append("    { \"rank\": 1, \"label\": \"날짜 (요일) 시작시간-종료시간\", \"sub\": \"이유 및 겹치는 일정 안내\", \"tag\": \"전원 가능\" }\n");
+        promptBuilder.append("    { \"rank\": 1, \"label\": \"날짜 (요일) 시작시간-종료시간\", \"sub\": \"이유 및 겹치는 일정 안내\", \"tag\": \"전원 가능\", \"date\": \"YYYY-MM-DD\", \"time\": \"HH:mm\" }\n");
         promptBuilder.append("  ]\n");
         promptBuilder.append("}\n");
         promptBuilder.append("The 'row' array in 'heat' should have exactly 7 elements, representing today to today+6.\n");
+        promptBuilder.append("EACH element in the 'row' array MUST be EXACTLY the string literal \"free\", \"busy\", or \"mid\". Absolutely NO expressions (like \"a\"==\"b\").\n");
         promptBuilder.append("If someone has a schedule on a day, mark 'busy'. If no schedule, 'free'. If somewhat free, 'mid'.\n");
         promptBuilder.append("Provide up to 3 recommendations in 'recs'.\n");
         promptBuilder.append("Each 'label' MUST include both start and end time (e.g. '7월 25일 (토) 오후 2시 - 오후 4시').\n");
@@ -209,7 +210,9 @@ public class GroupRecommendationService {
                         rNode.path("rank").asInt(),
                         rNode.path("label").asText(),
                         rNode.path("sub").asText(),
-                        rNode.path("tag").asText()
+                        rNode.path("tag").asText(),
+                        rNode.has("date") ? rNode.path("date").asText() : today.toString(),
+                        rNode.has("time") ? rNode.path("time").asText() : "12:00"
                 ));
             }
             
@@ -220,7 +223,7 @@ public class GroupRecommendationService {
                 }
             }
             if (recs.isEmpty() && memberNames.size() > 0) {
-                recs.add(new GroupDTO.RecInfo(1, "추천 시간이 없습니다", "모두 일정이 등록되지 않아 전체 일정이 비어있거나, 적당한 시간이 없습니다.", "전원 가능"));
+                recs.add(new GroupDTO.RecInfo(1, "추천 시간이 없습니다", "모두 일정이 등록되지 않아 전체 일정이 비어있거나, 적당한 시간이 없습니다.", "전원 가능", today.toString(), "12:00"));
             }
             
             return new GroupDTO.AiResponse(heat, recs);
@@ -232,12 +235,13 @@ public class GroupRecommendationService {
     }
 
     private GroupDTO.AiResponse generateMockResponse(List<String> memberNames) {
+        LocalDate today = LocalDate.now();
         List<GroupDTO.HeatInfo> heat = new ArrayList<>();
         for (String name : memberNames) {
             heat.add(new GroupDTO.HeatInfo(name, List.of("free", "free", "free", "free", "free", "free", "free")));
         }
         List<GroupDTO.RecInfo> recs = new ArrayList<>();
-        recs.add(new GroupDTO.RecInfo(1, "내일 오후 2시", "API 키가 올바르게 설정되지 않았거나 호출에 실패했습니다.", "임시 결과"));
+        recs.add(new GroupDTO.RecInfo(1, "내일 오후 2시", "API 키가 올바르게 설정되지 않았거나 호출에 실패했습니다.", "임시 결과", today.plusDays(1).toString(), "14:00"));
         return new GroupDTO.AiResponse(heat, recs);
     }
 }

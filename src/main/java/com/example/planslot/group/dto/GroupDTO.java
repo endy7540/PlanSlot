@@ -77,7 +77,7 @@ public class GroupDTO {
             List<RecInfo> recs
     ) {}
 
-    public record RecInfo(int rank, String label, String sub, String tag, String date, String time) {}
+    public record RecInfo(int rank, String label, String sub, String tag, String date, String time, String title) {}
     public record ImportResult(boolean success, String overlappingTitle, String overlappingTime, String importedDate) {}
     public record AiResponse(List<HeatInfo> heat, List<RecInfo> recs) {}
 }

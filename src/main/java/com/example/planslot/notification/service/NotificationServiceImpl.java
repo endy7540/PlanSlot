@@ -17,6 +17,8 @@ import com.example.planslot.notification.repository.GroupNotificationSettingRepo
 import com.example.planslot.notification.repository.NotificationRepository;
 import com.example.planslot.notification.repository.NotificationSettingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -172,6 +174,23 @@ public class NotificationServiceImpl implements NotificationService {
                 .toList();
     }
 
+    // 전체 알림 페이지 조회
+    @Override
+    @Transactional(readOnly = true)
+    public Page<NotificationDTO> getNotificationPage(Long memberId, String filter, Pageable pageable) {
+        findReceiver(memberId);
+
+        String normalizedFilter = filter == null ? "ALL" : filter.trim().toUpperCase();
+        Page<Notification> notifications = switch (normalizedFilter) {
+            case "ALL" -> notificationRepository.findAllByReceiver_Id(memberId, pageable);
+            case "UNREAD" -> notificationRepository.findAllByReceiver_IdAndIsReadFalse(memberId, pageable);
+            case "READ" -> notificationRepository.findAllByReceiver_IdAndIsReadTrue(memberId, pageable);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알림 필터 값이 올바르지 않습니다.");
+        };
+
+        return notifications.map(this::toNotificationDTO);
+    }
+
     // 안 읽은 알림 개수 조회
     @Override
     @Transactional(readOnly = true)
@@ -232,6 +251,7 @@ public class NotificationServiceImpl implements NotificationService {
                 notificationSettingDTO.isApplicationEnabled(),
                 notificationSettingDTO.isReminderEnabled()
         );
+        member.updateNotification(notificationSettingDTO.isAllEnabled(), member.isAllowMarketingNoti());
 
         return toNotificationSettingDTO(setting);
     }
@@ -306,11 +326,13 @@ public class NotificationServiceImpl implements NotificationService {
     // 회원의 알림 설정 조회 또는 기본 설정 생성
     private NotificationSetting getOrCreateNotificationSetting(Member member) {
         return notificationSettingRepository.findByMember_Id(member.getId())
-                .orElseGet(() -> notificationSettingRepository.save(
-                        NotificationSetting.builder()
-                                .member(member)
-                                .build()
-                ));
+                .orElseGet(() -> {
+                    NotificationSetting setting = NotificationSetting.builder()
+                            .member(member)
+                            .build();
+                    setting.update(member.isAllowActivityNoti(), true, true, true, true, true);
+                    return notificationSettingRepository.save(setting);
+                });
     }
 
     // 모임원 상태와 모임별 알림 수신 여부 확인

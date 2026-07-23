@@ -190,6 +190,7 @@ public class GroupServiceImpl implements GroupService {
                 groupId
         );
 
+        group.decreasePersonCount();
         groupMemberRepository.delete(target);
     }
 
@@ -223,6 +224,7 @@ public class GroupServiceImpl implements GroupService {
         GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId).orElseThrow(() -> new IllegalArgumentException("초대 내역이 없습니다."));
         if (membership.getMemberStatus() != GroupMemberStatus.WAITING) throw new IllegalArgumentException("대기 중인 초대가 아닙니다.");
         membership.changeStatus(GroupMemberStatus.ACTIVE);
+        membership.getGroup().increasePersonCount();
     }
 
     @Override
@@ -347,7 +349,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public void addGroupSchedule(Long groupId, Long memberId, String title, String dateStr, String timeStr, String visibility) {
+    public void addGroupSchedule(Long groupId, Long memberId, String title, String dateStr, String timeStr, String visibility, String endDateStr, String endTimeStr) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
         Member member = memberRepository.findById(memberId)
@@ -361,12 +363,18 @@ public class GroupServiceImpl implements GroupService {
         }
 
         LocalDateTime startDateTime = LocalDateTime.parse(dateStr + "T" + (timeStr.length() == 5 ? timeStr + ":00" : timeStr));
+        LocalDateTime endDateTime = null;
+        if (endDateStr != null && !endDateStr.trim().isEmpty() && endTimeStr != null && !endTimeStr.trim().isEmpty()) {
+            endDateTime = LocalDateTime.parse(endDateStr + "T" + (endTimeStr.length() == 5 ? endTimeStr + ":00" : endTimeStr));
+        }
+        
         boolean isPublic = "public".equals(visibility);
 
         Schedule schedule = Schedule.builder()
                 .member(member)
                 .title(title)
                 .startDate(startDateTime)
+                .endDate(endDateTime)
                 .scheduleType(ScheduleType.DAILY)
                 .isPublic(isPublic ? "Y" : "N")
                 .sourceType(com.example.planslot.schedule.entity.SourceType.MANUAL)

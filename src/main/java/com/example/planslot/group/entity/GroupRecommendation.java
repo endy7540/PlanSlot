@@ -31,24 +31,41 @@ public class GroupRecommendation {
     @JoinColumn(name = "requested_by", nullable = false)
     private Member requestedBy;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 20, nullable = false)
-    private RecommendationStatus status;
+    @Column(name = "rank_num")
+    private int rank;
+
+    @Column(name = "label", length = 100)
+    private String label;
+
+    @Column(name = "sub_text", length = 300)
+    private String sub;
+
+    @Column(name = "tag", length = 50)
+    private String tag;
+
+    @Column(name = "rec_date", length = 20)
+    private String date;
+
+    @Column(name = "rec_time", length = 20)
+    private String time;
+
+    @Column(name = "title", length = 100)
+    private String title;
 
     @CreatedDate
-    @Column(name = "requested_at", nullable = false, updatable = false)
-    private LocalDateTime requestedAt;
-
-    @Column(name = "completed_at")
-    private LocalDateTime completedAt;
-
-    @Column(name = "confirmed_at")
-    private LocalDateTime confirmedAt;
+    @Column(name = "bookmarked_at", nullable = false, updatable = false)
+    private LocalDateTime bookmarkedAt;
 
     @Builder
-    public GroupRecommendation(Group group, Member requestedBy, RecommendationStatus status) {
+    public GroupRecommendation(Group group, Member requestedBy, int rank, String label, String sub, String tag, String date, String time, String title) {
         this.group = group;
         this.requestedBy = requestedBy;
-        this.status = status;
+        this.rank = rank;
+        this.label = label;
+        this.sub = sub;
+        this.tag = tag;
+        this.date = date;
+        this.time = time;
+        this.title = title;
     }
 }

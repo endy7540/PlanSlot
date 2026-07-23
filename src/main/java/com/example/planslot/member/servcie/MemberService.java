@@ -11,4 +11,7 @@ public interface MemberService {
     void updateNotification(String email, MemberRequestDTO.UpdateNotification request);
     void updateProfileImage(String email, String imageUrl);
     void withdraw(String email);
+    
+    void updateGoogleSyncEnabled(String email, boolean enabled);
+    com.example.planslot.member.entity.Member getMember(String email);
 }

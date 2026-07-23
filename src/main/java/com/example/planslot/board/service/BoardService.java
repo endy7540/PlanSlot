@@ -3,6 +3,7 @@ package com.example.planslot.board.service;
 import com.example.planslot.board.dto.BoardDTO;
 import com.example.planslot.board.dto.BoardImageDTO;
 import com.example.planslot.board.dto.BoardMemberDTO;
+import com.example.planslot.board.entity.BoardRecruitmentStatus;
 import com.example.planslot.board.entity.BoardType;
 import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
 import org.springframework.data.domain.Page;
@@ -17,6 +18,8 @@ public interface BoardService {
     Page<BoardDTO> getBoardList(BoardType boardType, String searchType, String keyword, Pageable pageable);
 
     // 게시글 조회
+    BoardDTO readBoard(Long boardId, String memberEmail, boolean increaseView);
+
     BoardDTO readBoard(Long boardId, String memberEmail);
 
     // 로그인 회원 조회
@@ -27,6 +30,9 @@ public interface BoardService {
 
     // 게시글 삭제
     void deleteBoard(Long boardId, String memberEmail);
+
+    // 모집 상태 수정
+    BoardDTO updateRecruitmentStatus(Long boardId, BoardRecruitmentStatus recruitmentStatus, String memberEmail);
 
     // 게시글 신고
     Long reportBoard(Long boardId, BoardReportRequestDTO reportRequestDTO, String reporterEmail);

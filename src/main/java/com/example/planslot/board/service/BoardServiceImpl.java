@@ -7,6 +7,7 @@ import com.example.planslot.board.entity.Board;
 import com.example.planslot.board.entity.BoardApplicationStatus;
 import com.example.planslot.board.entity.BoardCommentStatus;
 import com.example.planslot.board.entity.BoardImage;
+import com.example.planslot.board.entity.BoardRecruitmentStatus;
 import com.example.planslot.board.entity.BoardStatus;
 import com.example.planslot.board.entity.BoardType;
 import com.example.planslot.board.repository.BoardApplicationRepository;
@@ -130,22 +131,24 @@ public class BoardServiceImpl implements BoardService {
         ));
     }
 
-    // 게시글 조회 및 조회수 증가
+    // 게시글 조회 및 조회수 증가 선택
     @Override
     @Transactional
-    public BoardDTO readBoard(Long boardId, String memberEmail) {
-        int updatedCount = boardRepository.increaseViewCount(boardId, BoardStatus.ACTIVE);
+    public BoardDTO readBoard(Long boardId, String memberEmail, boolean increaseView) {
+        if (increaseView) {
+            int updatedCount = boardRepository.increaseViewCount(boardId, BoardStatus.ACTIVE);
 
-        if (updatedCount == 0) {
-            BoardStatus boardStatus = boardRepository.findById(boardId)
-                    .map(Board::getBoardStatus)
-                    .orElse(null);
+            if (updatedCount == 0) {
+                BoardStatus boardStatus = boardRepository.findById(boardId)
+                        .map(Board::getBoardStatus)
+                        .orElse(null);
 
-            if (boardStatus == BoardStatus.DELETED) {
-                throw new ResponseStatusException(HttpStatus.GONE, "이미 삭제된 게시글입니다.");
+                if (boardStatus == BoardStatus.DELETED) {
+                    throw new ResponseStatusException(HttpStatus.GONE, "이미 삭제된 게시글입니다.");
+                }
+
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
             }
-
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
         }
 
         Board board = findBoard(boardId);
@@ -153,6 +156,12 @@ public class BoardServiceImpl implements BoardService {
         Member member = (memberEmail != null && !memberEmail.isBlank()) ? findMember(memberEmail) : null;
 
         return toReadDTO(board, member);
+    }
+
+    @Override
+    @Transactional
+    public BoardDTO readBoard(Long boardId, String memberEmail) {
+        return readBoard(boardId, memberEmail, true);
     }
 
     // 로그인 회원 조회
@@ -174,7 +183,7 @@ public class BoardServiceImpl implements BoardService {
         Board board = findBoard(boardId);
         Member member = findMember(memberEmail);
 
-        validateWriter(board, member);
+        validateUpdatePermission(board, member);
         validateCommunityAccess(member);
         validateBoardDTO(boardDTO);
 
@@ -190,12 +199,35 @@ public class BoardServiceImpl implements BoardService {
         Board board = findBoard(boardId);
         Member member = findMember(memberEmail);
 
-        // 관리자는 작성자 확인 없이 삭제 가능
-        if (member.getRole() != Member.Role.ADMIN) {
-            validateWriter(board, member);
-        }
+        validateDeletePermission(board, member);
 
         board.delete();
+    }
+
+    // 모집 상태 수정
+    @Override
+    @Transactional
+    public BoardDTO updateRecruitmentStatus(Long boardId, BoardRecruitmentStatus recruitmentStatus, String memberEmail) {
+        Board board = boardRepository.findActiveBoardForUpdate(boardId, BoardStatus.ACTIVE)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        Member member = findMember(memberEmail);
+
+        validateCommunityAccess(member);
+        validateRecruitmentStatusPermission(board, member);
+
+        if (recruitmentStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "모집 상태를 입력해 주세요.");
+        }
+
+        if (recruitmentStatus == BoardRecruitmentStatus.OPEN && board.getGroupId() != null) {
+            if (groupRepository.existsById(board.getGroupId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "모임이 생성된 게시글은 모집을 재개할 수 없습니다.");
+            }
+            board.clearGroupConnection();
+        }
+
+        board.updateRecruitmentStatus(recruitmentStatus);
+        return toReadDTO(board, member);
     }
 
     // 게시글 신고
@@ -239,7 +271,7 @@ public class BoardServiceImpl implements BoardService {
         Board board = findBoard(boardId);
         Member member = findMember(memberEmail);
 
-        validateWriter(board, member);
+        validateUpdatePermission(board, member);
         validateImage(image);
 
         String fileUrl = saveImageFile(image);
@@ -267,7 +299,7 @@ public class BoardServiceImpl implements BoardService {
         Board board = findBoard(boardId);
         Member member = findMember(memberEmail);
 
-        validateWriter(board, member);
+        validateUpdatePermission(board, member);
 
         BoardImage boardImage = boardImageRepository.findByFileIdAndBoardBoardId(imageId, boardId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -326,10 +358,33 @@ public class BoardServiceImpl implements BoardService {
         }
     }
 
-    // 게시글 작성자 확인
-    private void validateWriter(Board board, Member member) {
+    // 게시글 삭제 권한 확인 (작성자 또는 관리자)
+    private void validateDeletePermission(Board board, Member member) {
+        if (member.getRole() != Member.Role.ADMIN && !Objects.equals(board.getWriter().getId(), member.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자 또는 관리자만 삭제할 수 있습니다.");
+        }
+    }
+
+    // 모집 상태 변경 권한 확인
+    private void validateRecruitmentStatusPermission(Board board, Member member) {
+        if (!board.isRecruitmentBoard()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "스터디와 소모임 게시글에서만 모집 상태를 변경할 수 있습니다.");
+        }
         if (!Objects.equals(board.getWriter().getId(), member.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자만 수정하거나 삭제할 수 있습니다.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자만 모집 상태를 변경할 수 있습니다.");
+        }
+    }
+
+    // 게시글 수정 및 이미지 관리 권한 확인 (공지사항: 작성자 또는 관리자 / 일반 게시글: 작성자만)
+    private void validateUpdatePermission(Board board, Member member) {
+        if (board.getBoardType() == BoardType.NOTICE) {
+            if (member.getRole() != Member.Role.ADMIN && !Objects.equals(board.getWriter().getId(), member.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "공지사항은 작성자 또는 관리자만 수정할 수 있습니다.");
+            }
+        } else {
+            if (!Objects.equals(board.getWriter().getId(), member.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자만 수정할 수 있습니다.");
+            }
         }
     }
 

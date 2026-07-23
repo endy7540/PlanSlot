@@ -22,6 +22,7 @@ import java.util.Map;
 public class GroupController {
 
     private final GroupService groupService;
+    private final com.example.planslot.group.service.GroupRecommendationService groupRecommendationService;
     private final MemberRepository memberRepository;
 
     private Long getAuthenticatedMemberId(Authentication authentication) {
@@ -52,6 +53,18 @@ public class GroupController {
     }
 
 
+    // AI 추천 데이터 API
+    @GetMapping("/{groupId}/ai-recommendations")
+    @ResponseBody
+    public ResponseEntity<GroupDTO.AiResponse> getAiRecommendations(
+            @PathVariable Long groupId,
+            @RequestParam(defaultValue = "SHORT_MEETING") String type,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        return ResponseEntity.ok(groupRecommendationService.getRecommendations(groupId, memberId, type, startDate, endDate));
+    }
 
     // 모임 생성 요청 처리
     @PostMapping("/register")
@@ -175,7 +188,6 @@ public class GroupController {
             @RequestBody Map<String, String> body,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        // groupService.updateMemberDisplayName(groupId, memberId, targetMemberId, body.get("displayName"));
         return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
     }
 
@@ -199,7 +211,7 @@ public class GroupController {
             @RequestBody Map<String, String> body,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        groupService.addGroupSchedule(groupId, memberId, body.get("title"), body.get("date"), body.get("time"), body.get("visibility"));
+        groupService.addGroupSchedule(groupId, memberId, body.get("title"), body.get("date"), body.get("time"), body.get("visibility"), body.get("endDate"), body.get("endTime"));
         return ResponseEntity.ok().build();
     }
 

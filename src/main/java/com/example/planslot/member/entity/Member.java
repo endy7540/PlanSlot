@@ -68,6 +68,34 @@ public class Member {
     @Builder.Default
     private boolean allowMarketingNoti = true;
 
+    @Column(name = "google_access_token", length = 500)
+    private String googleAccessToken;
+
+    @Column(name = "google_refresh_token", length = 500)
+    private String googleRefreshToken;
+
+    @Column(name = "google_sync_token", length = 500)
+    private String googleSyncToken;
+
+    @Column(name = "is_google_sync_enabled", nullable = false)
+    @Builder.Default
+    private boolean isGoogleSyncEnabled = false;
+
+    public void updateGoogleTokens(String accessToken, String refreshToken) {
+        this.googleAccessToken = accessToken;
+        if (refreshToken != null) {
+            this.googleRefreshToken = refreshToken;
+        }
+    }
+
+    public void updateGoogleSyncToken(String syncToken) {
+        this.googleSyncToken = syncToken;
+    }
+    
+    public void setGoogleSyncEnabled(boolean enabled) {
+        this.isGoogleSyncEnabled = enabled;
+    }
+
     public enum Role {
         MEMBER, ADMIN
     }

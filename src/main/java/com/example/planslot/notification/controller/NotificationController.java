@@ -7,6 +7,10 @@ import com.example.planslot.notification.dto.NotificationSettingDTO;
 import com.example.planslot.notification.service.NotificationService;
 import com.example.planslot.notification.service.NotificationSseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +49,25 @@ public class NotificationController {
         return ResponseEntity.ok(
                 notificationService.getNotifications(memberId, showAll)
         );
+    }
+
+    // 전체 알림 페이지 조회 (ALL, UNREAD, READ)
+    @GetMapping("/page")
+    public ResponseEntity<Page<NotificationDTO>> getNotificationPage(
+            @RequestParam(defaultValue = "ALL") String filter,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Principal principal) {
+
+        if (page < 0 || size < 1 || size > 50) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "페이지 요청 값이 올바르지 않습니다.");
+        }
+
+        Long memberId = getLoginMemberId(principal);
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
+
+        return ResponseEntity.ok(notificationService.getNotificationPage(memberId, filter, pageable));
     }
 
     // 안 읽은 알림 개수 조회

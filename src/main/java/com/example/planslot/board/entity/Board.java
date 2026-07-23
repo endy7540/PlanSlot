@@ -77,6 +77,14 @@ public class Board {
         this.content = content;
     }
 
+    public void updateRecruitmentStatus(BoardRecruitmentStatus recruitmentStatus) {
+        this.recruitmentStatus = recruitmentStatus;
+    }
+
+    public void clearGroupConnection() {
+        this.groupId = null;
+    }
+
     public void delete() {
         this.boardStatus = BoardStatus.DELETED;
     }

@@ -16,8 +16,6 @@ public class BoardGroupDTO {
 
     public record CreateRequest(
             String groupName,
-            List<Long> applicantCandidateIds,
-            List<Long> inviteCandidateIds,
             List<Long> selectedApplicantIds,
             List<Long> selectedInviteeIds
     ) {

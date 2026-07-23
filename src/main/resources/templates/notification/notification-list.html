@@ -3,51 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PlanSlot - 알림</title>
-  <link rel="stylesheet" th:href="@{/css/notification/notification.css}"
-        href="/css/notification/notification.css">
+  <title>PlanSlot - 전체 알림</title>
+  <link rel="stylesheet" th:href="@{/css/notification/notification.css}" href="/css/notification/notification.css">
 </head>
 <body class="notification-page">
 
-<header class="notification-page-header">
-  <a class="notification-page-brand" th:href="@{/planslot}" href="/planslot">
-    <b>PlanSlot</b>
-    <span>AI가 함께하는 대학생 일정 플랫폼</span>
-  </a>
-
-  <a class="notification-home-button" th:href="@{/planslot}" href="/planslot">
-    홈으로 돌아가기
-  </a>
-</header>
+<div th:replace="~{global/header :: headerFragment}"></div>
 
 <main class="notification-page-main">
   <div class="notification-page-title">
     <div>
       <div class="notification-page-label">NOTIFICATION</div>
       <h1>전체 알림</h1>
-      <p>새로운 소식과 일정 안내를 한곳에서 확인해보세요.</p>
+      <p>새로운 소식과 서비스 안내를 한곳에서 확인해보세요.</p>
     </div>
 
-    <button class="notification-read-all-button" id="listReadAll" type="button">
-      전체 읽음
-    </button>
+    <button class="notification-read-all-button" id="listReadAll" type="button">전체 읽음</button>
   </div>
 
   <section class="notification-list-card">
     <div class="notification-list-head">
-      <b>알림 목록</b>
-      <span id="listUnreadText">읽지 않은 알림 0개</span>
+      <div class="notification-list-heading">
+        <b>알림 목록</b>
+        <span id="listUnreadText">읽지 않은 알림 0개</span>
+      </div>
+
+      <div class="notification-filter" role="tablist" aria-label="알림 상태 필터">
+        <button class="notification-filter-button active" type="button" role="tab" aria-selected="true" data-filter="ALL">전체</button>
+        <button class="notification-filter-button" type="button" role="tab" aria-selected="false" data-filter="UNREAD">안 읽음</button>
+        <button class="notification-filter-button" type="button" role="tab" aria-selected="false" data-filter="READ">읽음</button>
+      </div>
+    </div>
+
+    <div class="notification-list-summary">
+      <span id="notificationFilterResult">전체 알림 0개</span>
+      <span>최신순</span>
     </div>
 
     <div class="notification-full-list" id="notificationFullList">
       <div class="notification-loading">알림을 불러오는 중...</div>
     </div>
+
+    <nav class="notification-pagination" id="notificationPagination" aria-label="알림 페이지 이동"></nav>
   </section>
 </main>
 
-<div class="notification-toast" id="notificationToast"></div>
+<div class="notification-toast" id="notificationToast" role="status" aria-live="polite"></div>
 
-<script th:src="@{/js/notification/notification.js}"
-        src="/js/notification/notification.js"></script>
 </body>
 </html>

@@ -12,10 +12,13 @@ public interface ScheduleService {
     List<ScheduleDTO> getScheduleList(Long memberId);
 
     List<ScheduleDTO> getScheduleListByPeriod(Long memberId, LocalDateTime start, LocalDateTime end);
+    List<com.example.planslot.schedule.entity.Schedule> debugGetAllSchedules(Long memberId);
 
     ScheduleDTO getSchedule(Long scheduleId, Long memberId);
 
     ScheduleDTO updateSchedule(Long scheduleId, Long memberId, ScheduleDTO requestDTO);
 
     void deleteSchedule(Long scheduleId, Long memberId);
+
+    void syncFromGoogleCalendar(Long memberId);
 }

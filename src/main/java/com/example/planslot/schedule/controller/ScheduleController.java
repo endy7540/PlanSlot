@@ -51,6 +51,15 @@ public class ScheduleController {
     }
 
     @ResponseBody
+    @GetMapping(value = "/debug", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<com.example.planslot.schedule.entity.Schedule>> debugSchedules(
+            Authentication authentication
+    ) {
+        Long memberId = extractMemberId(authentication);
+        return ResponseEntity.ok(scheduleService.debugGetAllSchedules(memberId));
+    }
+
+    @ResponseBody
     @GetMapping(value = "/{scheduleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ScheduleDTO> getSchedule(
             @PathVariable Long scheduleId,
@@ -93,7 +102,13 @@ public class ScheduleController {
         throw new UnsupportedOperationException("GroupSchedule 구현 후 연동 예정");
     }
 
-
+    @ResponseBody
+    @PostMapping("/google-sync")
+    public ResponseEntity<Void> syncGoogleCalendarNow(Authentication authentication) {
+        Long memberId = extractMemberId(authentication);
+        scheduleService.syncFromGoogleCalendar(memberId);
+        return ResponseEntity.ok().build();
+    }
     @GetMapping(produces = MediaType.TEXT_HTML_VALUE)
     public String calendarPage() {
         return "schedule/schedule"; // templates/schedule/schedule.html (캘린더 그리드)

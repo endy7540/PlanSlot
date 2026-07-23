@@ -21,13 +21,7 @@
 </nav>
 
 <main class="board-main">
-  <section class="board-card board-auth-panel" id="boardLoginPanel" hidden>
-    <h2>로그인이 필요합니다</h2>
-    <p>게시글과 댓글을 확인하려면 먼저 로그인해 주세요.</p>
-    <a class="board-btn board-btn-primary" th:href="@{/auth/login}" href="/auth/login">로그인 페이지로 이동</a>
-  </section>
-
-  <div data-board-auth-content>
+  <div>
     <div class="board-breadcrumb">
       <a th:href="@{/planslot}" href="/planslot">홈</a><span>›</span>
       <a id="boardListLink" href="/board/free">게시판</a><span>›</span>
@@ -65,7 +59,7 @@
         <h2>댓글 <span id="boardReadCommentCount">0</span></h2>
       </div>
 
-      <div class="board-comment-form">
+      <div class="board-comment-form" id="boardCommentForm">
         <textarea id="boardCommentContent" maxlength="1000" placeholder="댓글을 입력해 주세요."></textarea>
         <button class="board-btn board-btn-primary" id="boardCommentSubmit" type="button">댓글 등록</button>
       </div>

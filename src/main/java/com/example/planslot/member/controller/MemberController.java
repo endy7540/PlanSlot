@@ -1,19 +1,34 @@
 package com.example.planslot.member.controller;
 
+import com.example.planslot.member.dto.MemberRequestDTO;
+import com.example.planslot.member.dto.MemberResponseDTO;
+import com.example.planslot.member.entity.Member;
 import com.example.planslot.member.servcie.MemberService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Map;
+import java.util.UUID;
+
+import com.example.planslot.global.security.jwt.JwtTokenProvider;
+import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/members")
 @RequiredArgsConstructor
 public class MemberController {
     private final MemberService memberService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @GetMapping("/checkDuplicate")
     public ResponseEntity<Boolean> checkDuplicate(@RequestParam("loginId") String loginId) {
@@ -21,35 +36,35 @@ public class MemberController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<com.example.planslot.member.dto.MemberResponseDTO.MyPage> getMyPage(org.springframework.security.core.Authentication authentication) {
+    public ResponseEntity<MemberResponseDTO.MyPage> getMyPage(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         return ResponseEntity.ok(memberService.getMyPage(authentication.getName()));
     }
 
-    @org.springframework.web.bind.annotation.PutMapping("/me")
-    public ResponseEntity<?> updateMyPage(org.springframework.security.core.Authentication authentication, @org.springframework.web.bind.annotation.RequestBody com.example.planslot.member.dto.MemberRequestDTO.UpdateInfo request) {
+    @PutMapping("/me")
+    public ResponseEntity<?> updateMyPage(Authentication authentication, @RequestBody MemberRequestDTO.UpdateInfo request) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         try {
             memberService.updateMyInfo(authentication.getName(), request);
             return ResponseEntity.ok().build();
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
-    @org.springframework.web.bind.annotation.DeleteMapping("/me")
-    public ResponseEntity<?> withdraw(org.springframework.security.core.Authentication authentication, jakarta.servlet.http.HttpServletResponse response) {
+    @DeleteMapping("/me")
+    public ResponseEntity<?> withdraw(Authentication authentication, HttpServletResponse response) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         memberService.withdraw(authentication.getName());
 
         // 쿠키에 있는 jwt 토큰 삭제
-        jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("jwt", null);
+        Cookie cookie = new Cookie("jwt", null);
         cookie.setPath("/");
         cookie.setHttpOnly(true);
         cookie.setMaxAge(0);
@@ -58,32 +73,73 @@ public class MemberController {
         return ResponseEntity.ok().build();
     }
 
-    @org.springframework.web.bind.annotation.PutMapping("/notifications")
-    public ResponseEntity<?> updateNotification(org.springframework.security.core.Authentication authentication, @org.springframework.web.bind.annotation.RequestBody com.example.planslot.member.dto.MemberRequestDTO.UpdateNotification request) {
+    @GetMapping("/me/google-sync")
+    public ResponseEntity<?> getGoogleSyncStatus(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        Member member = memberService.getMember(authentication.getName());
+        boolean isLinked = member.getGoogleAccessToken() != null;
+        return ResponseEntity.ok(Map.of(
+            "isLinked", isLinked,
+            "isEnabled", member.isGoogleSyncEnabled()
+        ));
+    }
+
+    @PostMapping("/me/google-sync")
+    public ResponseEntity<?> toggleGoogleSync(Authentication authentication, @RequestBody Map<String, Boolean> request) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        Member member = memberService.getMember(authentication.getName());
+        if (member.getGoogleAccessToken() == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "구글 연동이 필요합니다."));
+        }
+        
+        Boolean enabled = request.get("enabled");
+        if (enabled != null) {
+            memberService.updateGoogleSyncEnabled(authentication.getName(), enabled);
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/me/link-google")
+    public void linkGoogleCalendar(@RequestParam("token") String token, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String email = jwtTokenProvider.getEmailFromToken(token);
+        if (email != null) {
+            request.getSession().setAttribute("LINK_GOOGLE_EMAIL", email);
+            response.sendRedirect("/oauth2/authorization/google");
+        } else {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+        }
+    }
+
+    @PutMapping("/notifications")
+    public ResponseEntity<?> updateNotification(Authentication authentication, @RequestBody MemberRequestDTO.UpdateNotification request) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         try {
             memberService.updateNotification(authentication.getName(), request);
             return ResponseEntity.ok().build();
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
-    @org.springframework.web.bind.annotation.PostMapping("/profile-image")
-    public ResponseEntity<?> uploadProfileImage(org.springframework.security.core.Authentication authentication, @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+    @PostMapping("/profile-image")
+    public ResponseEntity<?> uploadProfileImage(Authentication authentication, @RequestParam("file") MultipartFile file) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         try {
             if (file.isEmpty()) {
-                return ResponseEntity.badRequest().body(java.util.Map.of("message", "파일이 없습니다."));
+                return ResponseEntity.badRequest().body(Map.of("message", "파일이 없습니다."));
             }
             
             String contentType = file.getContentType();
             if (contentType == null || !contentType.startsWith("image/")) {
-                return ResponseEntity.badRequest().body(java.util.Map.of("message", "이미지 파일만 업로드 가능합니다."));
+                return ResponseEntity.badRequest().body(Map.of("message", "이미지 파일만 업로드 가능합니다."));
             }
 
             String originalFilename = file.getOriginalFilename();
@@ -93,30 +149,30 @@ public class MemberController {
                 if (potentialExtension.matches("\\.(png|jpg|jpeg|gif|webp)")) {
                     extension = potentialExtension;
                 } else {
-                    return ResponseEntity.badRequest().body(java.util.Map.of("message", "지원하지 않는 이미지 확장자입니다. (png, jpg, jpeg, gif, webp 허용)"));
+                    return ResponseEntity.badRequest().body(Map.of("message", "지원하지 않는 이미지 확장자입니다. (png, jpg, jpeg, gif, webp 허용)"));
                 }
             } else {
-                return ResponseEntity.badRequest().body(java.util.Map.of("message", "파일 확장자를 확인할 수 없습니다."));
+                return ResponseEntity.badRequest().body(Map.of("message", "파일 확장자를 확인할 수 없습니다."));
             }
-            String newFilename = java.util.UUID.randomUUID().toString() + extension;
+            String newFilename = UUID.randomUUID().toString() + extension;
             
             // 절대 경로로 명확하게 지정 (Spring Boot 실행 위치 기준)
-            java.nio.file.Path uploadPath = java.nio.file.Paths.get(System.getProperty("user.dir"), "uploads", "profile");
-            if (!java.nio.file.Files.exists(uploadPath)) {
-                java.nio.file.Files.createDirectories(uploadPath);
+            Path uploadPath = Paths.get(System.getProperty("user.dir"), "uploads", "profile");
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
             }
             
-            java.nio.file.Path filePath = uploadPath.resolve(newFilename);
+            Path filePath = uploadPath.resolve(newFilename);
             file.transferTo(filePath.toFile());
             
             // 기존 프로필 이미지 파일 삭제 로직
-            com.example.planslot.member.dto.MemberResponseDTO.MyPage myPage = memberService.getMyPage(authentication.getName());
+            MemberResponseDTO.MyPage myPage = memberService.getMyPage(authentication.getName());
             String oldImageUrl = myPage.getProfileImageUrl();
             if (oldImageUrl != null && oldImageUrl.startsWith("/uploads/profile/")) {
                 String oldFilename = oldImageUrl.substring("/uploads/profile/".length());
-                java.nio.file.Path oldFilePath = uploadPath.resolve(oldFilename);
+                Path oldFilePath = uploadPath.resolve(oldFilename);
                 try {
-                    java.nio.file.Files.deleteIfExists(oldFilePath);
+                    Files.deleteIfExists(oldFilePath);
                 } catch (Exception ignored) {
                     // 삭제 실패 시 무시 (예: 파일이 이미 없는 경우)
                 }
@@ -125,10 +181,10 @@ public class MemberController {
             String imageUrl = "/uploads/profile/" + newFilename;
             memberService.updateProfileImage(authentication.getName(), imageUrl);
             
-            return ResponseEntity.ok(java.util.Map.of("imageUrl", imageUrl));
+            return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(500).body(java.util.Map.of("message", "오류: " + e.getMessage()));
+            return ResponseEntity.status(500).body(Map.of("message", "오류: " + e.getMessage()));
         }
     }
 }

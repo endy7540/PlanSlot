@@ -3,6 +3,8 @@ package com.example.planslot.notification.service;
 import com.example.planslot.notification.dto.GroupNotificationSettingDTO;
 import com.example.planslot.notification.dto.NotificationDTO;
 import com.example.planslot.notification.dto.NotificationSettingDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -44,6 +46,9 @@ public interface NotificationService {
 
     // 내 알림 목록 조회 (showAll=false: 읽지 않은 것만, showAll=true: 전체)
     List<NotificationDTO> getNotifications(Long memberId, boolean showAll);
+
+    // 전체 알림 페이지 조회 (ALL, UNREAD, READ)
+    Page<NotificationDTO> getNotificationPage(Long memberId, String filter, Pageable pageable);
 
     // 안 읽은 알림 개수 조회
     long getUnreadCount(Long memberId);

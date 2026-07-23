@@ -174,7 +174,7 @@ public class BoardServiceImpl implements BoardService {
         Board board = findBoard(boardId);
         Member member = findMember(memberEmail);
 
-        validateWriter(board, member);
+        validateUpdatePermission(board, member);
         validateCommunityAccess(member);
         validateBoardDTO(boardDTO);
 
@@ -190,10 +190,7 @@ public class BoardServiceImpl implements BoardService {
         Board board = findBoard(boardId);
         Member member = findMember(memberEmail);
 
-        // 관리자는 작성자 확인 없이 삭제 가능
-        if (member.getRole() != Member.Role.ADMIN) {
-            validateWriter(board, member);
-        }
+        validateDeletePermission(board, member);
 
         board.delete();
     }
@@ -239,7 +236,7 @@ public class BoardServiceImpl implements BoardService {
         Board board = findBoard(boardId);
         Member member = findMember(memberEmail);
 
-        validateWriter(board, member);
+        validateUpdatePermission(board, member);
         validateImage(image);
 
         String fileUrl = saveImageFile(image);
@@ -267,7 +264,7 @@ public class BoardServiceImpl implements BoardService {
         Board board = findBoard(boardId);
         Member member = findMember(memberEmail);
 
-        validateWriter(board, member);
+        validateUpdatePermission(board, member);
 
         BoardImage boardImage = boardImageRepository.findByFileIdAndBoardBoardId(imageId, boardId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -326,10 +323,23 @@ public class BoardServiceImpl implements BoardService {
         }
     }
 
-    // 게시글 작성자 확인
-    private void validateWriter(Board board, Member member) {
-        if (!Objects.equals(board.getWriter().getId(), member.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자만 수정하거나 삭제할 수 있습니다.");
+    // 게시글 삭제 권한 확인 (작성자 또는 관리자)
+    private void validateDeletePermission(Board board, Member member) {
+        if (member.getRole() != Member.Role.ADMIN && !Objects.equals(board.getWriter().getId(), member.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자 또는 관리자만 삭제할 수 있습니다.");
+        }
+    }
+
+    // 게시글 수정 및 이미지 관리 권한 확인 (공지사항: 작성자 또는 관리자 / 일반 게시글: 작성자만)
+    private void validateUpdatePermission(Board board, Member member) {
+        if (board.getBoardType() == BoardType.NOTICE) {
+            if (member.getRole() != Member.Role.ADMIN && !Objects.equals(board.getWriter().getId(), member.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "공지사항은 작성자 또는 관리자만 수정할 수 있습니다.");
+            }
+        } else {
+            if (!Objects.equals(board.getWriter().getId(), member.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자만 수정할 수 있습니다.");
+            }
         }
     }
 

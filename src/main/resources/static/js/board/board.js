@@ -50,7 +50,7 @@ function initializeBoardHeader() {
   if (!authButton) return;
 
   authButton.addEventListener('click', () => {
-    if (!currentBoardMember) {
+    if (!getBoardToken()) {
       location.href = '/auth/login';
       return;
     }
@@ -73,7 +73,7 @@ async function loadCurrentBoardMember() {
     currentBoardMember = member;
   } catch (error) {
     currentBoardMember = null;
-    if (error.status === 401 || error.status === 403) clearBoardAuthentication();
+    if (error.status === 401) clearBoardAuthentication();
   }
 }
 
@@ -1341,9 +1341,9 @@ async function readBoardError(response) {
 
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json') && !contentType.includes('+json')) {
-    return response.status === 401 || response.status === 403
-        ? '로그인이 필요합니다.'
-        : `요청 처리에 실패했습니다. (${response.status})`;
+    if (response.status === 401) return '로그인이 필요합니다.';
+    if (response.status === 403) return '요청 권한이 없습니다.';
+    return `요청 처리에 실패했습니다. (${response.status})`;
   }
 
   try {

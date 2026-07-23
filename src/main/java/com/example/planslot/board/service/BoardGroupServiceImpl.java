@@ -145,19 +145,12 @@ public class BoardGroupServiceImpl implements BoardGroupService {
                 .collect(Collectors.toMap(Member::getId, Function.identity()));
         Set<Long> inviteCandidateIds = inviteCandidateMap.keySet();
 
-        Set<Long> requestApplicationCandidates = normalizeIds(request.applicantCandidateIds());
-        Set<Long> requestInviteCandidates = normalizeIds(request.inviteCandidateIds());
-
-        if (!applicationCandidateIds.equals(requestApplicationCandidates) || !inviteCandidateIds.equals(requestInviteCandidates)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "후보 목록이 변경되었습니다. 다시 확인해 주세요.");
-        }
-
         Set<Long> selectedApplicantIds = normalizeIds(request.selectedApplicantIds());
         Set<Long> selectedInviteeIds = normalizeIds(request.selectedInviteeIds());
         selectedInviteeIds.removeAll(selectedApplicantIds);
 
         if (!applicationCandidateIds.containsAll(selectedApplicantIds) || !inviteCandidateIds.containsAll(selectedInviteeIds)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "선택한 회원 정보가 올바르지 않습니다.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "선택한 회원 정보가 유효하지 않거나 후보 목록이 변경되었습니다. 다시 확인해 주세요.");
         }
 
         if (selectedApplicantIds.isEmpty() && selectedInviteeIds.isEmpty()) {

@@ -439,11 +439,15 @@
             return;
         }
 
-        if (!isAllDay && startTime && endTime) {
-            if (endTime < startTime && dateVal === endDateVal) {
-                showToast('종료 시간은 시작 시간보다 과거일 수 없습니다.', true);
-                return;
-            }
+        const startDtStr = isAllDay ? `${dateVal}T00:00:00` : `${dateVal}T${startTime || '00:00'}:00`;
+        const endDtStr = isAllDay ? `${endDateVal}T23:59:59` : `${endDateVal}T${endTime || '23:59'}:00`;
+
+        const startDt = new Date(startDtStr);
+        const endDt = new Date(endDtStr);
+
+        if (endDt < startDt) {
+            showToast('종료일시는 시작일시보다 빠를 수 없습니다.', true);
+            return;
         }
 
         const origRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, { headers: authHeaders() });

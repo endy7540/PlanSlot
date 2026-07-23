@@ -745,7 +745,6 @@ function renderDynamicCalendar() {
     const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     
     const daySchedules = groupSchedules.filter(s => s.startDate && s.startDate.startsWith(dateStr));
-    
     let eventsHtml = '';
     
     // 일정 제목과 시간 기준으로 병합 (동일한 공유 일정은 하나로)

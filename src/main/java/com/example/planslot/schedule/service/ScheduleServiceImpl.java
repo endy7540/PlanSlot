@@ -252,8 +252,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                     location = location.substring(0, 200);
                 }
 
-                LocalDateTime start = parseEventDateTime(e.getStart());
-                LocalDateTime end = parseEventDateTime(e.getEnd());
+                LocalDateTime start = parseEventDateTime(e.getStart(), false);
+                LocalDateTime end = parseEventDateTime(e.getEnd(), true);
                 if (start == null) continue;
                 if (end == null) end = start;
 
@@ -290,7 +290,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
     }
 
-    private LocalDateTime parseEventDateTime(EventDateTime edt) {
+    private LocalDateTime parseEventDateTime(EventDateTime edt, boolean isEnd) {
         if (edt == null) return null;
         if (edt.getDateTime() != null) {
             return LocalDateTime.ofInstant(Instant.ofEpochMilli(edt.getDateTime().getValue()), ZoneId.systemDefault());
@@ -299,7 +299,12 @@ public class ScheduleServiceImpl implements ScheduleService {
             if (dateStr.length() > 10) {
                 dateStr = dateStr.substring(0, 10);
             }
-            return LocalDate.parse(dateStr).atStartOfDay();
+            LocalDateTime ldt = LocalDate.parse(dateStr).atStartOfDay();
+            if (isEnd) {
+                // 구글 캘린더의 종일 일정 종료일은 다음날 00:00이므로, 당일 23:59:59로 보정
+                return ldt.minusSeconds(1);
+            }
+            return ldt;
         }
         return null;
     }

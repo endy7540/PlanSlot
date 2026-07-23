@@ -118,26 +118,44 @@ public class NotificationServiceImpl implements NotificationService {
         saveNotification(receiver, NotificationType.MESSAGE, title, content, targetType, targetId);
     }
 
-    // 모임 초대 알림 전송 (서비스 운영용 - 설정과 관계없이 항상 저장)
+    // 모임 초대 알림 전송
     @Override
     public void sendGroupInvitation(Long receiverId, String title, String content, String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
+        NotificationSetting setting = getOrCreateNotificationSetting(receiver);
+
+        if (!setting.isAllEnabled() || !setting.isApplicationEnabled()) {
+            return;
+        }
+
         saveNotification(receiver, NotificationType.INVITATION, title, content, targetType, targetId);
     }
 
-    // 모집 직접 초대 알림 전송 (서비스 운영용 - 설정과 관계없이 항상 저장)
+    // 모집 직접 초대 알림 전송
     @Override
     public void sendApplicationInvitation(Long receiverId, String title, String content,
                                           String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
+        NotificationSetting setting = getOrCreateNotificationSetting(receiver);
+
+        if (!setting.isAllEnabled() || !setting.isApplicationEnabled()) {
+            return;
+        }
+
         saveNotification(receiver, NotificationType.INVITATION, title, content, targetType, targetId);
     }
 
-    // 신청 발생 및 신청 처리 결과 알림 전송 (서비스 운영용 - 설정과 관계없이 항상 저장)
+    // 신청 발생 및 신청 처리 결과 알림 전송
     @Override
     public void sendApplicationNotification(Long receiverId, String title, String content,
                                             String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
+        NotificationSetting setting = getOrCreateNotificationSetting(receiver);
+
+        if (!setting.isAllEnabled() || !setting.isApplicationEnabled()) {
+            return;
+        }
+
         saveNotification(receiver, NotificationType.APPLICATION, title, content, targetType, targetId);
     }
 

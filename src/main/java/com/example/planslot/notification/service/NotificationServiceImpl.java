@@ -17,6 +17,8 @@ import com.example.planslot.notification.repository.GroupNotificationSettingRepo
 import com.example.planslot.notification.repository.NotificationRepository;
 import com.example.planslot.notification.repository.NotificationSettingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -116,44 +118,26 @@ public class NotificationServiceImpl implements NotificationService {
         saveNotification(receiver, NotificationType.MESSAGE, title, content, targetType, targetId);
     }
 
-    // 모임 초대 알림 전송
+    // 모임 초대 알림 전송 (서비스 운영용 - 설정과 관계없이 항상 저장)
     @Override
     public void sendGroupInvitation(Long receiverId, String title, String content, String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
-        NotificationSetting setting = getOrCreateNotificationSetting(receiver);
-
-        if (!setting.isAllEnabled() || !setting.isApplicationEnabled()) {
-            return;
-        }
-
         saveNotification(receiver, NotificationType.INVITATION, title, content, targetType, targetId);
     }
 
-    // 모집 직접 초대 알림 전송
+    // 모집 직접 초대 알림 전송 (서비스 운영용 - 설정과 관계없이 항상 저장)
     @Override
     public void sendApplicationInvitation(Long receiverId, String title, String content,
                                           String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
-        NotificationSetting setting = getOrCreateNotificationSetting(receiver);
-
-        if (!setting.isAllEnabled() || !setting.isApplicationEnabled()) {
-            return;
-        }
-
         saveNotification(receiver, NotificationType.INVITATION, title, content, targetType, targetId);
     }
 
-    // 신청 발생 및 신청 처리 결과 알림 전송
+    // 신청 발생 및 신청 처리 결과 알림 전송 (서비스 운영용 - 설정과 관계없이 항상 저장)
     @Override
     public void sendApplicationNotification(Long receiverId, String title, String content,
                                             String targetType, Long targetId) {
         Member receiver = findReceiver(receiverId);
-        NotificationSetting setting = getOrCreateNotificationSetting(receiver);
-
-        if (!setting.isAllEnabled() || !setting.isApplicationEnabled()) {
-            return;
-        }
-
         saveNotification(receiver, NotificationType.APPLICATION, title, content, targetType, targetId);
     }
 
@@ -170,6 +154,23 @@ public class NotificationServiceImpl implements NotificationService {
         return notifications.stream()
                 .map(this::toNotificationDTO)
                 .toList();
+    }
+
+    // 전체 알림 페이지 조회
+    @Override
+    @Transactional(readOnly = true)
+    public Page<NotificationDTO> getNotificationPage(Long memberId, String filter, Pageable pageable) {
+        findReceiver(memberId);
+
+        String normalizedFilter = filter == null ? "ALL" : filter.trim().toUpperCase();
+        Page<Notification> notifications = switch (normalizedFilter) {
+            case "ALL" -> notificationRepository.findAllByReceiver_Id(memberId, pageable);
+            case "UNREAD" -> notificationRepository.findAllByReceiver_IdAndIsReadFalse(memberId, pageable);
+            case "READ" -> notificationRepository.findAllByReceiver_IdAndIsReadTrue(memberId, pageable);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "알림 필터 값이 올바르지 않습니다.");
+        };
+
+        return notifications.map(this::toNotificationDTO);
     }
 
     // 안 읽은 알림 개수 조회

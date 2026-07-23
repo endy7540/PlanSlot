@@ -4,6 +4,7 @@ import com.example.planslot.schedule.entity.Deadline;
 import com.example.planslot.schedule.entity.Schedule;
 import com.example.planslot.schedule.entity.ScheduleType;
 import com.example.planslot.schedule.entity.SourceType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -30,8 +31,10 @@ public class ScheduleDTO {
     private ScheduleType scheduleType;
 
     @NotNull(message = "시작 일시는 필수입니다.")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime startDate;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime endDate;
 
     @Builder.Default

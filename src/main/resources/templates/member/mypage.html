@@ -68,6 +68,20 @@
                             <span class="info-label">주소</span>
                             <span class="info-value" id="viewAddress">로딩중...</span>
                         </div>
+                        <div class="info-group" style="align-items: center;">
+                            <span class="info-label">구글 캘린더 연동</span>
+                            <div class="info-value" style="display: flex; align-items: center; gap: 12px;">
+                                <button type="button" id="btnLinkGoogleCalendar" class="btn-secondary" style="display: none; font-size: 13px; padding: 6px 12px;" onclick="startGoogleCalendarLink()">구글 계정 연동하기</button>
+                                
+                                <div id="googleSyncToggleWrapper" style="display: flex; align-items: center; gap: 12px;">
+                                    <label class="toggle-switch" style="margin: 0;">
+                                        <input type="checkbox" id="myPageGoogleSyncToggle" onchange="toggleMyPageGoogleSync(this.checked)">
+                                        <span class="slider round"></span>
+                                    </label>
+                                    <span id="myPageGoogleSyncStatusText" style="font-size: 14px; color: #64748b; min-width: 60px; text-align: right;">확인 중...</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <button type="button" class="btn-primary" id="btnEditMode">정보 수정하기</button>
                 </div>

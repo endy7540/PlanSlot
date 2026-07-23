@@ -14,6 +14,9 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     // 회원의 삭제되지 않은 전체 일정 목록 조회
     @Query("SELECT s FROM Schedule s WHERE s.member.id = :memberId AND s.deletedAt IS NULL")
     List<Schedule> findAllByMemberId(@Param("memberId") Long memberId);
+    
+    @Query("SELECT s FROM Schedule s WHERE s.member.id = :memberId")
+    List<Schedule> debugFindAllByMemberId(@Param("memberId") Long memberId);
 
     // 삭제되지 않은 단건 일정 조회 (상세 조회, 수정, 삭제 시 공통으로 사용)
     @Query("SELECT s FROM Schedule s WHERE s.scheduleId = :scheduleId AND s.deletedAt IS NULL")
@@ -35,4 +38,7 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
 
     // 요청한 일정이 실제로 해당 회원 소유인지 확인 (수정/삭제 권한 체크용)
     boolean existsByScheduleIdAndMember_Id(Long scheduleId, Long memberId);
+
+    // 구글 이벤트 ID로 일정 찾기
+    Optional<Schedule> findByGoogleEventIdAndMember_Id(String googleEventId, Long memberId);
 }

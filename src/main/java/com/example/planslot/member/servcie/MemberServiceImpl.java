@@ -105,4 +105,18 @@ public class MemberServiceImpl implements MemberService{
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
         member.updateProfileImage(imageUrl);
     }
+    
+    @Override
+    @Transactional
+    public void updateGoogleSyncEnabled(String email, boolean enabled) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        member.setGoogleSyncEnabled(enabled);
+    }
+
+    @Override
+    public Member getMember(String email) {
+        return memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+    }
 }

@@ -88,6 +88,7 @@ public class Schedule {
         this.isPublic = isPublic;
         this.location = location;
         this.recurrenceEndDate = recurrenceEndDate;
+        this.deletedAt = null; // Update 시 삭제 상태 해제 (Revive)
     }
 
     public void softDelete() {

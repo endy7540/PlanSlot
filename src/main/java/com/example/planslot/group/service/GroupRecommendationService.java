@@ -52,7 +52,7 @@ public class GroupRecommendationService {
     private int maxTokens;
 
     @Transactional(readOnly = true)
-    public GroupDTO.AiResponse getRecommendations(Long groupId, Long memberId, String type) {
+    public GroupDTO.AiResponse getRecommendations(Long groupId, Long memberId, String type, String startDateStr, String endDateStr) {
         List<GroupMember> groupMembers = groupMemberRepository.findByGroup_Id(groupId);
         boolean isMember = groupMembers.stream()
                 .anyMatch(gm -> gm.getMember().getId().equals(memberId) && gm.getMemberStatus() == GroupMemberStatus.ACTIVE);
@@ -61,11 +61,20 @@ public class GroupRecommendationService {
         }
 
         LocalDate today = LocalDate.now();
-        LocalDateTime start = today.atStartOfDay();
-        LocalDateTime end = today.plusDays(6).atTime(23, 59, 59);
+        LocalDate fromDate = (startDateStr != null && !startDateStr.trim().isEmpty()) ? LocalDate.parse(startDateStr) : today;
+        LocalDate toDate = (endDateStr != null && !endDateStr.trim().isEmpty()) ? LocalDate.parse(endDateStr) : today.plusDays(6);
+        
+        if (toDate.isBefore(fromDate)) {
+            toDate = fromDate; // fallback
+        }
+        
+        LocalDateTime start = fromDate.atStartOfDay();
+        LocalDateTime end = toDate.atTime(23, 59, 59);
+        
+        long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(fromDate, toDate);
         
         StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("We need to find a common free time for our group meeting in the next 7 days (").append(today).append(" to ").append(today.plusDays(6)).append(").\n");
+        promptBuilder.append("We need to find a common free time for our group meeting in the next ").append(daysBetween + 1).append(" days (").append(fromDate).append(" to ").append(toDate).append(").\n");
         promptBuilder.append("Here are the schedules of each member:\n");
         
         List<String> memberNames = new ArrayList<>();
@@ -114,30 +123,26 @@ public class GroupRecommendationService {
         System.out.println(promptBuilder.toString());
         System.out.println("===========================");
 
-        promptBuilder.append("\nBased on this, generate a JSON response exactly in this format without markdown code blocks:\n");
-        promptBuilder.append("{\n");
-        promptBuilder.append("  \"heat\": [\n");
-        promptBuilder.append("    { \"name\": \"memberName\", \"row\": [\"free\", \"busy\", \"mid\", \"free\", \"free\", \"free\", \"free\"] }\n");
-        promptBuilder.append("  ],\n");
-        promptBuilder.append("  \"recs\": [\n");
-        promptBuilder.append("    { \"rank\": 1, \"label\": \"날짜 (요일) 시작시간-종료시간\", \"sub\": \"이유 및 겹치는 일정 안내\", \"tag\": \"전원 가능\", \"date\": \"YYYY-MM-DD\", \"time\": \"HH:mm\" }\n");
+        promptBuilder.append("\nBased on this, ").append("You MUST return ONLY a JSON object with this exact structure:\n")
+                    .append("{\n")
+                    .append("  \"heat\": [\n")
+                    .append("    { \"name\": \"Member1\", \"row\": [\"free\", \"busy\", \"mid\", ...] },\n")
+                    .append("    ... \n")
+                    .append("    // For each member, \"row\" array length MUST match the number of days exactly (").append(daysBetween + 1).append(" elements)\n")
+                    .append("  ],\n")
+                    .append("  \"recs\": [\n");
+        promptBuilder.append("    { \"rank\": 1, \"label\": \"날짜 (요일) 시작시간-종료시간\", \"sub\": \"이유 및 겹치는 일정 안내\", \"tag\": \"전원 가능\", \"date\": \"YYYY-MM-DD\", \"time\": \"HH:mm\", \"title\": \"모임 일정: 오전 ?시 - 오후 ?시\" }\n");
         promptBuilder.append("  ]\n");
         promptBuilder.append("}\n");
-        promptBuilder.append("The 'row' array in 'heat' should have exactly 7 elements, representing today to today+6.\n");
+        promptBuilder.append("The 'row' array in 'heat' should have exactly ").append(daysBetween + 1).append(" elements, representing ").append(fromDate).append(" to ").append(toDate).append(".\n");
         promptBuilder.append("EACH element in the 'row' array MUST be EXACTLY the string literal \"free\", \"busy\", or \"mid\". Absolutely NO expressions (like \"a\"==\"b\").\n");
         promptBuilder.append("If someone has a schedule on a day, mark 'busy'. If no schedule, 'free'. If somewhat free, 'mid'.\n");
         promptBuilder.append("Provide up to 3 recommendations in 'recs'.\n");
         promptBuilder.append("Each 'label' MUST include both start and end time (e.g. '7월 25일 (토) 오후 2시 - 오후 4시').\n");
-        promptBuilder.append("Check whether any member has a partial schedule conflict during the recommended window even if their day is marked 'free' overall, and mention it by name in 'sub'.\n");
+        promptBuilder.append("IMPORTANT TIME RANGE RULE: If the user selects multiple adjacent time periods (e.g., '오후' + '저녁' or '저녁' + '새벽'), you MUST treat them as a SINGLE CONTINUOUS time window. Specifically, if '저녁(18~24시)' and '새벽(00~06시)' are BOTH selected, you MUST be able to recommend a time slot that spans past midnight (e.g., Today 22:00 to Tomorrow 02:00).\n");
+        promptBuilder.append("IMPORTANT MULTI-DAY RULE: If the user's preference includes '하루종일' (All day) or multi-day durations like '1박 2일' (1 Night 2 Days) or '2박 3일' (2 Nights 3 Days), you MUST find completely free, full, and consecutive days where EVERYONE is marked 'free'. For example, '1박 2일' requires 2 consecutive completely free days. In this case, ignore the time-of-day constraints and return a recommendation that covers the entire span (e.g. '8월 1일 (금) - 8월 2일 (토)').\n");
 
-        String typeInstruction = switch (type) {
-            case "LONG_BLOCK" -> "Meeting type preference: Prioritize long, uninterrupted free blocks (half a day or more) where all or most members are free at once.";
-            case "EARLY_SLOT" -> "Meeting type preference: Prioritize morning time slots (before 12 PM) where members are free.";
-            case "EVENING_SLOT" -> "Meeting type preference: Prioritize evening time slots (after 6 PM) where members are free.";
-            case "FULL_DAY" -> "Meeting type preference: Prioritize a full day where all members have no schedules at all.";
-            case "SHORT_MEETING" -> "Meeting type preference: Prioritize short 1-2 hour windows suitable for a brief meeting, even if the rest of the day is busy for some members.";
-            default -> "Meeting type preference: Prioritize short 1-2 hour windows suitable for a brief meeting.";
-        };
+        String typeInstruction = "User's meeting preference - " + type;
         promptBuilder.append(typeInstruction).append("\n");
 
         if (apiKey == null || apiKey.trim().isEmpty() || "your-api-key-here".equals(apiKey)) {
@@ -152,15 +157,9 @@ public class GroupRecommendationService {
 
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", aiModel);
-            requestBody.put("max_tokens", maxTokens);
+            requestBody.put("max_tokens", 8192);
 
-            Map<String, Object> thinking = new HashMap<>();
-            thinking.put("type", "adaptive");
-            requestBody.put("thinking", thinking);
-
-            Map<String, Object> outputConfig = new HashMap<>();
-            outputConfig.put("effort", "low");
-            requestBody.put("output_config", outputConfig);
+            // Removed thinking and output_config to save tokens and prevent truncation
 
             requestBody.put("system", "You are an AI that finds common free time for meetings. " +
                     "Output strictly valid JSON and nothing else. " +
@@ -212,7 +211,8 @@ public class GroupRecommendationService {
                         rNode.path("sub").asText(),
                         rNode.path("tag").asText(),
                         rNode.has("date") ? rNode.path("date").asText() : today.toString(),
-                        rNode.has("time") ? rNode.path("time").asText() : "12:00"
+                        rNode.has("time") ? rNode.path("time").asText() : "12:00",
+                        rNode.has("title") ? rNode.path("title").asText() : "모임 일정"
                 ));
             }
             
@@ -223,7 +223,7 @@ public class GroupRecommendationService {
                 }
             }
             if (recs.isEmpty() && memberNames.size() > 0) {
-                recs.add(new GroupDTO.RecInfo(1, "추천 시간이 없습니다", "모두 일정이 등록되지 않아 전체 일정이 비어있거나, 적당한 시간이 없습니다.", "전원 가능", today.toString(), "12:00"));
+                recs.add(new GroupDTO.RecInfo(1, "추천 시간이 없습니다", "모두 일정이 등록되지 않아 전체 일정이 비어있거나, 적당한 시간이 없습니다.", "전원 가능", today.toString(), "12:00", "모임 일정"));
             }
             
             return new GroupDTO.AiResponse(heat, recs);
@@ -241,7 +241,7 @@ public class GroupRecommendationService {
             heat.add(new GroupDTO.HeatInfo(name, List.of("free", "free", "free", "free", "free", "free", "free")));
         }
         List<GroupDTO.RecInfo> recs = new ArrayList<>();
-        recs.add(new GroupDTO.RecInfo(1, "내일 오후 2시", "API 키가 올바르게 설정되지 않았거나 호출에 실패했습니다.", "임시 결과", today.plusDays(1).toString(), "14:00"));
+        recs.add(new GroupDTO.RecInfo(1, "내일 오후 2시", "API 키가 올바르게 설정되지 않았거나 호출에 실패했습니다.", "임시 결과", today.plusDays(1).toString(), "14:00", "모임 일정: 오후 2시 - 오후 4시"));
         return new GroupDTO.AiResponse(heat, recs);
     }
 }

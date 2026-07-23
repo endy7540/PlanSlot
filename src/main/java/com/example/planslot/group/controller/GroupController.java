@@ -59,9 +59,11 @@ public class GroupController {
     public ResponseEntity<GroupDTO.AiResponse> getAiRecommendations(
             @PathVariable Long groupId,
             @RequestParam(defaultValue = "SHORT_MEETING") String type,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        return ResponseEntity.ok(groupRecommendationService.getRecommendations(groupId, memberId, type));
+        return ResponseEntity.ok(groupRecommendationService.getRecommendations(groupId, memberId, type, startDate, endDate));
     }
 
     // 모임 생성 요청 처리
@@ -209,7 +211,7 @@ public class GroupController {
             @RequestBody Map<String, String> body,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        groupService.addGroupSchedule(groupId, memberId, body.get("title"), body.get("date"), body.get("time"), body.get("visibility"));
+        groupService.addGroupSchedule(groupId, memberId, body.get("title"), body.get("date"), body.get("time"), body.get("visibility"), body.get("endDate"), body.get("endTime"));
         return ResponseEntity.ok().build();
     }
 

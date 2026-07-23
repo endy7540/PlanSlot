@@ -50,7 +50,6 @@
       <p id="groupMeta">참여자 - 명</p>
     </div>
     <div class="head-actions" id="headActions">
-      <button class="btn btn-ghost" id="btnLeave">모임 탈퇴</button>
       <div id="waitingActions" style="display:none; gap: 8px;">
         <button class="btn btn-teal" id="btnAcceptInvite">초대 수락</button>
         <button class="btn btn-ghost" id="btnRejectInvite">초대 거절</button>
@@ -69,11 +68,14 @@
 
       <!-- 일정 탭 -->
       <div class="tab-panel active" id="panel-schedule">
-        <div class="section-row" style="margin-bottom:8px">
-          <h3 id="calendarMonthLabel">모임 일정</h3>
-          <div style="display:flex;gap:4px">
-            <button class="btn btn-ghost btn-sm" onclick="changeCalMonth(-1)">◀</button>
-            <button class="btn btn-ghost btn-sm" onclick="changeCalMonth(1)">▶</button>
+        <div class="section-row" style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+          <h3 id="calendarMonthLabel" style="margin:0;">모임 일정</h3>
+          <div style="display:flex;gap:8px; align-items:center;">
+            <a class="btn btn-teal btn-sm" id="btnGoAi" href="#" style="font-size:12px; padding:6px 12px; border-radius:6px; margin-right:4px;">✨ AI 시간 추천 보러가기</a>
+            <div style="display:flex;gap:4px">
+              <button class="btn btn-ghost btn-sm" onclick="changeCalMonth(-1)">◀</button>
+              <button class="btn btn-ghost btn-sm" onclick="changeCalMonth(1)">▶</button>
+            </div>
           </div>
         </div>
         <span style="display:block;margin-bottom:12px;color:var(--muted);font-size:11.5px">공개 일정만 모임원 전체에게 보여요</span>
@@ -181,12 +183,19 @@
         <div class="settings-block">
           <h3>위험 구역</h3>
           <div class="danger-zone">
+            <div class="danger-row" style="border-bottom: 1px solid var(--border); margin-bottom: 12px; padding-bottom: 12px;">
+              <div>
+                <b>모임 탈퇴</b>
+                <span>공유했던 일정도 더 이상 모임원에게 보이지 않아요.</span>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="btnLeave" style="width:90px; justify-content:center; color:var(--danger); border-color:var(--danger-border);">모임 탈퇴</button>
+            </div>
             <div class="danger-row">
               <div>
                 <b>모임 삭제</b>
                 <span>삭제하면 모임의 일정, 채팅, 게시글이 모두 사라지고 되돌릴 수 없어요.</span>
               </div>
-              <button class="btn btn-danger btn-sm" id="btnDeleteGroup">모임 삭제</button>
+              <button class="btn btn-danger btn-sm" id="btnDeleteGroup" style="width:90px; justify-content:center;">모임 삭제</button>
             </div>
           </div>
         </div>
@@ -197,13 +206,7 @@
       </div>
     </section>
 
-    <!-- AI 추천 페이지로 이동하는 티저 카드 -->
-    <aside class="card ai-teaser">
-      <h3>AI 시간 추천</h3>
-      <p>모임원이 공유한 일정을 분석해서 다 같이 가능한 시간을 찾아드려요.</p>
-      <div class="mini-heat" id="miniHeat"></div>
-      <a class="btn btn-teal" id="btnGoAi" href="#" style="justify-content:center;margin-top:6px">AI 추천 보러가기 →</a>
-    </aside>
+    <!-- AI 티저 제거됨 -->
   </div>
 </div>
 
@@ -303,25 +306,13 @@ function renderHead(){
     document.querySelector('.tab-btn[data-tab="schedule"]').style.display = 'inline-block';
     document.querySelector('.tab-btn[data-tab="shared"]').style.display = 'inline-block';
     document.querySelector('.tab-btn[data-tab="settings"]').style.display = 'inline-block';
-    document.querySelector('.ai-teaser').style.display = 'block';
+    // 티저 로직 제거됨
     
     // 기본 활성 탭을 일정으로
     setTab('schedule');
   }
 
-  const mini = document.getElementById('miniHeat');
-  if(group.heat.length){
-    const cols = group.heat[0].row.length;
-    let html = '';
-    for(let c=0;c<cols;c++){
-      const freeCount = group.heat.filter(r => r.row[c] === 'free').length;
-      const cls = freeCount === group.heat.length ? 'free' : (freeCount >= Math.ceil(group.heat.length/2) ? 'mid' : 'busy');
-      html += `<div class="mini-cell ${cls}"></div>`;
-    }
-    mini.innerHTML = html;
-  } else {
-    mini.innerHTML = '<span class="empty-note" style="padding:0">아직 분석할 일정이 없어요.</span>';
-  }
+
 }
 
 function renderTodaySchedules() {
@@ -813,8 +804,10 @@ function renderDynamicCalendar() {
       if (s.isTemp) cls += ' blink-slow';
       // hover시 원래 누구의 일정인지 툴팁으로 표시
       const tooltip = s.nicknames ? `${s.title} (${s.nicknames.join(', ')})` : s.title;
+      // '모임 일정'으로 시작하는 제목은 이미 시간 정보가 있으므로 불필요한 s.time 텍스트 생략
+      const displayTime = s.title.startsWith('모임 일정') ? '' : ` ${s.time}`;
       // 캘린더에는 이름(s.nickname) 대신 제목(s.title)을 표시
-      eventsHtml += `<em class="${cls}" title="${tooltip}">${s.title} ${s.time}</em>`;
+      eventsHtml += `<em class="${cls}" title="${tooltip}">${s.title}${displayTime}</em>`;
     });
     if (toRender.length > 3) {
       eventsHtml += `<span style="display:block;font-size:10px;color:var(--muted);text-align:center;margin-top:2px">+${toRender.length - 3}개 더보기</span>`;

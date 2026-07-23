@@ -3,6 +3,7 @@ package com.example.planslot.board.controller;
 import com.example.planslot.board.dto.BoardDTO;
 import com.example.planslot.board.dto.BoardImageDTO;
 import com.example.planslot.board.dto.BoardMemberDTO;
+import com.example.planslot.board.entity.BoardRecruitmentStatus;
 import com.example.planslot.board.entity.BoardType;
 import com.example.planslot.board.service.BoardService;
 import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
@@ -111,11 +112,13 @@ public class BoardController {
 
     // 게시글 조회
     @GetMapping("/{boardId}")
-    public ResponseEntity<BoardDTO> readBoard(@PathVariable Long boardId, Principal principal) {
+    public ResponseEntity<BoardDTO> readBoard(@PathVariable Long boardId,
+                                             @RequestParam(defaultValue = "true") boolean increaseView,
+                                             Principal principal) {
         // 비로그인 사용자도 상세 조회 가능하도록 null 허용
         String email = (principal != null && principal.getName() != null && !principal.getName().isBlank())
                 ? principal.getName() : null;
-        return ResponseEntity.ok(boardService.readBoard(boardId, email));
+        return ResponseEntity.ok(boardService.readBoard(boardId, email, increaseView));
     }
 
     // 게시글 수정
@@ -134,6 +137,18 @@ public class BoardController {
         boardService.deleteBoard(boardId, getLoginEmail(principal));
 
         return ResponseEntity.noContent().build();
+    }
+
+    // 모집 상태 수정
+    @PatchMapping("/{boardId}/recruitment-status")
+    public ResponseEntity<BoardDTO> updateRecruitmentStatus(@PathVariable Long boardId,
+                                                            @RequestParam String status,
+                                                            Principal principal) {
+        BoardDTO board = boardService.updateRecruitmentStatus(
+                boardId, parseRecruitmentStatus(status), getLoginEmail(principal)
+        );
+
+        return ResponseEntity.ok(board);
     }
 
     // 게시글 신고
@@ -181,6 +196,18 @@ public class BoardController {
             return BoardType.valueOf(boardType.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 게시판 유형입니다.");
+        }
+    }
+
+    // 모집 상태 변환
+    private BoardRecruitmentStatus parseRecruitmentStatus(String status) {
+        if (status == null || status.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "모집 상태를 입력해 주세요.");
+        }
+        try {
+            return BoardRecruitmentStatus.valueOf(status.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 모집 상태입니다.");
         }
     }
 }

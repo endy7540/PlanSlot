@@ -42,7 +42,9 @@ public class BoardGroupServiceImpl implements BoardGroupService {
         Board board = findRecruitmentBoardForUpdate(boardId);
         Member applicant = findMember(memberEmail);
 
+        validateCommunityAccess(applicant);
         validateRecruitmentOpen(board);
+        validateGroupNotCreated(board);
 
         if (Objects.equals(board.getWriter().getId(), applicant.getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인이 작성한 게시글에는 신청할 수 없습니다.");
@@ -76,7 +78,7 @@ public class BoardGroupServiceImpl implements BoardGroupService {
         Board board = findRecruitmentBoardForUpdate(boardId);
         Member applicant = findMember(memberEmail);
 
-        validateRecruitmentOpen(board);
+        validateGroupNotCreated(board);
 
         BoardApplication application = boardApplicationRepository
                 .findByBoard_BoardIdAndApplicant_Id(boardId, applicant.getId())
@@ -95,7 +97,7 @@ public class BoardGroupServiceImpl implements BoardGroupService {
         Member writer = findMember(memberEmail);
 
         validateWriter(board, writer);
-        validateRecruitmentOpen(board);
+        validateGroupNotCreated(board);
 
         List<BoardApplication> applications = getPendingApplications(boardId);
         Set<Long> applicationMemberIds = boardApplicationRepository.findByBoard_BoardId(boardId).stream()
@@ -122,14 +124,11 @@ public class BoardGroupServiceImpl implements BoardGroupService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
         Member writer = findMember(memberEmail);
 
+        validateCommunityAccess(writer);
         validateRecruitmentBoard(board);
         validateWriter(board, writer);
-        validateRecruitmentOpen(board);
+        validateGroupNotCreated(board);
         validateCreateRequest(request);
-
-        if (board.getGroupId() != null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 모임이 생성된 게시글입니다.");
-        }
 
         List<BoardApplication> pendingApplications = getPendingApplications(boardId);
         Map<Long, BoardApplication> applicationMap = pendingApplications.stream().collect(Collectors.toMap(
@@ -303,6 +302,12 @@ public class BoardGroupServiceImpl implements BoardGroupService {
         }
     }
 
+    private void validateGroupNotCreated(Board board) {
+        if (board.getGroupId() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 모임이 생성된 게시글입니다.");
+        }
+    }
+
     private void validateWriter(Board board, Member member) {
         if (!Objects.equals(board.getWriter().getId(), member.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자만 모임을 만들 수 있습니다.");
@@ -316,6 +321,21 @@ public class BoardGroupServiceImpl implements BoardGroupService {
 
         if (request.groupName().trim().length() > 30) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "모임 이름은 30자 이하로 입력해 주세요.");
+        }
+    }
+
+    private void validateCommunityAccess(Member member) {
+        if (member.getStatus() == Member.Status.BANNED) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "영구 정지된 회원은 커뮤니티 기능을 이용할 수 없습니다.");
+        }
+        if (member.getStatus() == Member.Status.SUSPENDED) {
+            if (member.getSuspendedUntil() != null && java.time.LocalDateTime.now().isBefore(member.getSuspendedUntil())) {
+                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "일시 정지 상태입니다. 정지 해제일: " + member.getSuspendedUntil().format(formatter));
+            } else {
+                member.updateStatus(Member.Status.ACTIVE, null);
+                memberRepository.save(member);
+            }
         }
     }
 }

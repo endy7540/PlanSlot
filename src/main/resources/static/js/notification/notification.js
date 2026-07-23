@@ -14,6 +14,7 @@ let notificationAuthRedirecting = false;
 let notificationSseAbortController = null;
 let notificationSseRetryTimer = null;
 let notificationSseRetryCount = 0;
+let notificationSseForbidden = false;
 let notificationRefreshTimer = null;
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -32,7 +33,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 async function connectNotificationSse() {
     const token = getNotificationToken();
-    if (!token || notificationAuthRedirecting || notificationSseAbortController) return;
+    if (!token || notificationAuthRedirecting || notificationSseForbidden || notificationSseAbortController) return;
 
     notificationSseAbortController = new AbortController();
 
@@ -44,8 +45,14 @@ async function connectNotificationSse() {
             signal: notificationSseAbortController.signal
         });
 
-        if (response.status === 401 || response.status === 403 || response.redirected) {
+        if (response.status === 401 || response.redirected) {
             handleNotificationUnauthorized();
+            return;
+        }
+
+        if (response.status === 403) {
+            notificationSseForbidden = true;
+            console.warn('실시간 알림 구독 권한이 없습니다.');
             return;
         }
 
@@ -53,13 +60,14 @@ async function connectNotificationSse() {
             throw new Error('실시간 알림 연결에 실패했습니다.');
         }
 
+        notificationSseForbidden = false;
         notificationSseRetryCount = 0;
         await readNotificationSseStream(response.body);
     } catch (error) {
         if (error.name !== 'AbortError') console.error(error);
     } finally {
         notificationSseAbortController = null;
-        if (!notificationAuthRedirecting && getNotificationToken()) scheduleNotificationSseReconnect();
+        if (!notificationAuthRedirecting && !notificationSseForbidden && getNotificationToken()) scheduleNotificationSseReconnect();
     }
 }
 
@@ -138,10 +146,20 @@ async function fetchNotificationApi(path = '', options = {}) {
         ...options,
         headers: { ...getNotificationHeaders(), ...(options.headers || {}) }
     });
+    const redirectedPath = response.redirected ? new URL(response.url, location.origin).pathname : '';
+    const contentType = response.headers.get('content-type') || '';
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401 || redirectedPath === NOTIFICATION_LOGIN_URL) {
         handleNotificationUnauthorized();
         throw new Error('로그인 정보가 만료되었습니다.');
+    }
+
+    if (response.status === 403) {
+        throw new Error('요청 권한이 없습니다.');
+    }
+
+    if (response.ok && response.status !== 204 && !contentType.includes('application/json') && !contentType.includes('+json')) {
+        throw new Error('서버 응답 형식을 확인할 수 없습니다.');
     }
 
     return response;

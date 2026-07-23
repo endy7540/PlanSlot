@@ -20,6 +20,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.Optional;
+import com.google.api.services.calendar.model.Event;
+import com.google.api.services.calendar.model.EventDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +34,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final ScheduleRepository scheduleRepository;
     private final MemberRepository memberRepository;
     private final DeadlineRepository deadlineRepository;
+    private final GoogleCalendarService googleCalendarService;
 
     @Override
     @Transactional
@@ -65,6 +71,15 @@ public class ScheduleServiceImpl implements ScheduleService {
                     .notifyDaysBefore(requestDTO.getNotifyDaysBefore())
                     .build();
             deadlineRepository.save(deadline);
+        }
+
+        // 구글 캘린더 Push (비동기로 처리하거나 에러 발생 시 무시)
+        if (member.isGoogleSyncEnabled() && member.getGoogleAccessToken() != null) {
+            String googleEventId = googleCalendarService.insertEvent(member, saved);
+            if (googleEventId != null) {
+                saved.syncGoogleCalendar(googleEventId);
+                // 트랜잭션 내이므로 변경 감지(Dirty checking)로 자동 업데이트 됨
+            }
         }
 
         return ScheduleDTO.from(saved);
@@ -105,6 +120,12 @@ public class ScheduleServiceImpl implements ScheduleService {
             deadlineRepository.save(deadline);
         }
 
+        // 구글 캘린더 연동되어 있다면 Update
+        Member member = schedule.getMember();
+        if (member.isGoogleSyncEnabled() && "Y".equals(schedule.getGoogleSyncYn()) && member.getGoogleAccessToken() != null) {
+            googleCalendarService.updateEvent(member, schedule);
+        }
+
         return ScheduleDTO.from(schedule);
     }
 
@@ -114,6 +135,10 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .map(ScheduleDTO::from)
                 .toList();
     }
+    @Override
+    public List<com.example.planslot.schedule.entity.Schedule> debugGetAllSchedules(Long memberId) {
+        return scheduleRepository.debugFindAllByMemberId(memberId);
+    }
 
     @Override
     public List<ScheduleDTO> getScheduleListByPeriod(Long memberId, LocalDateTime start, LocalDateTime end) {
@@ -121,7 +146,9 @@ public class ScheduleServiceImpl implements ScheduleService {
         List<ScheduleDTO> result = new ArrayList<>();
 
         for (Schedule s : candidates) {
-            if (s.getScheduleType() == null || s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.DAILY) {
+            if (s.getScheduleType() == null || 
+                s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.DAILY ||
+                s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.NONE) {
                 result.add(ScheduleDTO.from(s));
                 continue;
             }
@@ -181,7 +208,100 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Transactional
     public void deleteSchedule(Long scheduleId, Long memberId) {
         Schedule schedule = getOwnedSchedule(scheduleId, memberId);
+        
+        // 구글 캘린더 연동되어 있다면 Delete
+        Member member = schedule.getMember();
+        if (member.isGoogleSyncEnabled() && "Y".equals(schedule.getGoogleSyncYn()) && member.getGoogleAccessToken() != null) {
+            googleCalendarService.deleteEvent(member, schedule.getGoogleEventId());
+        }
+        
         schedule.softDelete();
+    }
+
+    @Override
+    @Transactional
+    public void syncFromGoogleCalendar(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
+
+        if (!member.isGoogleSyncEnabled() || member.getGoogleAccessToken() == null) {
+            return;
+        }
+
+        List<Event> events = googleCalendarService.fetchEvents(member);
+        for (Event e : events) {
+            try {
+                String gId = e.getId();
+                Optional<Schedule> existingOpt = scheduleRepository.findByGoogleEventIdAndMember_Id(gId, memberId);
+
+                if ("cancelled".equals(e.getStatus())) {
+                    existingOpt.ifPresent(Schedule::softDelete);
+                    continue;
+                }
+
+                String title = e.getSummary() != null ? e.getSummary() : "(제목 없음)";
+                if (title.length() > 50) title = title.substring(0, 50);
+
+                String description = e.getDescription();
+                if (description != null && description.length() > 400) {
+                    description = description.substring(0, 400);
+                }
+
+                String location = e.getLocation();
+                if (location != null && location.length() > 200) {
+                    location = location.substring(0, 200);
+                }
+
+                LocalDateTime start = parseEventDateTime(e.getStart());
+                LocalDateTime end = parseEventDateTime(e.getEnd());
+                if (start == null) continue;
+                if (end == null) end = start;
+
+                if (existingOpt.isPresent()) {
+                    Schedule schedule = existingOpt.get();
+                    // Update
+                    schedule.update(
+                            title, description,
+                            schedule.getScheduleType(), // 기존 타입 유지
+                            start, end,
+                            schedule.getIsPublic(), location, schedule.getRecurrenceEndDate() // 기존 반복종료일 유지
+                    );
+                } else {
+                    // Insert
+                    Schedule schedule = Schedule.builder()
+                            .member(member)
+                            .title(title)
+                            .description(description)
+                            .scheduleType(com.example.planslot.schedule.entity.ScheduleType.DAILY)
+                            .startDate(start)
+                            .endDate(end)
+                            .isPublic("N")
+                            .googleSyncYn("Y")
+                            .googleEventId(gId)
+                            .sourceType(SourceType.GOOGLE_CALENDAR)
+                            .location(location)
+                            .build();
+                    scheduleRepository.save(schedule);
+                }
+            } catch (Exception ex) {
+                // 특정 이벤트 처리 실패 시 다른 이벤트에 영향을 주지 않도록 로깅만 함
+                System.err.println("Failed to sync event " + e.getId() + ": " + ex.getMessage());
+            }
+        }
+    }
+
+    private LocalDateTime parseEventDateTime(EventDateTime edt) {
+        if (edt == null) return null;
+        if (edt.getDateTime() != null) {
+            return LocalDateTime.ofInstant(Instant.ofEpochMilli(edt.getDateTime().getValue()), ZoneId.systemDefault());
+        } else if (edt.getDate() != null) {
+            String dateStr = edt.getDate().toString();
+            if (dateStr.length() > 10) {
+                dateStr = dateStr.substring(0, 10);
+            }
+            return LocalDate.parse(dateStr).atStartOfDay();
+        }
+        return null;
     }
 
     // ===== 공통 로직 =====

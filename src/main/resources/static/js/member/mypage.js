@@ -646,4 +646,86 @@ document.addEventListener('DOMContentLoaded', () => {
             updateNotificationControlState();
         }
     };
+    
+    // Google Sync Logic for MyPage
+    async function loadMyPageGoogleSyncStatus() {
+        try {
+            const res = await fetch('/members/me/google-sync', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const isLinked = data.isLinked;
+                const isEnabled = data.isEnabled;
+                
+                const toggle = document.getElementById('myPageGoogleSyncToggle');
+                const btnLink = document.getElementById('btnLinkGoogleCalendar');
+                const toggleWrapper = document.getElementById('googleSyncToggleWrapper');
+                const statusText = document.getElementById('myPageGoogleSyncStatusText');
+                
+                if (isLinked) {
+                    toggle.checked = isEnabled;
+                    statusText.textContent = isEnabled ? '연동 중' : '사용 안 함';
+                    statusText.style.color = isEnabled ? '#0284c7' : '#64748b';
+                    
+                    toggleWrapper.style.display = 'flex';
+                    btnLink.style.display = 'inline-block';
+                    btnLink.textContent = '계정 변경';
+                    btnLink.className = 'btn-secondary';
+                } else {
+                    toggleWrapper.style.display = 'none';
+                    btnLink.style.display = 'inline-block';
+                    btnLink.textContent = '구글 캘린더 연동하기';
+                    btnLink.className = 'btn-primary';
+                }
+            }
+        } catch (e) {
+            console.error("구글 연동 상태 로드 실패", e);
+        }
+    }
+    
+    window.startGoogleCalendarLink = function() {
+        if (confirm('구글 캘린더 연동 페이지로 이동하시겠습니까?')) {
+            window.location.href = `/members/me/link-google?token=${encodeURIComponent(token)}`;
+        }
+    };
+    
+    window.toggleMyPageGoogleSync = async function(enabled) {
+        try {
+            const res = await fetch('/members/me/google-sync', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ enabled: enabled })
+            });
+            if (res.ok) {
+                const statusText = document.getElementById('myPageGoogleSyncStatusText');
+                statusText.textContent = enabled ? '연동 중' : '사용 안 함';
+                statusText.style.color = enabled ? '#0284c7' : '#64748b';
+                showToast(`구글 캘린더 연동이 ${enabled ? '활성화' : '비활성화'} 되었습니다.`);
+            } else {
+                document.getElementById('myPageGoogleSyncToggle').checked = !enabled;
+                showToast('상태 변경에 실패했습니다.', true);
+            }
+        } catch (e) {
+            document.getElementById('myPageGoogleSyncToggle').checked = !enabled;
+            showToast('상태 변경 중 오류가 발생했습니다.', true);
+        }
+    };
+    
+    // Call on load
+    loadMyPageGoogleSyncStatus();
+    
+    // Check if redirected from sync success or failure
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('sync') === 'success') {
+        showToast('구글 캘린더가 성공적으로 연동되었습니다!');
+        // Remove param from URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlParams.get('error') === 'google_link_failed') {
+        showToast('구글 연동이 취소되었거나 실패했습니다.', true);
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
 });

@@ -2,7 +2,11 @@ package com.example.planslot.member.repository;
 
 import com.example.planslot.member.entity.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
@@ -13,7 +17,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     boolean existsByEmail(String email);
     boolean existsByNickname(String nickname);
 
-    @org.springframework.data.jpa.repository.Modifying
-    @org.springframework.data.jpa.repository.Query("UPDATE Member m SET m.status = 'ACTIVE', m.suspendedUntil = null WHERE m.status = 'SUSPENDED' AND m.suspendedUntil <= :now")
-    int liftExpiredSuspensions(@org.springframework.data.repository.query.Param("now") java.time.LocalDateTime now);
+    @Modifying
+    @Query("UPDATE Member m SET m.status = 'ACTIVE', m.suspendedUntil = null WHERE m.status = 'SUSPENDED' AND m.suspendedUntil <= :now")
+    int liftExpiredSuspensions(@Param("now") LocalDateTime now);
 }

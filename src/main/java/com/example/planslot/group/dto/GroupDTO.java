@@ -43,7 +43,8 @@ public class GroupDTO {
             String name,
             String ownerId,
             String filter,
-            int memberCount
+            int memberCount,
+            String profileImageUrl
     ) {
         public static ListResponse of(GroupMember groupMember, int activeCount) {
             String filter = groupMember.getMemberStatus().name().equals("WAITING") ? "waiting" : "joined";
@@ -52,7 +53,8 @@ public class GroupDTO {
                     groupMember.getGroup().getGroupName(),
                     groupMember.getGroup().getOwner().getId().toString(),
                     filter,
-                    activeCount
+                    activeCount,
+                    groupMember.getGroup().getProfileImageUrl()
             );
         }
     }

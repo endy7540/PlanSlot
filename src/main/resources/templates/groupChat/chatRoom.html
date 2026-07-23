@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlanSlot - 모임 채팅방</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Pretendard/1.3.9/static/pretendard.css">
+<!-- SockJS & STOMP CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+<style>
+  :root {
+    --bg: #F0F4F8; /* slightly cooler gray for chat background */
+    --panel: #FFFFFF;
+    --ink: #16231F;
+    --ink-soft: #5B6B66;
+    --line: #E2E8F0;
+    --teal: #0D9488;
+    --sky: #38BDF8;
+    --primary: #0EA5E9; /* vibrant blue */
+    --my-bubble: #E0F2FE; /* sky light */
+    --other-bubble: #FFFFFF;
+  }
+  
+  * { box-sizing: border-box; }
+  
+  body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: Pretendard, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    overflow: hidden; /* Prevent page scrolling, only chat area scrolls */
+  }
+
+  .chat-layout {
+    display: flex;
+    height: calc(100vh - 70px); /* 70px for header approx */
+    max-width: 1200px;
+    margin: 0 auto;
+    background: var(--panel);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  }
+
+  /* 왼쪽 (채팅창) */
+  .chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    position: relative;
+  }
+
+  .chat-header {
+    background: var(--panel);
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 10;
+  }
+
+  .chat-header h2 {
+    margin: 0;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chat-header h2 span { color: var(--ink-soft); font-size: 14px; font-weight: normal; }
+
+  /* 메시지 스크롤 영역 */
+  .chat-messages {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* 말풍선 공통 */
+  .message {
+    display: flex;
+    flex-direction: column;
+    max-width: 70%;
+  }
+
+  .message .sender {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+    margin-left: 48px; /* Avatar space */
+  }
+
+  .message-inner {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .bubble {
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+
+  .time {
+    font-size: 11px;
+    color: #94a3b8;
+    white-space: nowrap;
+    margin-bottom: 4px;
+  }
+
+  /* 남의 메시지 */
+  .message.other { align-self: flex-start; }
+  .message.other .bubble {
+    background: var(--other-bubble);
+    border-top-left-radius: 4px;
+  }
+
+  /* 내 메시지 */
+  .message.mine { align-self: flex-end; }
+  .message.mine .sender { display: none; } /* 내 이름은 보통 안보여줌 */
+  .message.mine .avatar { display: none; }
+  .message.mine .message-inner { flex-direction: row-reverse; }
+  .message.mine .bubble {
+    background: var(--my-bubble);
+    border-top-right-radius: 4px;
+    color: #0c4a6e;
+  }
+
+  /* 중앙 시스템 메시지 */
+  .message.system {
+    align-self: center;
+    background: rgba(0,0,0,0.05);
+    color: var(--ink-soft);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    max-width: none;
+  }
+
+  /* 채팅 입력창 */
+  .chat-input-area {
+    background: var(--panel);
+    padding: 16px 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+  }
+
+  .chat-input-area textarea {
+    flex: 1;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-family: Pretendard, sans-serif;
+    font-size: 14px;
+    resize: none;
+    outline: none;
+    height: 48px;
+    max-height: 120px;
+    transition: border-color 0.2s;
+  }
+  
+  .chat-input-area textarea:focus { border-color: var(--primary); }
+
+  .send-btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .send-btn:hover { background: #0284c7; }
+
+  /* 우측 (사이드바 - 참여자 목록) */
+  .chat-sidebar {
+    width: 280px;
+    background: var(--panel);
+    border-left: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .member-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 0;
+  }
+
+  .member-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    cursor: pointer;
+  }
+  .member-item:hover { background: #f8fafc; }
+
+  .member-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    position: relative;
+  }
+
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    background: #22c55e; /* green online */
+    border: 2px solid var(--panel);
+    border-radius: 50%;
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+  }
+
+  .member-name {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .member-role {
+    font-size: 11px;
+    color: var(--primary);
+    background: #e0f2fe;
+    padding: 2px 6px;
+    border-radius: 8px;
+    margin-left: 6px;
+  }
+
+</style>
+</head>
+<body>
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<div class="chat-layout">
+  <!-- 좌측 메인 대화창 -->
+  <div class="chat-main">
+    <div class="chat-header">
+      <button style="border:none; background:none; cursor:pointer; color:var(--ink); font-size:20px; margin-right:8px; padding:0;" onclick="location.href='/groupChat'">←</button>
+      <h2 style="flex:1;">모임 채팅방 💬</h2>
+      <button style="border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:20px;">⚙️</button>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <!-- 과거 채팅 내역 렌더링 -->
+      <th:block th:each="msg : ${chatHistory}">
+        <div th:if="${msg.type.name() == 'ENTER'}" class="message system" th:text="${msg.content}"></div>
+        
+        <div th:if="${msg.type.name() == 'TALK' and msg.senderId != myMemberId}" class="message other">
+          <div class="sender" th:text="${msg.senderName}">이름</div>
+          <div class="message-inner">
+            <div class="avatar" style="background: #e2e8f0; display:flex; justify-content:center; align-items:center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </div>
+            <div class="bubble" th:utext="${#strings.replace(msg.content, '&#10;', '<br>')}">메시지</div>
+            <div class="time" th:text="${#temporals.format(msg.createdAt, 'HH:mm')}">시간</div>
+          </div>
+        </div>
+
+        <div th:if="${msg.type.name() == 'TALK' and msg.senderId == myMemberId}" class="message mine">
+          <div class="message-inner">
+            <div class="bubble" th:utext="${#strings.replace(msg.content, '&#10;', '<br>')}">메시지</div>
+            <div class="time" th:text="${#temporals.format(msg.createdAt, 'HH:mm')}">시간</div>
+          </div>
+        </div>
+      </th:block>
+    </div>
+
+    <div class="chat-input-area">
+      <textarea id="msgInput" placeholder="메시지를 입력하세요 (Shift+Enter로 줄바꿈)"></textarea>
+      <button class="send-btn" id="btnSend">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 우측 참여자 사이드바 -->
+  <div class="chat-sidebar">
+    <div class="sidebar-header">
+      대화 상대
+    </div>
+    <div class="member-list">
+      
+      <!-- 샘플 맴버 1 -->
+      <div class="member-item">
+        <div class="member-avatar">
+          철
+          <div class="status-dot"></div>
+        </div>
+        <div class="member-name">김철수 <span class="member-role">모임장</span></div>
+      </div>
+
+      <!-- 샘플 맴버 2 -->
+      <div class="member-item">
+        <div class="member-avatar" style="background: linear-gradient(135deg, #f43f5e, #fb7185); color:#fff;">
+          영
+          <div class="status-dot" style="background:#cbd5e1;"></div> <!-- 오프라인 느낌 -->
+        </div>
+        <div class="member-name">박영희</div>
+      </div>
+
+      <!-- 샘플 맴버 3 -->
+      <div class="member-item">
+        <div class="member-avatar">민</div>
+        <div class="member-name">이민수</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script th:inline="javascript">
+  const groupId = [[${groupId}]];
+  const myMemberId = [[${myMemberId}]];
+  const msgInput = document.getElementById('msgInput');
+  const chatMessages = document.getElementById('chatMessages');
+
+  // 스크롤 맨 아래로 이동
+  function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+  scrollToBottom(); // 초기 렌더링 시 스크롤
+
+  // WebSocket / STOMP 연결
+  const sock = new SockJS("/ws-stomp");
+  const stompClient = Stomp.over(sock);
+  stompClient.debug = null; // 콘솔 로그 숨기기
+
+  stompClient.connect({}, function (frame) {
+    console.log("Connected: " + frame);
+    // 방 구독
+    stompClient.subscribe("/sub/chat/room/" + groupId, function (message) {
+      const msg = JSON.parse(message.body);
+      appendMessage(msg);
+    });
+
+    // 입장 메시지 전송 (필요 시 주석 해제)
+    /*
+    stompClient.send("/pub/chat/message", {}, JSON.stringify({
+      type: 'ENTER',
+      groupId: groupId,
+      senderId: myMemberId,
+      senderName: '나' // TODO: 내 닉네임 가져오기
+    }));
+    */
+  });
+
+  function appendMessage(msg) {
+    const now = new Date();
+    const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+    let html = "";
+    
+    if (msg.type === 'ENTER') {
+      html = `<div class="message system">${msg.content}</div>`;
+    } else {
+      const contentSafe = msg.content.replace(/\n/g, '<br>');
+      if (msg.senderId === myMemberId) {
+        html = `
+          <div class="message mine">
+            <div class="message-inner">
+              <div class="bubble">${contentSafe}</div>
+              <div class="time">${timeStr}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        html = `
+          <div class="message other">
+            <div class="sender">${msg.senderName}</div>
+            <div class="message-inner">
+              <div class="avatar" style="background: #e2e8f0; display:flex; justify-content:center; align-items:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <div class="bubble">${contentSafe}</div>
+              <div class="time">${timeStr}</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+    chatMessages.innerHTML += html;
+    scrollToBottom();
+  }
+
+  // 메시지 전송 로직
+  msgInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      document.getElementById('btnSend').click();
+    }
+  });
+
+  document.getElementById('btnSend').addEventListener('click', function() {
+    const text = msgInput.value.trim();
+    if (!text) return;
+    
+    // 서버로 STOMP Publish
+    stompClient.send("/pub/chat/message", {}, JSON.stringify({
+      type: 'TALK',
+      groupId: groupId,
+      senderId: myMemberId,
+      content: text
+    }));
+    
+    msgInput.value = '';
+  });
+</script>
+
+</body>
+</html>

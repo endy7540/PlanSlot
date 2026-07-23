@@ -20,6 +20,9 @@ public interface GroupService {
     // 모임 이름 수정
     void updateGroupName(Long groupId, String newName, Long memberId);
 
+    // 모임 프로필 이미지 수정
+    void updateGroupProfileImage(Long groupId, String imageUrl, Long memberId);
+
     // 모임 삭제
     void deleteGroup(Long groupId, Long memberId);
 

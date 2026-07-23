@@ -436,13 +436,13 @@ public class AiImageServiceImpl implements AiImageService {
 
         Schedule lastSaved = null;
         for (AiImageDTO.ConfirmRequest req : confirmRequests) {
-            java.util.Optional<Schedule> existingOpt = scheduleRepository.findDuplicateSchedule(
+            List<Schedule> existingList = scheduleRepository.findDuplicateSchedule(
                     memberId, req.getTitle(), req.getStartDate(), req.getEndDate()
             );
 
             Schedule schedule;
-            if (existingOpt.isPresent()) {
-                Schedule existing = existingOpt.get();
+            if (!existingList.isEmpty()) {
+                Schedule existing = existingList.get(0);
                 existing.update(
                         req.getTitle(),
                         req.getDescription(),
@@ -454,6 +454,15 @@ public class AiImageServiceImpl implements AiImageService {
                         existing.getRecurrenceEndDate()
                 );
                 schedule = scheduleRepository.save(existing);
+
+                // 만약 첫 번째 외에 추가적인 중복 일정들이 더 있다면, 소프트 딜리트 처리
+                if (existingList.size() > 1) {
+                    for (int i = 1; i < existingList.size(); i++) {
+                        Schedule extra = existingList.get(i);
+                        extra.softDelete();
+                        scheduleRepository.save(extra);
+                    }
+                }
             } else {
                 schedule = Schedule.builder()
                         .member(member)

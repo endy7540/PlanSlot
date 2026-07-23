@@ -251,6 +251,7 @@ public class NotificationServiceImpl implements NotificationService {
                 notificationSettingDTO.isApplicationEnabled(),
                 notificationSettingDTO.isReminderEnabled()
         );
+        member.updateNotification(notificationSettingDTO.isAllEnabled(), member.isAllowMarketingNoti());
 
         return toNotificationSettingDTO(setting);
     }
@@ -325,11 +326,13 @@ public class NotificationServiceImpl implements NotificationService {
     // 회원의 알림 설정 조회 또는 기본 설정 생성
     private NotificationSetting getOrCreateNotificationSetting(Member member) {
         return notificationSettingRepository.findByMember_Id(member.getId())
-                .orElseGet(() -> notificationSettingRepository.save(
-                        NotificationSetting.builder()
-                                .member(member)
-                                .build()
-                ));
+                .orElseGet(() -> {
+                    NotificationSetting setting = NotificationSetting.builder()
+                            .member(member)
+                            .build();
+                    setting.update(member.isAllowActivityNoti(), true, true, true, true, true);
+                    return notificationSettingRepository.save(setting);
+                });
     }
 
     // 모임원 상태와 모임별 알림 수신 여부 확인

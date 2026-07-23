@@ -18,6 +18,7 @@ let selectedRegisterImage = null;
 let selectedRegisterImagePreviewUrl = null;
 let currentBoardMember = null;
 let boardGroupCandidates = null;
+const boardRequestLocks = new Set();
 
 document.addEventListener('DOMContentLoaded', async () => {
   initializeBoardHeader();
@@ -34,7 +35,101 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (page === 'list') await initializeBoardList();
   if (page === 'read') await initializeBoardRead();
   if (page === 'register') await initializeBoardRegister();
+
+  showStoredBoardToast();
 });
+
+function getBoardListStateFromUrl() {
+  const params = new URLSearchParams(location.search);
+  const page = Number(params.get('page'));
+  const searchType = params.get('searchType');
+  const keyword = (params.get('keyword') || '').trim().slice(0, 100);
+  const allowedSearchTypes = ['titleContent', 'title', 'content', 'writer'];
+
+  return {
+    page: Number.isInteger(page) && page >= 0 ? page : 0,
+    searchType: allowedSearchTypes.includes(searchType) ? searchType : 'titleContent',
+    keyword
+  };
+}
+
+function applyBoardListState(searchTypeSelect, searchInput) {
+  const state = getBoardListStateFromUrl();
+  currentListPage = state.page;
+  currentListSearchType = state.searchType;
+  currentListKeyword = state.keyword;
+  if (searchTypeSelect) {
+    searchTypeSelect.value = currentListSearchType;
+    searchTypeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  if (searchInput) searchInput.value = currentListKeyword;
+}
+
+function getCurrentBoardListUrl() {
+  const type = document.body.dataset.boardType;
+  const path = `/board/${BOARD_TYPE_INFO[type]?.path || 'free'}`;
+  const params = new URLSearchParams();
+
+  if (currentListPage > 0) params.set('page', String(currentListPage));
+  if (currentListKeyword) {
+    params.set('searchType', currentListSearchType);
+    params.set('keyword', currentListKeyword);
+  }
+
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+}
+
+function updateBoardListUrl(mode = 'replace') {
+  const url = getCurrentBoardListUrl();
+  history[mode === 'push' ? 'pushState' : 'replaceState']({ boardList: true }, '', url);
+}
+
+function getBoardReturnUrl(boardType = document.body.dataset.boardType) {
+  const fallback = `/board/${BOARD_TYPE_INFO[boardType]?.path || 'free'}`;
+  const returnTo = new URLSearchParams(location.search).get('returnTo');
+  if (!returnTo) return fallback;
+
+  try {
+    const url = new URL(returnTo, location.origin);
+    const allowedPath = /^\/board\/(notice|study|group|free)$/.test(url.pathname);
+    return url.origin === location.origin && allowedPath ? `${url.pathname}${url.search}` : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function buildBoardUrlWithReturnTo(path, returnTo) {
+  const url = new URL(path, location.origin);
+  url.searchParams.set('returnTo', returnTo);
+  return `${url.pathname}${url.search}`;
+}
+
+function buildBoardReadUrl(boardId, returnTo) {
+  return buildBoardUrlWithReturnTo(`/board/read/${encodeURIComponent(boardId)}`, returnTo);
+}
+
+async function runBoardRequest(key, button, pendingText, request) {
+  if (boardRequestLocks.has(key)) return false;
+
+  boardRequestLocks.add(key);
+  const originalText = button?.textContent;
+  if (button) {
+    button.disabled = true;
+    if (pendingText) button.textContent = pendingText;
+  }
+
+  try {
+    await request();
+    return true;
+  } finally {
+    boardRequestLocks.delete(key);
+    if (button) {
+      button.disabled = false;
+      if (originalText !== undefined) button.textContent = originalText;
+    }
+  }
+}
 
 function initializeBoardHeader() {
   const page = document.body.dataset.boardPage;
@@ -130,21 +225,25 @@ async function submitBoardReport() {
     return;
   }
 
-  const path = reportTarget.targetType === 'POST'
-      ? `/board/${reportTarget.targetId}/report`
-      : `/board/comment/${reportTarget.targetId}/report`;
+  const target = { ...reportTarget };
+  const path = target.targetType === 'POST'
+      ? `/board/${target.targetId}/report`
+      : `/board/comment/${target.targetId}/report`;
+  const submitButton = document.getElementById('boardReportSubmit');
 
-  try {
-    await fetchBoardJson(path, {
-      method: 'POST',
-      body: JSON.stringify({ reasonCode, reasonDetail })
-    });
+  await runBoardRequest(`report-${target.targetType}-${target.targetId}`, submitButton, '접수 중...', async () => {
+    try {
+      await fetchBoardJson(path, {
+        method: 'POST',
+        body: JSON.stringify({ reasonCode, reasonDetail })
+      });
 
-    closeReportModal();
-    showBoardToast('신고가 접수되었습니다.', false, 'success');
-  } catch (error) {
-    showBoardToast(error.message, true);
-  }
+      closeReportModal();
+      showBoardToast('신고가 접수되었습니다.', false, 'success');
+    } catch (error) {
+      showBoardToast(error.message, true);
+    }
+  });
 }
 
 async function initializeBoardList() {
@@ -154,34 +253,41 @@ async function initializeBoardList() {
   const searchInput = document.getElementById('boardSearchInput');
   const searchButton = document.getElementById('boardSearchButton');
 
+  applyBoardListState(searchTypeSelect, searchInput);
+
   if (writeButton) {
     const canShowWrite = type !== 'NOTICE' || currentBoardMember?.role === 'ADMIN';
     writeButton.hidden = !canShowWrite;
 
     writeButton.addEventListener('click', () => {
       if (!requireBoardLogin()) return;
-      location.href = `/board/register/${BOARD_TYPE_INFO[type].path}`;
+      location.href = buildBoardUrlWithReturnTo(`/board/register/${BOARD_TYPE_INFO[type].path}`, getCurrentBoardListUrl());
     });
   }
 
   updateBoardSearchPlaceholder(searchTypeSelect, searchInput);
-
-  searchTypeSelect?.addEventListener('change', () => {
-    updateBoardSearchPlaceholder(searchTypeSelect, searchInput);
-  });
+  searchTypeSelect?.addEventListener('change', () => updateBoardSearchPlaceholder(searchTypeSelect, searchInput));
   initializeBoardSearchDropdown(searchTypeSelect);
 
-  searchButton?.addEventListener('click', () => {
+  searchButton?.addEventListener('click', async () => {
     currentListPage = 0;
     currentListSearchType = searchTypeSelect?.value || 'titleContent';
-    currentListKeyword = searchInput?.value.trim() || '';
-    loadBoardList();
+    currentListKeyword = searchInput?.value.trim().slice(0, 100) || '';
+    updateBoardListUrl('push');
+    await loadBoardList();
   });
 
   searchInput?.addEventListener('keydown', event => {
     if (event.key === 'Enter') searchButton?.click();
   });
 
+  window.addEventListener('popstate', async () => {
+    applyBoardListState(searchTypeSelect, searchInput);
+    updateBoardSearchPlaceholder(searchTypeSelect, searchInput);
+    await loadBoardList();
+  });
+
+  updateBoardListUrl('replace');
   await loadBoardList();
 }
 
@@ -303,6 +409,7 @@ function initializeBoardSearchDropdown(select) {
   document.addEventListener('click', event => {
     if (!wrapper.contains(event.target)) setDropdownOpen(false);
   });
+  select.addEventListener('change', syncSelectedOption);
 
   syncSelectedOption();
 }
@@ -317,7 +424,6 @@ async function loadBoardList() {
   pagination.innerHTML = '';
 
   const params = new URLSearchParams({ page: currentListPage, size: 10 });
-
   if (currentListKeyword) {
     params.set('searchType', currentListSearchType);
     params.set('keyword', currentListKeyword);
@@ -325,8 +431,17 @@ async function loadBoardList() {
 
   try {
     const page = await fetchBoardJson(`/board/type/${type.toLowerCase()}?${params}`);
+    const boards = page.content || [];
+
+    if (!boards.length && currentListPage > 0) {
+      currentListPage = Math.max(0, (page.totalPages || 1) - 1);
+      updateBoardListUrl('replace');
+      await loadBoardList();
+      return;
+    }
+
     count.textContent = `총 ${page.totalElements ?? 0}개`;
-    renderBoardRows(page.content || []);
+    renderBoardRows(boards);
     renderBoardPagination(page);
   } catch (error) {
     list.innerHTML = `<div class="board-error">${escapeBoardHtml(error.message)}</div>`;
@@ -336,6 +451,7 @@ async function loadBoardList() {
 function renderBoardRows(boards) {
   const type = document.body.dataset.boardType;
   const list = document.getElementById('boardList');
+  const returnTo = getCurrentBoardListUrl();
 
   if (!boards.length) {
     list.innerHTML = `<div class="board-empty">${currentListKeyword ? '검색 결과가 없습니다.' : '아직 등록된 게시글이 없습니다.'}</div>`;
@@ -343,7 +459,7 @@ function renderBoardRows(boards) {
   }
 
   list.innerHTML = boards.map(board => `
-    <a class="board-list-row ${type === 'NOTICE' ? 'board-notice-row' : ''}" href="/board/read/${encodeURIComponent(board.boardId)}">
+    <a class="board-list-row ${type === 'NOTICE' ? 'board-notice-row' : ''}" href="${escapeBoardAttribute(buildBoardReadUrl(board.boardId, returnTo))}">
       <div class="board-list-number"><span class="board-type-badge">${BOARD_TYPE_INFO[type].label}</span></div>
       <div class="board-list-title">
         <span class="board-list-title-text">${escapeBoardHtml(board.title)}</span>
@@ -360,13 +476,11 @@ function renderBoardRows(boards) {
 function renderBoardPagination(page) {
   const pagination = document.getElementById('boardPagination');
   const totalPages = page.totalPages || 0;
-
   if (totalPages <= 1) return;
 
   const current = page.number || 0;
   const start = Math.max(0, current - 2);
   const end = Math.min(totalPages - 1, start + 4);
-
   let html = `<button class="board-page-button" data-page="${current - 1}" ${current === 0 ? 'disabled' : ''}>‹</button>`;
 
   for (let index = start; index <= end; index++) {
@@ -377,11 +491,11 @@ function renderBoardPagination(page) {
   pagination.innerHTML = html;
 
   pagination.querySelectorAll('[data-page]').forEach(button => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       if (button.disabled) return;
-
       currentListPage = Number(button.dataset.page);
-      loadBoardList();
+      updateBoardListUrl('push');
+      await loadBoardList();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   });
@@ -395,13 +509,12 @@ async function initializeBoardRead() {
     return;
   }
 
-  document.getElementById('boardCommentSubmit')?.addEventListener('click', () => createBoardComment(boardId));
-  document.getElementById('boardBackButton')?.addEventListener('click', () => history.back());
+  document.getElementById('boardCommentSubmit')?.addEventListener('click', event => createBoardComment(boardId, null, null, event.currentTarget));
+  document.getElementById('boardBackButton')?.addEventListener('click', () => location.href = getBoardReturnUrl());
   document.getElementById('boardCommentList')?.addEventListener('click', event => handleCommentAction(event, boardId));
   updateBoardCommentFormState();
 
   const readLoaded = await loadBoardRead(boardId);
-
   if (!readLoaded) {
     document.querySelector('.board-comments')?.setAttribute('hidden', '');
     return;
@@ -416,15 +529,11 @@ async function loadBoardRead(boardId) {
   try {
     const board = await fetchBoardJson(`/board/${boardId}`);
     const boardTypeInfo = BOARD_TYPE_INFO[board?.boardType];
-
     if (!boardTypeInfo) throw new Error('게시글 정보를 불러올 수 없습니다.');
 
     currentReadBoard = board;
     document.body.dataset.boardType = board.boardType;
-
-    document.querySelectorAll('[data-board-nav]').forEach(link => {
-      link.classList.toggle('active', link.dataset.boardNav === board.boardType);
-    });
+    document.querySelectorAll('[data-board-nav]').forEach(link => link.classList.toggle('active', link.dataset.boardNav === board.boardType));
 
     document.title = `PlanSlot - ${board.title}`;
     document.getElementById('boardReadCategory').textContent = boardTypeInfo.label;
@@ -434,12 +543,11 @@ async function loadBoardRead(boardId) {
     document.getElementById('boardReadViews').textContent = `조회 ${board.viewCount ?? 0}`;
     document.getElementById('boardReadContent').textContent = board.content || '';
     document.getElementById('boardReadCommentCount').textContent = board.commentCount ?? 0;
-    document.getElementById('boardListLink').href = `/board/${boardTypeInfo.path}`;
+    document.getElementById('boardListLink').href = getBoardReturnUrl(board.boardType);
     document.getElementById('boardListLink').textContent = boardTypeInfo.label;
     renderReadRecruitmentBadges(board);
 
     const image = document.getElementById('boardReadImage');
-
     if (board.boardImage?.fileUrl) {
       image.src = board.boardImage.fileUrl;
       image.alt = `${board.title} 첨부 이미지`;
@@ -517,31 +625,45 @@ function renderBoardReadActions(board) {
   const isWriter = isLoggedIn && Number(currentBoardMember.memberId) === Number(board.writerId);
   const recruitmentBoard = isRecruitmentBoard(board.boardType);
   const recruitmentOpen = board.recruitmentStatus === 'OPEN';
-  const canOpenGroup = isLoggedIn && board.groupId && (isWriter || board.myGroupMemberStatus === 'ACTIVE' || board.myGroupMemberStatus === 'WAITING');
+  const groupCreated = Boolean(board.groupId);
+  const canOpenGroup = isLoggedIn && groupCreated && (isWriter || board.myGroupMemberStatus === 'ACTIVE' || board.myGroupMemberStatus === 'WAITING');
+  const returnTo = getBoardReturnUrl(board.boardType);
   let recruitmentActions = '';
   let managementActions = '';
 
-  if (isLoggedIn && recruitmentBoard && isWriter && recruitmentOpen) {
+  if (isLoggedIn && recruitmentBoard && isWriter && !groupCreated) {
     recruitmentActions += '<button class="board-btn board-btn-sky" type="button" id="boardGroupOpenButton">모임 만들기</button>';
+    recruitmentActions += `<button class="board-btn board-btn-ghost" type="button" id="boardRecruitmentStatusButton">${recruitmentOpen ? '모집 마감' : '모집 재개'}</button>`;
   }
-  if (recruitmentBoard && !isWriter && recruitmentOpen && !board.myApplicationStatus) {
+  if (recruitmentBoard && !isWriter && recruitmentOpen && !groupCreated && !board.myApplicationStatus) {
     recruitmentActions += '<button class="board-btn board-btn-sky" type="button" id="boardApplyButton">신청하기</button>';
   }
-  if (isLoggedIn && recruitmentBoard && !isWriter && recruitmentOpen && board.myApplicationStatus === 'PENDING') {
+  if (isLoggedIn && recruitmentBoard && !isWriter && !groupCreated && board.myApplicationStatus === 'PENDING') {
     recruitmentActions += '<button class="board-btn board-btn-ghost" type="button" id="boardApplicationCancelButton">신청 취소</button>';
   }
   if (canOpenGroup) {
     recruitmentActions += '<button class="board-btn board-btn-primary" type="button" id="boardGroupViewButton">모임 보기</button>';
   }
 
-  if (isWriter) {
-    managementActions = `
-      <a class="board-btn board-btn-ghost" href="/board/register/${BOARD_TYPE_INFO[board.boardType].path}?boardId=${board.boardId}">수정</a>
-      <button class="board-btn board-btn-danger" type="button" id="boardDeleteButton">삭제</button>
-    `;
-  } else {
-    managementActions = '<button class="board-btn board-btn-danger" type="button" id="boardReportButton">신고</button>';
+  const canEditBoard = isWriter || (board.boardType === 'NOTICE' && currentBoardMember?.role === 'ADMIN');
+  const canDeleteBoard = isWriter || currentBoardMember?.role === 'ADMIN';
+
+  let editAction = '';
+  let deleteAction = '';
+  let reportAction = '';
+
+  if (canEditBoard) {
+    const editUrl = buildBoardUrlWithReturnTo(`/board/register/${BOARD_TYPE_INFO[board.boardType].path}?boardId=${board.boardId}`, returnTo);
+    editAction = `<a class="board-btn board-btn-ghost" href="${escapeBoardAttribute(editUrl)}">수정</a>`;
   }
+  if (canDeleteBoard) {
+    deleteAction = '<button class="board-btn board-btn-danger" type="button" id="boardDeleteButton">삭제</button>';
+  }
+  if (!isWriter && !canDeleteBoard) {
+    reportAction = '<button class="board-btn board-btn-danger" type="button" id="boardReportButton">신고</button>';
+  }
+
+  managementActions = `${editAction}${deleteAction}${reportAction}`;
 
   actions.innerHTML = `
     <div class="board-action-group">
@@ -551,14 +673,13 @@ function renderBoardReadActions(board) {
     <div class="board-action-group">${managementActions}</div>
   `;
 
-  document.getElementById('boardReadListButton').addEventListener('click', () => {
-    location.href = `/board/${BOARD_TYPE_INFO[board.boardType].path}`;
-  });
+  document.getElementById('boardReadListButton').addEventListener('click', () => location.href = returnTo);
   document.getElementById('boardReportButton')?.addEventListener('click', () => openReportModal('POST', board.boardId));
-  document.getElementById('boardDeleteButton')?.addEventListener('click', () => deleteBoardPost(board));
-  document.getElementById('boardApplyButton')?.addEventListener('click', () => applyToBoardGroup(board.boardId));
-  document.getElementById('boardApplicationCancelButton')?.addEventListener('click', () => cancelBoardApplication(board.boardId));
-  document.getElementById('boardGroupOpenButton')?.addEventListener('click', () => openBoardGroupModal(board));
+  document.getElementById('boardDeleteButton')?.addEventListener('click', event => deleteBoardPost(board, event.currentTarget));
+  document.getElementById('boardApplyButton')?.addEventListener('click', event => applyToBoardGroup(board.boardId, event.currentTarget));
+  document.getElementById('boardApplicationCancelButton')?.addEventListener('click', event => cancelBoardApplication(board.boardId, event.currentTarget));
+  document.getElementById('boardGroupOpenButton')?.addEventListener('click', event => openBoardGroupModal(board, event.currentTarget));
+  document.getElementById('boardRecruitmentStatusButton')?.addEventListener('click', event => updateBoardRecruitmentStatus(board, event.currentTarget));
   document.getElementById('boardGroupViewButton')?.addEventListener('click', () => location.href = `/group/read?id=${board.groupId}`);
 }
 
@@ -598,30 +719,57 @@ function renderReadRecruitmentBadges(board) {
   container.hidden = false;
 }
 
-async function applyToBoardGroup(boardId) {
+async function applyToBoardGroup(boardId, button) {
   if (!requireBoardLogin()) return;
 
-  try {
-    await fetchBoardJson(`/board/${boardId}/group/applications`, { method: 'POST' });
-    currentReadBoard.myApplicationStatus = 'PENDING';
-    renderBoardReadActions(currentReadBoard);
-    showBoardToast('모임 참가를 신청했습니다.', false, 'success');
-  } catch (error) {
-    showBoardToast(error.message, true);
-  }
+  await runBoardRequest(`apply-${boardId}`, button, '신청 중...', async () => {
+    try {
+      await fetchBoardJson(`/board/${boardId}/group/applications`, { method: 'POST' });
+      currentReadBoard.myApplicationStatus = 'PENDING';
+      renderBoardReadActions(currentReadBoard);
+      showBoardToast('모임 참가를 신청했습니다.', false, 'success');
+    } catch (error) {
+      showBoardToast(error.message, true);
+    }
+  });
 }
 
-async function cancelBoardApplication(boardId) {
+async function cancelBoardApplication(boardId, button) {
   if (!requireBoardLogin() || !confirm('참가 신청을 취소하시겠습니까?')) return;
 
-  try {
-    await fetchBoardJson(`/board/${boardId}/group/applications/me`, { method: 'DELETE' });
-    currentReadBoard.myApplicationStatus = null;
-    renderBoardReadActions(currentReadBoard);
-    showBoardToast('참가 신청을 취소했습니다.', false, 'success');
-  } catch (error) {
-    showBoardToast(error.message, true);
-  }
+  await runBoardRequest(`cancel-application-${boardId}`, button, '취소 중...', async () => {
+    try {
+      await fetchBoardJson(`/board/${boardId}/group/applications/me`, { method: 'DELETE' });
+      currentReadBoard.myApplicationStatus = null;
+      renderBoardReadActions(currentReadBoard);
+      showBoardToast('참가 신청을 취소했습니다.', false, 'success');
+    } catch (error) {
+      showBoardToast(error.message, true);
+    }
+  });
+}
+
+async function updateBoardRecruitmentStatus(board, button) {
+  if (!requireBoardLogin()) return;
+
+  const nextStatus = board.recruitmentStatus === 'OPEN' ? 'CLOSED' : 'OPEN';
+  const actionLabel = nextStatus === 'CLOSED' ? '마감' : '재개';
+  const confirmMessage = nextStatus === 'CLOSED'
+      ? '모집을 마감하시겠습니까? 기존 신청 내역은 유지되며 모임은 계속 만들 수 있습니다.'
+      : '모집을 다시 시작하시겠습니까?';
+  if (!confirm(confirmMessage)) return;
+
+  await runBoardRequest(`recruitment-${board.boardId}`, button, `${actionLabel} 중...`, async () => {
+    try {
+      const updatedBoard = await fetchBoardJson(`/board/${board.boardId}/recruitment-status?status=${nextStatus}`, { method: 'PATCH' });
+      currentReadBoard = updatedBoard;
+      renderReadRecruitmentBadges(updatedBoard);
+      renderBoardReadActions(updatedBoard);
+      showBoardToast(`모집을 ${actionLabel}했습니다.`, false, 'success');
+    } catch (error) {
+      showBoardToast(error.message, true);
+    }
+  });
 }
 
 function initializeBoardGroupModal() {
@@ -639,18 +787,20 @@ function initializeBoardGroupModal() {
   });
 }
 
-async function openBoardGroupModal(board) {
-  try {
-    boardGroupCandidates = await fetchBoardJson(`/board/${board.boardId}/group/candidates`);
-    document.getElementById('boardGroupName').value = boardGroupCandidates.groupName || board.title || '';
-    updateBoardGroupNameCount();
-    renderBoardGroupCandidates('boardApplicantCandidates', boardGroupCandidates.applicants || [], 'applicant');
-    renderBoardGroupCandidates('boardInviteCandidates', boardGroupCandidates.inviteCandidates || [], 'invitee');
-    showBoardGroupStep1();
-    document.getElementById('boardGroupModal').classList.add('open');
-  } catch (error) {
-    showBoardToast(error.message, true);
-  }
+async function openBoardGroupModal(board, button) {
+  await runBoardRequest(`group-candidates-${board.boardId}`, button, '불러오는 중...', async () => {
+    try {
+      boardGroupCandidates = await fetchBoardJson(`/board/${board.boardId}/group/candidates`);
+      document.getElementById('boardGroupName').value = boardGroupCandidates.groupName || board.title || '';
+      updateBoardGroupNameCount();
+      renderBoardGroupCandidates('boardApplicantCandidates', boardGroupCandidates.applicants || [], 'applicant');
+      renderBoardGroupCandidates('boardInviteCandidates', boardGroupCandidates.inviteCandidates || [], 'invitee');
+      showBoardGroupStep1();
+      document.getElementById('boardGroupModal').classList.add('open');
+    } catch (error) {
+      showBoardToast(error.message, true);
+    }
+  });
 }
 
 function closeBoardGroupModal() {
@@ -723,45 +873,42 @@ async function createBoardGroup() {
   }
 
   const createButton = document.getElementById('boardGroupCreate');
-  createButton.disabled = true;
-  createButton.textContent = '생성 중...';
+  await runBoardRequest(`create-group-${currentReadBoard.boardId}`, createButton, '생성 중...', async () => {
+    try {
+      const response = await fetchBoardJson(`/board/${currentReadBoard.boardId}/group`, {
+        method: 'POST',
+        body: JSON.stringify({
+          groupName,
+          selectedApplicantIds,
+          selectedInviteeIds
+        })
+      });
 
-  try {
-    const response = await fetchBoardJson(`/board/${currentReadBoard.boardId}/group`, {
-      method: 'POST',
-      body: JSON.stringify({
-        groupName,
-        applicantCandidateIds: (boardGroupCandidates.applicants || []).map(candidate => candidate.memberId),
-        inviteCandidateIds: (boardGroupCandidates.inviteCandidates || []).map(candidate => candidate.memberId),
-        selectedApplicantIds,
-        selectedInviteeIds
-      })
-    });
-
-    closeBoardGroupModal();
-    showBoardToast('모임 캘린더를 생성했습니다.', false, 'success');
-
-    if (response?.groupId) {
-      setTimeout(() => location.href = `/group/read?id=${response.groupId}`, 500);
+      closeBoardGroupModal();
+      showBoardToast('모임 캘린더를 생성했습니다.', false, 'success');
+      if (response?.groupId) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        location.href = `/group/read?id=${response.groupId}`;
+      }
+    } catch (error) {
+      showBoardToast(error.message, true);
     }
-  } catch (error) {
-    showBoardToast(error.message, true);
-  } finally {
-    createButton.disabled = false;
-    createButton.textContent = '모임 만들기';
-  }
+  });
 }
 
-async function deleteBoardPost(board) {
+async function deleteBoardPost(board, button) {
   if (!requireBoardLogin() || !confirm('게시글을 삭제하시겠습니까?')) return;
 
-  try {
-    await fetchBoardJson(`/board/${board.boardId}`, { method: 'DELETE' });
-    showBoardToast('게시글을 삭제했습니다.', false, 'success');
-    setTimeout(() => location.href = `/board/${BOARD_TYPE_INFO[board.boardType].path}`, 450);
-  } catch (error) {
-    showBoardToast(error.message, true);
-  }
+  await runBoardRequest(`delete-board-${board.boardId}`, button, '삭제 중...', async () => {
+    try {
+      await fetchBoardJson(`/board/${board.boardId}`, { method: 'DELETE' });
+      showBoardToast('게시글을 삭제했습니다.', false, 'success');
+      await new Promise(resolve => setTimeout(resolve, 450));
+      location.href = getBoardReturnUrl(board.boardType);
+    } catch (error) {
+      showBoardToast(error.message, true);
+    }
+  });
 }
 
 async function loadBoardComments(boardId, moveToLastPage = false) {
@@ -877,7 +1024,7 @@ function renderSingleComment(comment, reply) {
   `;
 }
 
-async function createBoardComment(boardId, parentCommentId = null, content = null) {
+async function createBoardComment(boardId, parentCommentId = null, content = null, button = null) {
   if (!requireBoardLogin()) return;
 
   const textarea = parentCommentId ? null : document.getElementById('boardCommentContent');
@@ -887,26 +1034,27 @@ async function createBoardComment(boardId, parentCommentId = null, content = nul
     showBoardToast('댓글 내용을 입력해 주세요.', true);
     return;
   }
-
   if (commentContent.length > 1000) {
     showBoardToast('댓글은 1000자 이하로 입력해 주세요.', true);
     return;
   }
 
-  try {
-    await fetchBoardJson(`/board/${boardId}/comment`, {
-      method: 'POST',
-      body: JSON.stringify({ content: commentContent, parentCommentId })
-    });
+  const key = `create-comment-${boardId}-${parentCommentId || 'root'}`;
+  await runBoardRequest(key, button, parentCommentId ? '등록 중...' : '등록 중...', async () => {
+    try {
+      await fetchBoardJson(`/board/${boardId}/comment`, {
+        method: 'POST',
+        body: JSON.stringify({ content: commentContent, parentCommentId })
+      });
 
-    if (textarea) textarea.value = '';
-    updateBoardCommentCount(1);
-
-    showBoardToast(parentCommentId ? '답글을 등록했습니다.' : '댓글을 등록했습니다.', false, 'success');
-    await loadBoardComments(boardId, !parentCommentId);
-  } catch (error) {
-    showBoardToast(error.message, true);
-  }
+      if (textarea) textarea.value = '';
+      updateBoardCommentCount(1);
+      showBoardToast(parentCommentId ? '답글을 등록했습니다.' : '댓글을 등록했습니다.', false, 'success');
+      await loadBoardComments(boardId, !parentCommentId);
+    } catch (error) {
+      showBoardToast(error.message, true);
+    }
+  });
 }
 
 function handleCommentAction(event, boardId) {
@@ -918,7 +1066,7 @@ function handleCommentAction(event, boardId) {
   const action = button.dataset.commentAction;
 
   if (action === 'report') openReportModal('COMMENT', commentId);
-  if (action === 'delete') deleteBoardComment(commentId, boardId);
+  if (action === 'delete') deleteBoardComment(commentId, boardId, button);
   if (action === 'reply') {
     if (!requireBoardLogin()) return;
     showCommentInlineForm(comment, 'reply', boardId);
@@ -945,58 +1093,54 @@ function showCommentInlineForm(commentElement, mode, boardId) {
 
   const textarea = slot.querySelector('textarea');
   const buttons = slot.querySelectorAll('button');
-
   buttons[0].addEventListener('click', () => {
-    if (mode === 'edit') updateBoardComment(commentId, textarea.value, boardId);
-    else createBoardComment(boardId, commentId, textarea.value);
+    if (mode === 'edit') updateBoardComment(commentId, textarea.value, boardId, buttons[0]);
+    else createBoardComment(boardId, commentId, textarea.value, buttons[0]);
   });
-
-  buttons[1].addEventListener('click', () => {
-    slot.innerHTML = '';
-  });
-
+  buttons[1].addEventListener('click', () => slot.innerHTML = '');
   textarea.focus();
 }
 
-async function updateBoardComment(commentId, content, boardId) {
+async function updateBoardComment(commentId, content, boardId, button) {
   if (!requireBoardLogin()) return;
 
   const trimmed = content.trim();
-
   if (!trimmed) {
     showBoardToast('댓글 내용을 입력해 주세요.', true);
     return;
   }
-
   if (trimmed.length > 1000) {
     showBoardToast('댓글은 1000자 이하로 입력해 주세요.', true);
     return;
   }
 
-  try {
-    await fetchBoardJson(`/board/comment/${commentId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ content: trimmed })
-    });
-
-    showBoardToast('댓글을 수정했습니다.', false, 'success');
-    await loadBoardComments(boardId);
-  } catch (error) {
-    showBoardToast(error.message, true);
-  }
+  await runBoardRequest(`update-comment-${commentId}`, button, '수정 중...', async () => {
+    try {
+      await fetchBoardJson(`/board/comment/${commentId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content: trimmed })
+      });
+      showBoardToast('댓글을 수정했습니다.', false, 'success');
+      await loadBoardComments(boardId);
+    } catch (error) {
+      showBoardToast(error.message, true);
+    }
+  });
 }
 
-async function deleteBoardComment(commentId, boardId) {
+async function deleteBoardComment(commentId, boardId, button) {
   if (!requireBoardLogin() || !confirm('댓글을 삭제하시겠습니까?')) return;
 
-  try {
-    await fetchBoardJson(`/board/comment/${commentId}`, { method: 'DELETE' });
-    updateBoardCommentCount(-1);
-    showBoardToast('댓글을 삭제했습니다.', false, 'success');
-    await loadBoardComments(boardId);
-  } catch (error) {
-    showBoardToast(error.message, true);
-  }
+  await runBoardRequest(`delete-comment-${commentId}`, button, '삭제 중...', async () => {
+    try {
+      await fetchBoardJson(`/board/comment/${commentId}`, { method: 'DELETE' });
+      updateBoardCommentCount(-1);
+      showBoardToast('댓글을 삭제했습니다.', false, 'success');
+      await loadBoardComments(boardId);
+    } catch (error) {
+      showBoardToast(error.message, true);
+    }
+  });
 }
 
 function updateBoardCommentCount(change) {
@@ -1010,22 +1154,19 @@ function updateBoardCommentCount(change) {
 async function initializeBoardRegister() {
   const type = getRegisterBoardType();
   document.body.dataset.boardType = type;
-
-  document.querySelectorAll('[data-board-nav]').forEach(link => {
-    link.classList.toggle('active', link.dataset.boardNav === type);
-  });
+  document.querySelectorAll('[data-board-nav]').forEach(link => link.classList.toggle('active', link.dataset.boardNav === type));
 
   if (!currentBoardMember) {
     showBoardLoginPanel();
     return;
   }
-
   if (type === 'NOTICE' && currentBoardMember.role !== 'ADMIN') {
     showRegisterAccessDenied('공지사항은 관리자만 작성할 수 있습니다.');
     return;
   }
 
   const boardId = Number(new URLSearchParams(location.search).get('boardId')) || null;
+  const returnTo = getBoardReturnUrl(type);
   const form = document.getElementById('boardRegisterForm');
   const titleInput = document.getElementById('boardRegisterTitle');
   const contentInput = document.getElementById('boardRegisterContent');
@@ -1035,10 +1176,9 @@ async function initializeBoardRegister() {
   document.getElementById('boardRegisterCategory').textContent = BOARD_TYPE_INFO[type].label;
   document.getElementById('boardRegisterPageTitle').textContent = boardId ? '게시글 수정' : '새 게시글 작성';
   document.getElementById('boardRegisterSubmit').textContent = boardId ? '수정 완료' : '등록하기';
-  document.getElementById('boardRegisterListLink').href = `/board/${BOARD_TYPE_INFO[type].path}`;
-
+  document.getElementById('boardRegisterListLink').href = returnTo;
   document.getElementById('boardRegisterCancel').addEventListener('click', () => {
-    location.href = boardId ? `/board/read/${boardId}` : `/board/${BOARD_TYPE_INFO[type].path}`;
+    location.href = boardId ? buildBoardReadUrl(boardId, returnTo) : returnTo;
   });
 
   titleInput.addEventListener('input', () => updateRegisterCount('boardRegisterTitleCount', titleInput.value.length, 100));
@@ -1050,22 +1190,26 @@ async function initializeBoardRegister() {
   form.addEventListener('submit', event => saveBoardPost(event, type, boardId));
 
   if (boardId && !(await loadBoardForEdit(boardId, type))) return;
-
   document.getElementById('boardRegisterPanel').hidden = false;
   document.getElementById('boardRegisterLoading').hidden = true;
 }
 
 async function loadBoardForEdit(boardId, expectedType) {
   try {
-    const board = await fetchBoardJson(`/board/${boardId}`);
+    const board = await fetchBoardJson(`/board/${boardId}?increaseView=false`);
 
     if (board.boardType !== expectedType) {
       showRegisterAccessDenied('게시판 유형이 올바르지 않습니다.');
       return false;
     }
 
-    if (!currentBoardMember || Number(currentBoardMember.memberId) !== Number(board.writerId)) {
-      showRegisterAccessDenied('게시글 작성자만 수정할 수 있습니다.');
+    const canEditBoard = currentBoardMember && (
+      Number(currentBoardMember.memberId) === Number(board.writerId) ||
+      (board.boardType === 'NOTICE' && currentBoardMember.role === 'ADMIN')
+    );
+
+    if (!canEditBoard) {
+      showRegisterAccessDenied(expectedType === 'NOTICE' ? '공지사항은 작성자 또는 관리자만 수정할 수 있습니다.' : '게시글 작성자만 수정할 수 있습니다.');
       return false;
     }
 
@@ -1089,67 +1233,72 @@ async function loadBoardForEdit(boardId, expectedType) {
 
 async function saveBoardPost(event, type, boardId) {
   event.preventDefault();
-
   if (!requireBoardLogin()) return;
 
   const title = document.getElementById('boardRegisterTitle').value.trim();
   const content = document.getElementById('boardRegisterContent').value.trim();
-
   if (!title) {
     showBoardToast('제목을 입력해 주세요.', true);
     return;
   }
-
   if (!content) {
     showBoardToast('내용을 입력해 주세요.', true);
     return;
   }
-
   if (title.length > 100 || content.length > 1000) {
     showBoardToast('제목 또는 내용의 글자 수를 확인해 주세요.', true);
     return;
   }
 
   const submit = document.getElementById('boardRegisterSubmit');
-  submit.disabled = true;
-  submit.textContent = '저장 중...';
-
-  try {
+  await runBoardRequest(`save-board-${boardId || 'new'}`, submit, '저장 중...', async () => {
     let savedBoardId = boardId;
 
-    if (boardId) {
-      await fetchBoardJson(`/board/${boardId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ title, content })
-      });
-    } else {
-      savedBoardId = await fetchBoardJson(`/board/type/${type.toLowerCase()}`, {
-        method: 'POST',
-        body: JSON.stringify({ title, content })
-      });
+    try {
+      if (boardId) {
+        await fetchBoardJson(`/board/${boardId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ title, content })
+        });
+      } else {
+        savedBoardId = await fetchBoardJson(`/board/type/${type.toLowerCase()}`, {
+          method: 'POST',
+          body: JSON.stringify({ title, content })
+        });
+      }
+    } catch (error) {
+      showBoardToast(error.message, true);
+      return;
     }
 
+    let imageErrorOccurred = false;
     if (selectedRegisterImage) {
-      const formData = new FormData();
-      formData.append('image', selectedRegisterImage);
-
-      await fetchBoardJson(`/board/${savedBoardId}/image`, {
-        method: 'POST',
-        body: formData
-      });
+      try {
+        const formData = new FormData();
+        formData.append('image', selectedRegisterImage);
+        await fetchBoardJson(`/board/${savedBoardId}/image`, { method: 'POST', body: formData });
+      } catch (imageError) {
+        imageErrorOccurred = true;
+        console.error('이미지 업로드 실패:', imageError);
+      }
     } else if (boardId && removeExistingRegisterImage && existingRegisterImage) {
-      await fetchBoardJson(`/board/${boardId}/image/${existingRegisterImage.fileId}`, {
-        method: 'DELETE'
-      });
+      try {
+        await fetchBoardJson(`/board/${boardId}/image/${existingRegisterImage.fileId}`, { method: 'DELETE' });
+      } catch (imageError) {
+        imageErrorOccurred = true;
+        console.error('이미지 삭제 실패:', imageError);
+      }
     }
 
-    showBoardToast(boardId ? '게시글을 수정했습니다.' : '게시글을 등록했습니다.', false, 'success');
-    setTimeout(() => location.href = `/board/read/${savedBoardId}`, 450);
-  } catch (error) {
-    showBoardToast(error.message, true);
-    submit.disabled = false;
-    submit.textContent = boardId ? '수정 완료' : '등록하기';
-  }
+    if (imageErrorOccurred) {
+      storeBoardToast(boardId ? '게시글 수정은 완료되었으나 이미지 처리 중 오류가 발생했습니다.' : '게시글은 등록되었으나 이미지 업로드에 실패했습니다.', true);
+    } else {
+      showBoardToast(boardId ? '게시글을 수정했습니다.' : '게시글을 등록했습니다.', false, 'success');
+    }
+
+    await new Promise(resolve => setTimeout(resolve, imageErrorOccurred ? 100 : 600));
+    location.href = buildBoardReadUrl(savedBoardId, getBoardReturnUrl(type));
+  });
 }
 
 function handleRegisterImageSelection(event) {
@@ -1351,6 +1500,35 @@ async function readBoardError(response) {
     return data.detail || data.message || data.error || `요청 처리에 실패했습니다. (${response.status})`;
   } catch (error) {
     return `요청 처리에 실패했습니다. (${response.status})`;
+  }
+}
+
+function storeBoardToast(message, isError = false, type = '') {
+  try {
+    sessionStorage.setItem('boardToastMessage', JSON.stringify({ message, isError, type }));
+  } catch (error) {
+    console.warn('게시판 안내 메시지를 저장하지 못했습니다.', error);
+  }
+}
+
+function showStoredBoardToast() {
+  let storedMessage = null;
+
+  try {
+    storedMessage = sessionStorage.getItem('boardToastMessage');
+    sessionStorage.removeItem('boardToastMessage');
+  } catch (error) {
+    console.warn('게시판 안내 메시지를 불러오지 못했습니다.', error);
+    return;
+  }
+
+  if (!storedMessage) return;
+
+  try {
+    const data = JSON.parse(storedMessage);
+    if (data?.message) showBoardToast(data.message, Boolean(data.isError), data.type || '');
+  } catch (error) {
+    console.warn('게시판 안내 메시지를 처리하지 못했습니다.', error);
   }
 }
 

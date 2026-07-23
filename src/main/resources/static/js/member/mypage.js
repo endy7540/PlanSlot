@@ -507,11 +507,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchMyPageJson('/notification/group-settings')
             ]);
 
+            document.getElementById('toggleActivityNoti').checked = Boolean(setting.allEnabled);
             document.getElementById('toggleGroupNoti').checked = Boolean(setting.groupEnabled);
             document.getElementById('toggleScheduleNoti').checked = Boolean(setting.scheduleEnabled);
             document.getElementById('toggleBoardNoti').checked = Boolean(setting.boardEnabled);
             document.getElementById('toggleApplicationNoti').checked = Boolean(setting.applicationEnabled);
             document.getElementById('toggleReminderNoti').checked = Boolean(setting.reminderEnabled);
+            currentData.allowActivityNoti = Boolean(setting.allEnabled);
 
             currentGroupNotificationSettings = Array.isArray(groupSettings) ? groupSettings : [];
             renderGroupNotificationSettings();
@@ -618,23 +620,20 @@ document.addEventListener('DOMContentLoaded', () => {
         saveButton.textContent = '저장 중...';
 
         try {
-            const requests = [
-                fetchMyPageJson('/members/notifications', {
-                    method: 'PUT',
-                    body: JSON.stringify({ allowActivityNoti, allowMarketingNoti })
-                }),
-                fetchMyPageJson('/notification/setting', {
-                    method: 'PUT',
-                    body: JSON.stringify(notificationSetting)
-                }),
-                ...currentGroupNotificationSettings.map(setting =>
-                    fetchMyPageJson(`/notification/group-settings/${encodeURIComponent(setting.groupId)}?enabled=${setting.enabled}`, {
-                        method: 'PATCH'
-                    })
-                )
-            ];
+            await fetchMyPageJson('/notification/setting', {
+                method: 'PUT',
+                body: JSON.stringify(notificationSetting)
+            });
+            await fetchMyPageJson('/members/notifications', {
+                method: 'PUT',
+                body: JSON.stringify({ allowActivityNoti, allowMarketingNoti })
+            });
+            await Promise.all(currentGroupNotificationSettings.map(setting =>
+                fetchMyPageJson(`/notification/group-settings/${encodeURIComponent(setting.groupId)}?enabled=${setting.enabled}`, {
+                    method: 'PATCH'
+                })
+            ));
 
-            await Promise.all(requests);
             currentData.allowActivityNoti = allowActivityNoti;
             currentData.allowMarketingNoti = allowMarketingNoti;
             showToast('알림 설정이 저장되었습니다.');

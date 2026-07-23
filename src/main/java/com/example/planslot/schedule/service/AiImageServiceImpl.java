@@ -124,6 +124,21 @@ public class AiImageServiceImpl implements AiImageService {
             payload.put("model", claudeModel);
             payload.put("max_tokens", claudeMaxTokens);
 
+            // thinking 강제 비활성화하여 8192 루프 및 생각하기 무한 낭비 원천 차단
+            Map<String, Object> thinkingMap = new HashMap<>();
+            thinkingMap.put("type", "disabled");
+            payload.put("thinking", thinkingMap);
+
+            // 시스템 지시어를 루트 'system' 속성으로 명확히 할당 (Anthropic 공식 스펙 규격)
+            String systemInstruction = "You are a professional assistant specialized in schedule extraction. " +
+                    "Analyze the attached calendar/schedule image and extract ALL event items. " +
+                    "You MUST reply ONLY with a single JSON Array containing objects with the exact schema below: " +
+                    "[ { \"title\": \"event title\", \"startDate\": \"YYYY-MM-DDTHH:mm:ss\", \"endDate\": \"YYYY-MM-DDTHH:mm:ss\", \"location\": \"location or null\" } ]. " +
+                    "Do NOT wrap the JSON in markdown formatting (like ```json), do NOT include any introductory or concluding text, and do NOT use backticks. " +
+                    "If NO schedule items can be found in the image, you MUST return an empty JSON Array: []. " +
+                    "Ensure correct dates, times, and years. If the year is not explicitly written in the image, you MUST assume the year is 2026. If a time is missing, assume 1 hour duration.";
+            payload.put("system", systemInstruction);
+
             Map<String, Object> message = new HashMap<>();
             message.put("role", "user");
 
@@ -139,18 +154,11 @@ public class AiImageServiceImpl implements AiImageService {
             imageContent.put("source", source);
             contentList.add(imageContent);
 
-            // 텍스트 프롬프트 추가 (JSON Array 규격 강제 지시)
+            // 유저 텍스트 프롬프트 추가
             Map<String, Object> textContent = new HashMap<>();
             textContent.put("type", "text");
-            
             String promptText = aiImage.getPromptText();
-            String systemInstruction = "Analyze the attached schedule image based on the user request prompt: \"" + promptText + "\". " +
-                    "Extract ALL schedule items found in the image. " +
-                    "Return ONLY a single valid raw JSON Array matching the following schema, with no markdown formatting (like ```json), no backticks, and no extra conversational text: " +
-                    "[ { \"title\": \"schedule title\", \"startDate\": \"YYYY-MM-DDTHH:mm:ss\", \"endDate\": \"YYYY-MM-DDTHH:mm:ss\", \"location\": \"location or null\" } ]. " +
-                    "Ensure you extract the correct dates and times as they appear on the calendar image. Do not group them into 1st day of month unless explicitly stated. If duration is unspecified, assume 1 hour.";
-            
-            textContent.put("text", systemInstruction);
+            textContent.put("text", "Please analyze the attached image based on this request: \"" + promptText + "\"");
             contentList.add(textContent);
 
             message.put("content", contentList);
@@ -161,9 +169,9 @@ public class AiImageServiceImpl implements AiImageService {
             // 3. HTTP Client로 Claude API 호출
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(claudeApiUrl))
-                    .header("x-api-key", claudeApiKey)
-                    .header("anthropic-version", claudeApiVersion)
+                    .uri(URI.create(claudeApiUrl.trim()))
+                    .header("x-api-key", claudeApiKey.trim())
+                    .header("anthropic-version", claudeApiVersion.trim())
                     .header("content-type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson))
                     .build();
@@ -176,8 +184,21 @@ public class AiImageServiceImpl implements AiImageService {
             }
 
             // 4. API 응답 바디 파싱 및 결과 획득
-            JsonNode rootNode = objectMapper.readTree(httpResponse.body());
-            String responseText = rootNode.path("content").get(0).path("text").asText().trim();
+            String rawBody = httpResponse.body();
+            log.info("[AI IMAGE] Claude Raw Response body: {}", rawBody);
+            JsonNode rootNode = objectMapper.readTree(rawBody);
+            String responseText = "";
+            if (rootNode.has("content") && rootNode.path("content").isArray()) {
+                for (JsonNode contentObj : rootNode.path("content")) {
+                    if ("text".equals(contentObj.path("type").asText())) {
+                        responseText = contentObj.path("text").asText().trim();
+                        break;
+                    }
+                }
+            }
+            if (responseText.isEmpty()) {
+                log.warn("[AI IMAGE] Claude response does not contain content text. RootNode: {}", rootNode.toString());
+            }
             log.info("[AI IMAGE] Claude Raw Response text: {}", responseText);
 
             // JSON Array 블록만 정규식으로 쏙 발췌 (혹시 모를 마크다운 꼬리방지)
@@ -198,13 +219,8 @@ public class AiImageServiceImpl implements AiImageService {
                             ? node.path("location").asText().trim() 
                             : "회의실";
 
-                    LocalDateTime parsedS = startS.isBlank() 
-                            ? LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.of(9, 0)) 
-                            : LocalDateTime.parse(startS, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-
-                    LocalDateTime parsedE = endS.isBlank() 
-                            ? parsedS.plusHours(1) 
-                            : LocalDateTime.parse(endS, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                    LocalDateTime parsedS = safeParseDateTime(startS);
+                    LocalDateTime parsedE = safeParseDateTime(endS);
 
                     list.add(AiImageDTO.ExtractedSchedule.builder()
                             .title(t)
@@ -420,20 +436,40 @@ public class AiImageServiceImpl implements AiImageService {
 
         Schedule lastSaved = null;
         for (AiImageDTO.ConfirmRequest req : confirmRequests) {
-            Schedule schedule = Schedule.builder()
-                    .member(member)
-                    .title(req.getTitle())
-                    .description(req.getDescription())
-                    .scheduleType(ScheduleType.valueOf(req.getScheduleType() != null ? req.getScheduleType() : "DAILY"))
-                    .startDate(req.getStartDate())
-                    .endDate(req.getEndDate())
-                    .isPublic(Boolean.TRUE.equals(req.getIsPublic()) ? "Y" : "N")
-                    .googleSyncYn("N")
-                    .sourceType(SourceType.AI_IMAGE)
-                    .location(req.getLocation())
-                    .build();
+            java.util.Optional<Schedule> existingOpt = scheduleRepository.findDuplicateSchedule(
+                    memberId, req.getTitle(), req.getStartDate(), req.getEndDate()
+            );
 
-            lastSaved = scheduleRepository.save(schedule);
+            Schedule schedule;
+            if (existingOpt.isPresent()) {
+                Schedule existing = existingOpt.get();
+                existing.update(
+                        req.getTitle(),
+                        req.getDescription(),
+                        ScheduleType.valueOf(req.getScheduleType() != null ? req.getScheduleType() : "DAILY"),
+                        req.getStartDate(),
+                        req.getEndDate(),
+                        Boolean.TRUE.equals(req.getIsPublic()) ? "Y" : "N",
+                        req.getLocation(),
+                        existing.getRecurrenceEndDate()
+                );
+                schedule = scheduleRepository.save(existing);
+            } else {
+                schedule = Schedule.builder()
+                        .member(member)
+                        .title(req.getTitle())
+                        .description(req.getDescription())
+                        .scheduleType(ScheduleType.valueOf(req.getScheduleType() != null ? req.getScheduleType() : "DAILY"))
+                        .startDate(req.getStartDate())
+                        .endDate(req.getEndDate())
+                        .isPublic(Boolean.TRUE.equals(req.getIsPublic()) ? "Y" : "N")
+                        .googleSyncYn("N")
+                        .sourceType(SourceType.AI_IMAGE)
+                        .location(req.getLocation())
+                        .build();
+                schedule = scheduleRepository.save(schedule);
+            }
+            lastSaved = schedule;
         }
 
         if (lastSaved != null) {
@@ -496,5 +532,31 @@ public class AiImageServiceImpl implements AiImageService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일 확장자가 필요합니다.");
         }
         return originalFilename.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
+    }
+
+    private LocalDateTime safeParseDateTime(String str) {
+        if (str == null || str.trim().isEmpty()) {
+            return LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.of(9, 0));
+        }
+        String clean = str.trim();
+        if (clean.contains(" ") && !clean.contains("T")) {
+            clean = clean.replace(" ", "T");
+        }
+        if (clean.length() == 10) {
+            clean += "T00:00:00";
+        }
+        if (clean.length() == 16) {
+            clean += ":00";
+        }
+        try {
+            return LocalDateTime.parse(clean, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (Exception e) {
+            try {
+                if (clean.length() >= 10) {
+                    return LocalDate.parse(clean.substring(0, 10)).atTime(9, 0);
+                }
+            } catch (Exception ex) {}
+            return LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.of(9, 0));
+        }
     }
 }

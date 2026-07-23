@@ -60,7 +60,7 @@
 
         .cal-grid{
             display:grid;
-            grid-template-columns:repeat(7,1fr);
+            grid-template-columns:repeat(7,minmax(0,1fr));
             gap:6px;
         }
         .cal-dow{
@@ -71,7 +71,10 @@
             padding:6px 0;
         }
         .cal-day{
-            min-height:96px;
+            min-height:110px;
+            max-height:160px;
+            min-width:0;
+            overflow:hidden;
             border:2px solid #DCEFFC;
             border-radius:10px;
             padding:6px;
@@ -209,6 +212,26 @@
         .selected-event-item.search-mismatch {
             opacity: 0.25 !important;
         }
+        /* 연속 일정 가로 막대 연결 스타일 */
+        .event-chip.event-start {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            margin-right: -8px;
+            border-right: 0;
+        }
+        .event-chip.event-middle {
+            border-radius: 0;
+            margin-left: -8px;
+            margin-right: -8px;
+            border-left: 0;
+            border-right: 0;
+        }
+        .event-chip.event-end {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            margin-left: -8px;
+            border-left: 0;
+        }
     </style>
 </head>
 <body>
@@ -239,6 +262,11 @@
                 <button class="primary" style="background: linear-gradient(135deg, #6366F1, #3B82F6); border: 0; color: white; padding: 8px 12px; font-size: 13px; border-radius: 8px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);" onclick="openAiImageModal()">
                     <span>✨ AI 일정 자동 등록</span>
                 </button>
+                <!-- [임시 테스트용] 현재 월 일정 전체 삭제 버튼 시작 -->
+                <button class="ghost" style="color: #EF4444; border-color: #FEE2E2; background: #FEF2F2; font-weight: 800;" onclick="deleteCurrentMonthSchedules()">
+                    <span>🗑️ 현재 월 일정 전체 삭제</span>
+                </button>
+                <!-- [임시 테스트용] 현재 월 일정 전체 삭제 버튼 끝 -->
             </div>
             <div class="cal-nav-center">
                 <button class="ghost" onclick="moveMonth(-1)">◀</button>
@@ -394,9 +422,27 @@
                 const schedules = JSON.parse(text);
                 schedules.forEach(s => {
                     if (!s.startDate) return;
-                    const dateKey = s.startDate.slice(0, 10);
-                    if (!schedulesByDate[dateKey]) schedulesByDate[dateKey] = [];
-                    schedulesByDate[dateKey].push(s);
+                    const startStr = getDateOnly(s.startDate);
+                    const endStr = s.endDate ? getDateOnly(s.endDate) : startStr;
+
+                    if (startStr === endStr) {
+                        if (!schedulesByDate[startStr]) schedulesByDate[startStr] = [];
+                        schedulesByDate[startStr].push(s);
+                    } else {
+                        // 2일 이상 걸치는 기간형 일정을 해당되는 모든 날짜에 매핑
+                        const startDateObj = new Date(startStr);
+                        const endDateObj = new Date(endStr);
+                        
+                        let currDate = new Date(startDateObj.getFullYear(), startDateObj.getMonth(), startDateObj.getDate());
+                        const targetEndDateOnly = new Date(endDateObj.getFullYear(), endDateObj.getMonth(), endDateObj.getDate());
+
+                        while (currDate <= targetEndDateOnly) {
+                            const dateKey = `${currDate.getFullYear()}-${pad(currDate.getMonth()+1)}-${pad(currDate.getDate())}`;
+                            if (!schedulesByDate[dateKey]) schedulesByDate[dateKey] = [];
+                            schedulesByDate[dateKey].push(s);
+                            currDate.setDate(currDate.getDate() + 1);
+                        }
+                    }
                 });
             }
         } catch (e) {
@@ -496,10 +542,78 @@
             if (cells.length >= 42) break;
         }
 
+        // 1. 달력 범위의 모든 날짜 키 수집 및 슬롯 초기화
+        const dateKeys = cells.map(c => `${c.y}-${pad(c.m+1)}-${pad(c.day)}`);
+        const scheduledSlots = {};
+        dateKeys.forEach(dk => {
+            scheduledSlots[dk] = [null, null, null]; // 기본 3개 슬롯
+        });
+
+        // 2. 현재 달력 영역에 나타나는 고유 일정들 수집
+        const uniqueEventsMap = new Map();
+        dateKeys.forEach(dk => {
+            const evs = schedulesByDate[dk] || [];
+            evs.forEach(e => {
+                uniqueEventsMap.set(e.scheduleId, e);
+            });
+        });
+        const allEvents = Array.from(uniqueEventsMap.values());
+
+        // 3. 우선순위 정렬 (기간이 긴 일정, 시작일이 빠른 일정 우선)
+        allEvents.sort((a, b) => {
+            const aStart = getDateOnly(a.startDate);
+            const aEnd = a.endDate ? getDateOnly(a.endDate) : aStart;
+            const bStart = getDateOnly(b.startDate);
+            const bEnd = b.endDate ? getDateOnly(b.endDate) : bStart;
+
+            const aDuration = (new Date(aEnd) - new Date(aStart));
+            const bDuration = (new Date(bEnd) - new Date(bStart));
+
+            if (aDuration !== bDuration) {
+                return bDuration - aDuration; // 기간이 더 긴 일정 우선
+            }
+            if (aStart !== bStart) {
+                return aStart.localeCompare(bStart); // 시작일이 빠른 일정 우선
+            }
+            return (a.title || '').localeCompare(b.title || '');
+        });
+
+        // 4. 슬롯 할당 알고리즘 구동
+        allEvents.forEach(e => {
+            const startStr = getDateOnly(e.startDate);
+            const endStr = e.endDate ? getDateOnly(e.endDate) : startStr;
+
+            // 달력 노출 범위와 겹치는 실제 날짜들 추출
+            const activeDates = dateKeys.filter(dk => dk >= startStr && dk <= endStr);
+            if (activeDates.length === 0) return;
+
+            // 모든 겹치는 날짜들 중에서 공통적으로 비어있는 가장 낮은 슬롯 인덱스 탐색
+            let targetSlot = -1;
+            for (let slotIdx = 0; slotIdx < 3; slotIdx++) {
+                let isAvailable = true;
+                for (let dk of activeDates) {
+                    if (scheduledSlots[dk][slotIdx] !== null) {
+                        isAvailable = false;
+                        break;
+                    }
+                }
+                if (isAvailable) {
+                    targetSlot = slotIdx;
+                    break;
+                }
+            }
+
+            if (targetSlot !== -1) {
+                // 비어있는 공통 슬롯에 배치
+                activeDates.forEach(dk => {
+                    scheduledSlots[dk][targetSlot] = e;
+                });
+            }
+        });
+
         const grid = document.getElementById('calGrid');
-        grid.innerHTML = cells.map(c => {
-            const dateKey = `${c.y}-${pad(c.m+1)}-${pad(c.day)}`;
-            const dayEvents = schedulesByDate[dateKey] || [];
+        grid.innerHTML = cells.map((c, cellIdx) => {
+            const dateKey = dateKeys[cellIdx];
             const isToday = dateKey === todayKey;
             
             // 일요일 & 공휴일 판정
@@ -510,15 +624,48 @@
             const isRedDay = isSunday || isHoliday;
             const isSelected = dateKey === selectedDateKey;
 
-            const chips = dayEvents.slice(0, 3).map(s => {
+            // 슬롯 렌더링
+            const slots = scheduledSlots[dateKey];
+            const chips = slots.map(s => {
+                if (s === null) {
+                    // 빈 자리: 높이만 확보해 주어 다른 연속 일정이 일직선 상을 유지하도록 홀더 렌더링
+                    return `<div class="event-chip placeholder" style="visibility: hidden; pointer-events: none; border-color: transparent;">&nbsp;</div>`;
+                }
+
                 const matches = currentSearchQuery && s.title.toLowerCase().includes(currentSearchQuery.toLowerCase());
                 const searchClass = currentSearchQuery 
                     ? (matches ? ' search-match' : ' search-mismatch') 
                     : '';
                 const isPub = (s.isPublic === true || s.isPublic === 'Y' || s.public === true || s.public === 'Y');
-                return `<div class="event-chip${isPub ? ' public' : ''}${searchClass}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${escapeHtml(s.title)}</div>`;
+                
+                // 연속 일정 판정 클래스 부여 (시작일, 중간일, 종료일 판정)
+                let durationClass = '';
+                try {
+                    if (s.startDate && s.endDate) {
+                        const startStr = getDateOnly(s.startDate);
+                        const endStr = getDateOnly(s.endDate);
+                        if (startStr && endStr && startStr !== endStr) {
+                            if (dateKey === startStr) {
+                                durationClass = ' event-start';
+                            } else if (dateKey === endStr) {
+                                durationClass = ' event-end';
+                            } else if (dateKey > startStr && dateKey < endStr) {
+                                durationClass = ' event-middle';
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("연속 일정 판정 오류:", e);
+                }
+
+                return `<div class="event-chip${isPub ? ' public' : ''}${searchClass}${durationClass}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${escapeHtml(s.title)}</div>`;
             }).join('');
-            const more = dayEvents.length > 3 ? `<div class="event-more">+${dayEvents.length - 3}개 더보기</div>` : '';
+
+            // 더보기 개수 계산
+            const totalSchedules = (schedulesByDate[dateKey] || []).length;
+            const displayedCount = slots.filter(s => s !== null).length;
+            const moreCount = totalSchedules - displayedCount;
+            const more = moreCount > 0 ? `<div class="event-more">+${moreCount}개 더보기</div>` : '';
 
             return `
         <div class="cal-day${c.otherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}${isSelected ? ' selected-day' : ''}" data-date="${dateKey}" onclick="openNewSchedule('${dateKey}')">
@@ -528,6 +675,47 @@
         </div>`;
         }).join('');
     }
+
+    /* ======================================================== */
+    /* [임시 테스트용] 현재 월 일정 전체 삭제 기능 시작             */
+    /* ======================================================== */
+    async function deleteCurrentMonthSchedules() {
+        const uniqueScheduleIds = new Set();
+        Object.values(schedulesByDate).forEach(arr => {
+            arr.forEach(s => {
+                if (s.scheduleId) uniqueScheduleIds.add(s.scheduleId);
+            });
+        });
+        
+        const idsToDelete = Array.from(uniqueScheduleIds);
+        if (idsToDelete.length === 0) {
+            showToast('현재 월에 지울 일정이 없습니다.', true);
+            return;
+        }
+
+        if (!confirm(`⚠️ 정말로 현재 화면에 보이는 모든 일정(${idsToDelete.length}개)을 삭제하시겠습니까?`)) {
+            return;
+        }
+
+        try {
+            showToast('일정들을 삭제하는 중입니다...');
+            const deletePromises = idsToDelete.map(id => 
+                fetch(`${API_BASE}/schedule/${id}`, {
+                    method: 'DELETE',
+                    headers: authHeaders()
+                })
+            );
+            await Promise.all(deletePromises);
+            showToast(`🗑️ 총 ${idsToDelete.length}개의 일정이 모두 삭제되었습니다.`);
+            await loadMonthSchedules();
+        } catch (e) {
+            console.error("일정 전체 삭제 에러:", e);
+            showToast("일정 삭제 중 오류 발생: " + e.message, true);
+        }
+    }
+    /* ======================================================== */
+    /* [임시 테스트용] 현재 월 일정 전체 삭제 기능 끝             */
+    /* ======================================================== */
 
     function openNewSchedule(dateKey) {
         if (selectedDateKey === dateKey) {
@@ -776,7 +964,7 @@
         document.getElementById('aiLoadingStep').style.display = 'none';
         document.getElementById('aiResultStep').style.display = 'none';
         clearFileSelect();
-        document.getElementById('aiPromptType').value = '직접';
+        document.getElementById('aiPromptType').value = '예시';
         document.getElementById('aiPromptText').value = '이 이미지를 분석해서 캘린더에 추가해줘';
         onPromptTypeChange();
     }
@@ -786,10 +974,8 @@
         const presets = document.getElementById('aiPromptPresets');
         if (type === '예시') {
             presets.style.display = 'flex';
-            document.getElementById('aiPromptText').value = '이 이미지를 분석해서 캘린더에 추가해줘';
         } else {
             presets.style.display = 'none';
-            document.getElementById('aiPromptText').value = '이 이미지를 분석해서 캘린더에 추가해줘';
         }
     }
 
@@ -1082,12 +1268,39 @@
                 return;
             }
 
+            function formatToStrictDateTime(val) {
+                if (!val) return null;
+                let datePart = "";
+                let timePart = "00:00:00";
+                const cleanVal = val.trim();
+                if (cleanVal.includes('T')) {
+                    const parts = cleanVal.split('T');
+                    datePart = parts[0];
+                    timePart = parts[1];
+                } else if (cleanVal.includes(' ')) {
+                    const parts = cleanVal.split(' ');
+                    datePart = parts[0];
+                    timePart = parts[1];
+                } else {
+                    datePart = cleanVal;
+                }
+                const tParts = timePart.split(':');
+                if (tParts.length === 1) {
+                    timePart = `${timePart}:00:00`;
+                } else if (tParts.length === 2) {
+                    timePart = `${timePart}:00`;
+                } else if (tParts.length > 3) {
+                    timePart = tParts.slice(0, 3).join(':');
+                }
+                return `${datePart}T${timePart}`;
+            }
+
             confirmRequests.push({
                 title: title,
                 description: "AI 이미지 분석 등록",
                 scheduleType: type,
-                startDate: start.includes('T') ? `${start}:00` : `${start}T00:00:00`,
-                endDate: end.includes('T') ? `${end}:00` : `${end}T00:00:00`,
+                startDate: formatToStrictDateTime(start),
+                endDate: formatToStrictDateTime(end),
                 location: location || null,
                 isPublic: false
             });
@@ -1106,7 +1319,8 @@
             });
 
             if (!res.ok) {
-                throw new Error('캘린더 등록에 실패했습니다.');
+                const errDetail = await res.json().catch(() => ({}));
+                throw new Error(errDetail.message || '캘린더 등록에 실패했습니다.');
             }
 
             showToast(`🎉 총 ${confirmRequests.length}개의 일정이 성공적으로 개인 캘린더에 추가되었습니다!`);
@@ -1122,6 +1336,16 @@
             console.error(e);
             showToast('확정 등록 오류: ' + e.message, true);
         }
+    }
+    function getDateOnly(dateStr) {
+        if (!dateStr) return '';
+        if (dateStr.includes('T')) {
+            return dateStr.split('T')[0];
+        }
+        if (dateStr.includes(' ')) {
+            return dateStr.split(' ')[0];
+        }
+        return dateStr.slice(0, 10);
     }
 </script>
 
@@ -1160,8 +1384,8 @@
             <div style="margin-top: 16px;">
                 <label style="font-size: 13px; font-weight: 800; color: #334155; display: block; margin-bottom: 6px;">프롬프트 타입</label>
                 <select id="aiPromptType" style="width: 100%; padding: 10px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 13px; font-weight: 700; color: #334155;" onchange="onPromptTypeChange()">
-                    <option value="직접">직접 작성</option>
                     <option value="예시">추천 예시 활용</option>
+                    <option value="직접">직접 작성</option>
                 </select>
             </div>
 
@@ -1230,6 +1454,33 @@
     display: none;
     align-items: center;
     justify-content: center;
+}
+/* 연속 일정 칩 가로 연결 스타일 */
+.event-chip.event-start {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    margin-right: -10px !important;
+    width: calc(100% + 10px) !important;
+    position: relative;
+    z-index: 2;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.04);
+}
+.event-chip.event-middle {
+    border-radius: 0 !important;
+    margin-left: -10px !important;
+    margin-right: -10px !important;
+    width: calc(100% + 20px) !important;
+    position: relative;
+    z-index: 1;
+}
+.event-chip.event-end {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    margin-left: -10px !important;
+    width: calc(100% + 10px) !important;
+    position: relative;
+    z-index: 2;
+    box-shadow: -2px 0 4px rgba(0,0,0,0.04);
 }
 </style>
 </body>

@@ -35,4 +35,11 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
 
     // 요청한 일정이 실제로 해당 회원 소유인지 확인 (수정/삭제 권한 체크용)
     boolean existsByScheduleIdAndMember_Id(Long scheduleId, Long memberId);
+
+    // 특정 회원의 제목, 시작일, 종료일이 일치하는 삭제되지 않은 일정이 있는지 확인
+    @Query("SELECT s FROM Schedule s WHERE s.member.id = :memberId AND s.title = :title AND s.startDate = :startDate AND s.endDate = :endDate AND s.deletedAt IS NULL")
+    Optional<Schedule> findDuplicateSchedule(@Param("memberId") Long memberId,
+                                             @Param("title") String title,
+                                             @Param("startDate") LocalDateTime startDate,
+                                             @Param("endDate") LocalDateTime endDate);
 }

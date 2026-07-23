@@ -185,12 +185,20 @@
                 <input id="f-allDay" type="checkbox" onchange="toggleAllDay(this.checked)">
                 <span>하루종일</span>
             </label>
+            
             <div class="form-row">
-                <div style="flex: 2;">
-                    <label>일정 날짜 *</label>
-                    <input id="f-date" type="date" required>
+                <div>
+                    <label>시작 날짜 *</label>
+                    <input id="f-date" type="date" required onchange="syncEndDate(this.value)">
                 </div>
-                <div id="timeInputs" style="flex: 3; display: flex; gap: 8px;">
+                <div>
+                    <label>종료 날짜 *</label>
+                    <input id="f-endDate" type="date" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div id="timeInputs" style="grid-column: span 2; display: flex; gap: 8px;">
                     <div style="flex: 1;">
                         <label>시작 시간 *</label>
                         <input id="f-startTime" type="time" value="09:00" required>
@@ -201,6 +209,7 @@
                     </div>
                 </div>
             </div>
+            
             <div class="form-row">
                 <div>
                     <label>데드라인 날짜 (선택)</label>
@@ -286,8 +295,16 @@
         }
     }
 
+    function syncEndDate(val) {
+        const endDate = document.getElementById('f-endDate');
+        if (val && !endDate.value) {
+            endDate.value = val;
+        }
+    }
+
     function buildScheduleBody() {
         const dateVal = document.getElementById('f-date').value; // YYYY-MM-DD
+        const endDateVal = document.getElementById('f-endDate').value || dateVal; // YYYY-MM-DD
         const isAllDay = document.getElementById('f-allDay').checked;
         const startTime = document.getElementById('f-startTime').value || '09:00'; // HH:mm
         const endTime = document.getElementById('f-endTime').value || '10:00'; // HH:mm
@@ -299,10 +316,10 @@
         if (dateVal) {
             if (isAllDay) {
                 startDate = `${dateVal}T00:00:00`;
-                endDate = `${dateVal}T23:59:59`;
+                endDate = `${endDateVal}T23:59:59`;
             } else {
                 startDate = `${dateVal}T${startTime}:00`;
-                endDate = `${dateVal}T${endTime}:00`;
+                endDate = `${endDateVal}T${endTime}:00`;
             }
         }
 
@@ -331,38 +348,32 @@
             return;
         }
         
+        const titleVal = document.getElementById('f-title').value.trim();
         const dateVal = document.getElementById('f-date').value;
+        const endDateVal = document.getElementById('f-endDate').value || dateVal;
         const isAllDay = document.getElementById('f-allDay').checked;
         const startTime = document.getElementById('f-startTime').value;
         const endTime = document.getElementById('f-endTime').value;
 
+        if (!titleVal) {
+            showToast('제목은 필수입니다.', true);
+            return;
+        }
         if (!dateVal) {
-            showToast('일정 날짜는 필수입니다.', true);
+            showToast('시작 날짜는 필수입니다.', true);
             return;
         }
 
-        // 과거 날짜 일정 등록 허용
-
         if (!isAllDay && startTime && endTime) {
-            if (endTime < startTime) {
+            if (endTime < startTime && dateVal === endDateVal) {
                 showToast('종료 시간은 시작 시간보다 과거일 수 없습니다.', true);
                 return;
             }
         }
 
         const body = buildScheduleBody();
-        if (!body.title) {
-            showToast('제목은 필수입니다.', true);
-            return;
-        }
-        if (body.deadlineDate) {
-            if (body.deadlineDate > dateVal) {
-                showToast('데드라인 날짜는 일정 시작일보다 이후일 수 없습니다.', true);
-                return;
-            }
-        }
-
         const url = `${API_BASE}/schedule`;
+
         try {
             const res = await fetch(url, {
                 method: 'POST',
@@ -374,10 +385,9 @@
                 return;
             }
             showToast('일정이 등록되었습니다. 캘린더로 이동합니다...');
-            const dateKey = body.startDate.slice(0, 10); // YYYY-MM-DD
             setTimeout(() => {
-                window.location.href = `/schedule?date=${dateKey}`;
-            }, 700);
+                window.location.href = `/schedule?date=${dateVal}`;
+            }, 800);
         } catch (e) {
             console.error(e);
             showToast('요청 중 오류가 발생했습니다.', true);
@@ -386,10 +396,15 @@
 
     function applyUrlParams() {
         const dateParam = new URLSearchParams(window.location.search).get('date');
+        const dInput = document.getElementById('f-date');
+        const edInput = document.getElementById('f-endDate');
         if (dateParam) {
-            document.getElementById('f-date').value = dateParam;
+            dInput.value = dateParam;
+            edInput.value = dateParam;
         } else {
-            document.getElementById('f-date').value = new Date().toISOString().slice(0, 10);
+            const todayStr = new Date().toISOString().slice(0, 10);
+            dInput.value = todayStr;
+            edInput.value = todayStr;
         }
     }
 

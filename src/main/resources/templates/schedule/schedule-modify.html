@@ -185,12 +185,20 @@
                 <input id="f-allDay" type="checkbox" onchange="toggleAllDay(this.checked)">
                 <span>하루종일</span>
             </label>
+            
             <div class="form-row">
-                <div style="flex: 2;">
-                    <label>일정 날짜 *</label>
-                    <input id="f-date" type="date" required>
+                <div>
+                    <label>시작 날짜 *</label>
+                    <input id="f-date" type="date" required onchange="syncEndDate(this.value)">
                 </div>
-                <div id="timeInputs" style="flex: 3; display: flex; gap: 8px;">
+                <div>
+                    <label>종료 날짜 *</label>
+                    <input id="f-endDate" type="date" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div id="timeInputs" style="grid-column: span 2; display: flex; gap: 8px;">
                     <div style="flex: 1;">
                         <label>시작 시간 *</label>
                         <input id="f-startTime" type="time" value="09:00" required>
@@ -201,6 +209,7 @@
                     </div>
                 </div>
             </div>
+
             <div class="form-row">
                 <div>
                     <label>데드라인 날짜 (선택)</label>
@@ -289,8 +298,16 @@
         }
     }
 
+    function syncEndDate(val) {
+        const endDate = document.getElementById('f-endDate');
+        if (val && !endDate.value) {
+            endDate.value = val;
+        }
+    }
+
     function buildScheduleBody() {
         const dateVal = document.getElementById('f-date').value; // YYYY-MM-DD
+        const endDateVal = document.getElementById('f-endDate').value || dateVal; // YYYY-MM-DD
         const isAllDay = document.getElementById('f-allDay').checked;
         const startTime = document.getElementById('f-startTime').value || '09:00'; // HH:mm
         const endTime = document.getElementById('f-endTime').value || '10:00'; // HH:mm
@@ -302,10 +319,10 @@
         if (dateVal) {
             if (isAllDay) {
                 startDate = `${dateVal}T00:00:00`;
-                endDate = `${dateVal}T23:59:59`;
+                endDate = `${endDateVal}T23:59:59`;
             } else {
                 startDate = `${dateVal}T${startTime}:00`;
-                endDate = `${dateVal}T${endTime}:00`;
+                endDate = `${endDateVal}T${endTime}:00`;
             }
         }
 
@@ -383,8 +400,11 @@
                 document.getElementById('f-startTime').value = timePart.slice(0, 5);
             }
             if (s.endDate) {
+                document.getElementById('f-endDate').value = s.endDate.slice(0, 10);
                 const timePart = s.endDate.includes('T') ? s.endDate.split('T')[1] : s.endDate.split(' ')[1] || '10:00:00';
                 document.getElementById('f-endTime').value = timePart.slice(0, 5);
+            } else if (s.startDate) {
+                document.getElementById('f-endDate').value = s.startDate.slice(0, 10);
             }
 
             toggleAllDay(isAllDay);
@@ -409,6 +429,7 @@
         }
         
         const dateVal = document.getElementById('f-date').value;
+        const endDateVal = document.getElementById('f-endDate').value || dateVal;
         const isAllDay = document.getElementById('f-allDay').checked;
         const startTime = document.getElementById('f-startTime').value;
         const endTime = document.getElementById('f-endTime').value;
@@ -418,51 +439,42 @@
             return;
         }
 
-        // 과거 날짜 일정 수정 허용
-
         if (!isAllDay && startTime && endTime) {
-            if (endTime < startTime) {
+            if (endTime < startTime && dateVal === endDateVal) {
                 showToast('종료 시간은 시작 시간보다 과거일 수 없습니다.', true);
                 return;
             }
         }
 
-        const body = buildScheduleBody();
-        if (!body.title) {
-            showToast('제목은 필수입니다.', true);
+        const origRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, { headers: authHeaders() });
+        if (!origRes.ok) {
+            showToast('기존 일정 정보 조회 실패', true);
             return;
         }
-        if (body.deadlineDate) {
-            if (body.deadlineDate > dateVal) {
-                showToast('데드라인 날짜는 일정 시작일보다 이후일 수 없습니다.', true);
-                return;
+        const origSchedule = await origRes.json();
+        const originalType = origSchedule.scheduleType;
+        const isOrigRecurrent = (originalType && originalType !== 'DAILY');
+
+        const isMiddleInstance = originalStartDateOnly && targetDateParam && (originalStartDateOnly < targetDateParam);
+        const body = buildScheduleBody();
+
+        // 종료일 세팅
+        if (endDateVal && endDateVal !== dateVal) {
+            if (isAllDay) {
+                body.endDate = `${endDateVal}T23:59:59`;
+            } else {
+                body.endDate = `${endDateVal}T${endTime || '10:00'}:00`;
             }
         }
 
         const scheduleType = document.getElementById('f-scheduleType').value;
-        
+
         try {
-            const origRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, { headers: authHeaders() });
-            if (!origRes.ok) {
-                showToast('기존 일정 정보 조회 실패', true);
-                return;
-            }
-            const origSchedule = await origRes.json();
-            const originalType = origSchedule.scheduleType;
-            const isOrigRecurrent = (originalType && originalType !== 'DAILY');
-
-            // 최초 회차가 아닌 중간 회차를 수정한 경우 분할(Split) 처리 대상
-            const isMiddleInstance = originalStartDateOnly && targetDateParam && (originalStartDateOnly < targetDateParam);
-
             if (isMiddleInstance && isOrigRecurrent) {
                 const targetDate = new Date(targetDateParam);
-                const pad = (n) => String(n).padStart(2, '0');
+                const padLocal = (n) => String(n).padStart(2, '0');
 
-                // ==========================================
-                // [케이스 1] 반복 일정을 "당일(DAILY)"로 변경 수정한 경우 (3분할)
-                // ==========================================
                 if (scheduleType === 'DAILY') {
-                    // 1. 기존 원래 레코드(S) -> 과거 일정 종료일 단축 (수정일의 1주기 전으로 종료일 지정)
                     let prevEndDateStr = '';
                     const prevEndDate = new Date(targetDateParam);
                     if (originalType === 'WEEKLY') {
@@ -472,7 +484,7 @@
                     } else if (originalType === 'YEARLY') {
                         prevEndDate.setFullYear(prevEndDate.getFullYear() - 1);
                     }
-                    prevEndDateStr = `${prevEndDate.getFullYear()}-${pad(prevEndDate.getMonth()+1)}-${pad(prevEndDate.getDate())}`;
+                    prevEndDateStr = `${prevEndDate.getFullYear()}-${padLocal(prevEndDate.getMonth()+1)}-${padLocal(prevEndDate.getDate())}`;
 
                     const updateOrigBody = {
                         title: origSchedule.title,
@@ -482,14 +494,13 @@
                         endDate: origSchedule.endDate,
                         isPublic: origSchedule.isPublic,
                         location: origSchedule.location,
-                        recurrenceEndDate: prevEndDateStr // 과거 반복 단축 종료
+                        recurrenceEndDate: prevEndDateStr
                     };
                     if (origSchedule.deadlineDate) {
                         updateOrigBody.deadlineDate = origSchedule.deadlineDate;
                         updateOrigBody.notifyDaysBefore = origSchedule.notifyDaysBefore || 0;
                     }
 
-                    // PUT 기존 레코드 단축
                     const putRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, {
                         method: 'PUT',
                         headers: authHeaders(),
@@ -500,7 +511,6 @@
                         return;
                     }
 
-                    // 2. 수정한 날짜 하루만 단일 일정(DAILY) 신규 등록 (POST)
                     const newDailyBody = {
                         title: body.title,
                         description: body.description,
@@ -526,7 +536,6 @@
                         return;
                     }
 
-                    // 3. 미래 반복 일정 신규 등록 (POST) (수정일의 1주기 후부터 원래 종료일까지 반복)
                     const nextStartDate = new Date(targetDateParam);
                     if (originalType === 'WEEKLY') {
                         nextStartDate.setDate(nextStartDate.getDate() + 7);
@@ -535,7 +544,7 @@
                     } else if (originalType === 'YEARLY') {
                         nextStartDate.setFullYear(nextStartDate.getFullYear() + 1);
                     }
-                    const nextStartDateStr = `${nextStartDate.getFullYear()}-${pad(nextStartDate.getMonth()+1)}-${pad(nextStartDate.getDate())}`;
+                    const nextStartDateStr = `${nextStartDate.getFullYear()}-${padLocal(nextStartDate.getMonth()+1)}-${padLocal(nextStartDate.getDate())}`;
 
                     let hasFuture = true;
                     if (origSchedule.recurrenceEndDate) {
@@ -553,7 +562,7 @@
                             const origEnd = new Date(origSchedule.endDate);
                             const diffMs = origEnd - origStart;
                             const nextEnd = new Date(nextStartDate.getTime() + diffMs);
-                            nextEndStrWithTime = `${nextEnd.getFullYear()}-${pad(nextEnd.getMonth()+1)}-${pad(nextEnd.getDate())}T${pad(nextEnd.getHours())}:${pad(nextEnd.getMinutes())}:${pad(nextEnd.getSeconds())}`;
+                            nextEndStrWithTime = `${nextEnd.getFullYear()}-${padLocal(nextEnd.getMonth()+1)}-${padLocal(nextEnd.getDate())}T${padLocal(nextEnd.getHours())}:${padLocal(nextEnd.getMinutes())}:${padLocal(nextEnd.getSeconds())}`;
                         }
 
                         const nextScheduleBody = {
@@ -589,14 +598,9 @@
                     }, 800);
                     return;
                 }
-
-                // ==========================================
-                // [케이스 2] 반복 일정을 고치되 여전히 반복 일정인 경우 (2분할)
-                // ==========================================
                 else {
-                    const dayBeforeStr = `${targetDate.getFullYear()}-${pad(targetDate.getMonth()+1)}-${pad(targetDate.getDate() - 1)}`;
+                    const dayBeforeStr = `${targetDate.getFullYear()}-${padLocal(targetDate.getMonth()+1)}-${padLocal(targetDate.getDate() - 1)}`;
 
-                    // 1. 기존 원래 레코드(S) -> 과거 일정 종료일 단축 (수정일 하루 전날로 기한 단축) (PUT)
                     const updateOrigBody = {
                         title: origSchedule.title,
                         description: origSchedule.description,
@@ -605,7 +609,7 @@
                         endDate: origSchedule.endDate,
                         isPublic: origSchedule.isPublic,
                         location: origSchedule.location,
-                        recurrenceEndDate: dayBeforeStr // 과거 반복 단축 종료
+                        recurrenceEndDate: dayBeforeStr
                     };
                     if (origSchedule.deadlineDate) {
                         updateOrigBody.deadlineDate = origSchedule.deadlineDate;
@@ -622,7 +626,6 @@
                         return;
                     }
 
-                    // 2. 수정한 날짜부터 시작하는 새로운 반복 일정을 생성 (POST)
                     const newScheduleBody = {
                         title: body.title,
                         description: body.description,
@@ -656,15 +659,9 @@
                     return;
                 }
             }
-        } catch (e) {
-            console.error(e);
-            showToast('수정 처리 중 오류가 발생했습니다: ' + e.message, true);
-            return;
-        }
 
-        // 일반 단일 일정이거나 최초 회차인 경우 기존 방식대로 PUT 업데이트 수행
-        const url = `${API_BASE}/schedule/${scheduleId}`;
-        try {
+            // 일반적인 수정의 경우 PUT 전송
+            const url = `${API_BASE}/schedule/${scheduleId}`;
             const res = await fetch(url, {
                 method: 'PUT',
                 headers: authHeaders(),
@@ -675,13 +672,14 @@
                 return;
             }
             showToast('일정이 수정되었습니다. 캘린더로 이동합니다...');
-            const dateKey = body.startDate.slice(0, 10); // YYYY-MM-DD
+            const dateKey = body.startDate.slice(0, 10);
             setTimeout(() => {
                 window.location.href = `/schedule?date=${dateKey}`;
             }, 800);
+
         } catch (e) {
             console.error(e);
-            showToast('요청 중 오류가 발생했습니다.', true);
+            showToast('수정 중 오류 발생', true);
         }
     }
 

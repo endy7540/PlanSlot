@@ -38,13 +38,20 @@ public class AdminReportResponseDTO {
                 .build();
     }
     public static AdminReportResponseDTO fromGroupEntity(com.example.planslot.groupchat.entity.GroupReport report) {
+        String translatedReason = report.getReason();
+        try {
+            translatedReason = com.example.planslot.boardreport.entity.BoardReportReasonCode.valueOf(report.getReason()).getDescription();
+        } catch (Exception e) {
+            // ignore and use raw string
+        }
+        
         return AdminReportResponseDTO.builder()
                 .reportId("C_" + report.getId())
                 .reporterNickname(report.getMember().getNickname())
                 .reportedNickname(report.getReportedMember().getNickname())
                 .targetType("CHAT")
                 .targetId(report.getChatMessage().getId())
-                .reasonCode(report.getReason())
+                .reasonCode(translatedReason)
                 .reasonDetail(report.getReasonDetail())
                 .status(report.getStatus().name())
                 .createdAt(report.getCreatedAt())

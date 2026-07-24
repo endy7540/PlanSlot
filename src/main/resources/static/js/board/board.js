@@ -1046,8 +1046,8 @@ async function createBoardComment(boardId, parentCommentId = null, content = nul
     showBoardToast('댓글 내용을 입력해 주세요.', true);
     return;
   }
-  if (commentContent.length > 1000) {
-    showBoardToast('댓글은 1000자 이하로 입력해 주세요.', true);
+  if (commentContent.length > 500) {
+    showBoardToast('댓글은 500자 이하로 입력해 주세요.', true);
     return;
   }
 
@@ -1097,7 +1097,7 @@ function showCommentInlineForm(commentElement, mode, boardId) {
 
   slot.innerHTML = `
     <div class="board-inline-form">
-      <textarea maxlength="1000" placeholder="${mode === 'edit' ? '수정할 내용을 입력하세요.' : '답글을 입력하세요.'}">${escapeBoardHtml(initialContent)}</textarea>
+      <textarea maxlength="500" placeholder="${mode === 'edit' ? '수정할 내용을 입력하세요.' : '답글을 입력하세요.'}">${escapeBoardHtml(initialContent)}</textarea>
       <button class="board-btn board-btn-primary board-btn-small" type="button">${mode === 'edit' ? '수정' : '등록'}</button>
       <button class="board-btn board-btn-ghost board-btn-small" type="button">취소</button>
     </div>
@@ -1121,8 +1121,8 @@ async function updateBoardComment(commentId, content, boardId, button) {
     showBoardToast('댓글 내용을 입력해 주세요.', true);
     return;
   }
-  if (trimmed.length > 1000) {
-    showBoardToast('댓글은 1000자 이하로 입력해 주세요.', true);
+  if (trimmed.length > 500) {
+    showBoardToast('댓글은 500자 이하로 입력해 주세요.', true);
     return;
   }
 

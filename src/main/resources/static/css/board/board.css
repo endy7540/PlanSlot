@@ -256,8 +256,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   text-overflow:ellipsis;
   white-space:nowrap;
 }
-.board-list-title{min-width:0}
-.board-list-title-text{display:inline;font-size:14px;font-weight:900;line-height:1.45}
+.board-list-title{min-width:0;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+.board-list-title-text{display:inline;font-size:14px;font-weight:900;line-height:1.45;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
 .board-list-row:hover .board-list-title-text{color:var(--board-navy)}
 .board-comment-count{color:var(--board-sky);font-size:12px;font-weight:950;margin-left:5px}
 .board-recruitment-badges{display:inline-flex;align-items:center;gap:5px;margin-left:7px;vertical-align:middle}
@@ -323,7 +323,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .board-breadcrumb a:hover{color:var(--board-navy)}
 .board-article{overflow:hidden}
 .board-article-head{padding:24px 26px 20px;background:linear-gradient(180deg,#F7FCFF 0%,#FFFFFF 100%);border-bottom:2px solid var(--board-border)}
-.board-article-head h1{margin:10px 0 12px;font-size:25px;line-height:1.45;letter-spacing:-.45px}
+.board-article-head h1{margin:10px 0 12px;font-size:25px;line-height:1.45;letter-spacing:-.45px;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
 .board-meta{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;color:var(--board-muted);font-size:11.5px;font-weight:750}
 .board-read-author{display:inline-flex;align-items:center;gap:8px;color:var(--board-ink)}
 .board-read-author-name{font-weight:900}

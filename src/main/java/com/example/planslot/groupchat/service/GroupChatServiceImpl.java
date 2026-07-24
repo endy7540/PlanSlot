@@ -7,6 +7,9 @@ import com.example.planslot.groupchat.repository.ChatMessageRepository;
 import com.example.planslot.groupchat.repository.GroupChatRoomRepository;
 import com.example.planslot.member.entity.Member;
 import com.example.planslot.member.repository.MemberRepository;
+import com.example.planslot.groupchat.entity.GroupReport;
+import com.example.planslot.groupchat.repository.GroupReportRepository;
+import com.example.planslot.group.entity.ReportStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +26,7 @@ public class GroupChatServiceImpl implements GroupChatService {
     private final GroupChatRoomRepository groupChatRoomRepository;
     private final MemberRepository memberRepository;
     private final com.example.planslot.group.repository.GroupRepository groupRepository;
+    private final GroupReportRepository groupReportRepository;
 
     @Override
     @Transactional
@@ -65,5 +69,26 @@ public class GroupChatServiceImpl implements GroupChatService {
         return messages.stream()
                 .map(ChatMessageDTO::from)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void reportMessage(Long memberId, com.example.planslot.groupchat.dto.GroupReportDTO.Request request) {
+        ChatMessage message = chatMessageRepository.findById(request.getMessageId())
+                .orElseThrow(() -> new IllegalArgumentException("메시지를 찾을 수 없습니다."));
+        Member reporter = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
+        
+        GroupReport report = GroupReport.builder()
+                .group(message.getGroupChatRoom().getGroup())
+                .chatMessage(message)
+                .member(reporter)
+                .reportedMember(message.getSender())
+                .reason(request.getReason())
+                .reasonDetail(request.getReasonDetail())
+                .status(ReportStatus.WAITING)
+                .build();
+                
+        groupReportRepository.save(report);
     }
 }

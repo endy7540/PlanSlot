@@ -22,6 +22,7 @@ public class ChatMessageDTO {
     }
 
     private MessageType type; // 메시지 타입
+    private Long id;          // 메시지 고유 식별자 (DB PK)
     private Long groupId;     // 채팅방 식별자 (모임 ID)
     private Long senderId;    // 보내는 사람 ID
     private String senderName;// 보내는 사람 이름
@@ -30,6 +31,7 @@ public class ChatMessageDTO {
 
     public static ChatMessageDTO from(ChatMessage message) {
         return ChatMessageDTO.builder()
+                .id(message.getId())
                 .type(MessageType.TALK)
                 .groupId(message.getGroupChatRoom().getGroup().getId())
                 .senderId(message.getSender().getId())

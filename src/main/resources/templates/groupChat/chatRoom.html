@@ -68,6 +68,7 @@
     font-size: 18px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
   }
 
@@ -106,7 +107,7 @@
   .avatar {
     width: 40px;
     height: 40px;
-    border-radius: 14px;
+    border-radius: 50%;
     background: linear-gradient(135deg, #0ea5e9, #38bdf8);
     color: #fff;
     display: flex;
@@ -202,13 +203,16 @@
   }
   .send-btn:hover { background: #0284c7; }
 
-  /* 우측 (사이드바 - 참여자 목록) */
   .chat-sidebar {
     width: 280px;
     background: var(--panel);
     border-left: 1px solid var(--line);
     display: flex;
     flex-direction: column;
+  }
+  
+  .chat-sidebar.hidden, .chat-left-sidebar.hidden {
+    display: none !important;
   }
 
   .sidebar-header {
@@ -236,7 +240,7 @@
   .member-avatar {
     width: 32px;
     height: 32px;
-    border-radius: 10px;
+    border-radius: 50%;
     background: #e2e8f0;
     display: flex;
     align-items: center;
@@ -279,12 +283,42 @@
 <div th:replace="~{global/header :: headerFragment}"></div>
 
 <div class="chat-layout">
-  <!-- 좌측 메인 대화창 -->
+  <!-- 좌측 그룹방 사이드바 -->
+  <div class="chat-left-sidebar" style="width: 250px; border-right: 1px solid var(--line); background: #fff; display: flex; flex-direction: column;">
+    <div style="padding: 16px 20px; font-weight: bold; border-bottom: 1px solid var(--line); font-size: 15px; display: flex; justify-content: space-between; align-items: center;">
+      <button id="btnCloseLeftSidebar" style="border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:18px;" title="닫기">✕</button>
+      <span>내 모임방</span>
+    </div>
+    <div style="flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+      <a th:href="@{/groupChat/{id}(id=${g.id})}" th:each="g : ${myGroups}" 
+         style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; text-decoration: none; color: inherit; cursor: pointer; transition: background 0.2s;"
+         onmouseover="if(this.style.background!=='rgb(226, 232, 240)' && this.style.background!=='#e2e8f0') this.style.background='#f1f5f9'" 
+         onmouseout="if(this.style.background!=='rgb(226, 232, 240)' && this.style.background!=='#e2e8f0') this.style.background='transparent'"
+         th:styleappend="${g.id == groupId.toString() ? 'background: #e2e8f0; font-weight: bold;' : ''}">
+        
+        <div th:if="${g.profileImageUrl != null}" style="width: 36px; height: 36px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 1px solid var(--line);">
+          <img th:src="${g.profileImageUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+        <div th:unless="${g.profileImageUrl != null}" style="width: 36px; height: 36px; border-radius: 50%; background: #e2e8f0; display: flex; justify-content: center; align-items: center; flex-shrink: 0; border: 1px solid var(--line);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+        </div>
+        
+        <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13.5px;" th:text="${g.name}">그룹명</div>
+      </a>
+    </div>
+  </div>
+
+  <!-- 중앙 메인 대화창 -->
   <div class="chat-main">
     <div class="chat-header">
-      <button style="border:none; background:none; cursor:pointer; color:var(--ink); font-size:20px; margin-right:8px; padding:0;" onclick="location.href='/groupChat'">←</button>
-      <h2 style="flex:1;">모임 채팅방 💬</h2>
-      <button style="border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:20px;">⚙️</button>
+      <button id="btnOpenLeftSidebar" style="border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:20px; margin-right:12px; display:none;" title="모임방 목록 열기">☰</button>
+      
+      <h2 style="flex:1;" th:text="${group.name}">모임 방 이름</h2>
+      
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button id="btnOpenRightSidebar" style="border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:20px; display:none;" title="채팅방 인원 열기">👥</button>
+        <button style="border:none; background:#ef4444; color:#fff; cursor:pointer; font-size:13px; font-weight:600; padding:8px 14px; border-radius:8px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2); transition: background 0.2s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'" onclick="location.href='/groupChat'">나가기</button>
+      </div>
     </div>
 
     <div class="chat-messages" id="chatMessages">
@@ -299,7 +333,10 @@
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             </div>
             <div class="bubble" th:utext="${#strings.replace(msg.content, '&#10;', '<br>')}">메시지</div>
-            <div class="time" th:text="${#temporals.format(msg.createdAt, 'HH:mm')}">시간</div>
+            <div style="display:flex; flex-direction:column; align-items:flex-start; gap:2px;">
+              <div class="time" th:text="${#temporals.format(msg.createdAt, 'HH:mm')}">시간</div>
+              <button th:onclick="'openReportModal(' + ${msg.id} + ')'" style="border:none; background:none; cursor:pointer; font-size:12px; color:#ef4444; padding:0;" title="신고하기">🚨</button>
+            </div>
           </div>
         </div>
 
@@ -325,35 +362,55 @@
 
   <!-- 우측 참여자 사이드바 -->
   <div class="chat-sidebar">
-    <div class="sidebar-header">
-      대화 상대
+    <div class="sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <span>채팅방 인원</span>
+      <button id="btnCloseRightSidebar" style="border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:18px;" title="닫기">✕</button>
     </div>
     <div class="member-list">
       
-      <!-- 샘플 맴버 1 -->
-      <div class="member-item">
-        <div class="member-avatar">
-          철
+      <div class="member-item" th:each="m : ${group.members}">
+        <!-- 프로필 이미지가 있는 경우 -->
+        <div class="member-avatar" th:if="${m.profileImageUrl != null}" style="background:none; border:none; padding:0; overflow:hidden;">
+          <img th:src="${m.profileImageUrl}" th:alt="${m.name}" style="width:100%; height:100%; object-fit:cover;">
           <div class="status-dot"></div>
         </div>
-        <div class="member-name">김철수 <span class="member-role">모임장</span></div>
-      </div>
-
-      <!-- 샘플 맴버 2 -->
-      <div class="member-item">
-        <div class="member-avatar" style="background: linear-gradient(135deg, #f43f5e, #fb7185); color:#fff;">
-          영
-          <div class="status-dot" style="background:#cbd5e1;"></div> <!-- 오프라인 느낌 -->
+        
+        <!-- 프로필 이미지가 없는 경우 (기본 아이콘) -->
+        <div class="member-avatar" th:unless="${m.profileImageUrl != null}" style="background: #e2e8f0; display:flex; justify-content:center; align-items:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <div class="status-dot"></div>
         </div>
-        <div class="member-name">박영희</div>
+        
+        <div class="member-name">
+          <span th:text="${m.name}">이름</span>
+          <span class="member-role" th:if="${m.role == '모임장'}">모임장</span>
+        </div>
       </div>
 
-      <!-- 샘플 맴버 3 -->
-      <div class="member-item">
-        <div class="member-avatar">민</div>
-        <div class="member-name">이민수</div>
-      </div>
+    </div>
+  </div>
+</div>
 
+<!-- 신고 모달 -->
+<div class="modal-overlay" id="reportModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(11,37,64,.45); z-index:100; justify-content:center; align-items:center;">
+  <div class="modal-box" style="background:#fff; border-radius:16px; padding:22px; max-width:380px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,.25);">
+    <h3 style="margin-top:0; font-size:18px;">채팅 신고하기</h3>
+    <p style="font-size: 14px; color: var(--ink-soft); margin-bottom: 16px;">신고 사유를 선택하고 상세 내용을 입력해주세요.</p>
+    
+    <div style="margin-bottom: 16px;">
+      <select id="reportReason" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; box-sizing: border-box; margin-bottom: 8px;">
+        <option value="SPAM">스팸/도배</option>
+        <option value="ABUSE">욕설/비하</option>
+        <option value="INAPPROPRIATE">음란물/부적절</option>
+        <option value="PERSONAL_INFORMATION">개인정보 노출</option>
+        <option value="OTHER">기타</option>
+      </select>
+      <textarea id="reportDetail" placeholder="상세 사유를 입력해주세요 (선택)" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; box-sizing: border-box; height: 80px; resize: none;"></textarea>
+    </div>
+    
+    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+      <button id="reportCancel" style="padding:8px 16px; border:none; background:#e2e8f0; border-radius:8px; cursor:pointer; font-weight:600;">취소</button>
+      <button id="reportConfirm" style="padding:8px 16px; border:none; background:#ef4444; color:#fff; border-radius:8px; cursor:pointer; font-weight:600;">신고하기</button>
     </div>
   </div>
 </div>
@@ -421,7 +478,10 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
               </div>
               <div class="bubble">${contentSafe}</div>
-              <div class="time">${timeStr}</div>
+              <div style="display:flex; flex-direction:column; align-items:flex-start; gap:2px;">
+                <div class="time">${timeStr}</div>
+                ${msg.id ? `<button onclick="openReportModal(${msg.id})" style="border:none; background:none; cursor:pointer; font-size:12px; color:#ef4444; padding:0;" title="신고하기">🚨</button>` : ''}
+              </div>
             </div>
           </div>
         `;
@@ -452,6 +512,78 @@
     }));
     
     msgInput.value = '';
+  });
+
+  // 사이드바 토글 로직
+  const leftSidebar = document.querySelector('.chat-left-sidebar');
+  const rightSidebar = document.querySelector('.chat-sidebar');
+  const btnOpenLeft = document.getElementById('btnOpenLeftSidebar');
+  const btnOpenRight = document.getElementById('btnOpenRightSidebar');
+  const btnCloseLeft = document.getElementById('btnCloseLeftSidebar');
+  const btnCloseRight = document.getElementById('btnCloseRightSidebar');
+
+  if (btnOpenLeft && btnCloseLeft && leftSidebar) {
+    btnOpenLeft.addEventListener('click', function() {
+      leftSidebar.classList.remove('hidden');
+      btnOpenLeft.style.display = 'none';
+    });
+    btnCloseLeft.addEventListener('click', function() {
+      leftSidebar.classList.add('hidden');
+      btnOpenLeft.style.display = '';
+    });
+  }
+
+  if (btnOpenRight && btnCloseRight && rightSidebar) {
+    btnOpenRight.addEventListener('click', function() {
+      rightSidebar.classList.remove('hidden');
+      btnOpenRight.style.display = 'none';
+    });
+    btnCloseRight.addEventListener('click', function() {
+      rightSidebar.classList.add('hidden');
+      btnOpenRight.style.display = '';
+    });
+  }
+
+  // 신고 로직
+  let currentReportMessageId = null;
+
+  function openReportModal(msgId) {
+    if (!msgId) return;
+    currentReportMessageId = msgId;
+    document.getElementById('reportReason').value = 'SPAM';
+    document.getElementById('reportDetail').value = '';
+    document.getElementById('reportModal').style.display = 'flex';
+  }
+
+  document.getElementById('reportCancel').addEventListener('click', function() {
+    document.getElementById('reportModal').style.display = 'none';
+    currentReportMessageId = null;
+  });
+
+  document.getElementById('reportConfirm').addEventListener('click', function() {
+    if (!currentReportMessageId) return;
+    
+    const reason = document.getElementById('reportReason').value;
+    const detail = document.getElementById('reportDetail').value;
+    
+    fetch(`/groupChat/${groupId}/report`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messageId: currentReportMessageId,
+        reason: reason,
+        reasonDetail: detail
+      })
+    }).then(res => {
+      if (res.ok) {
+        alert("신고가 접수되었습니다.");
+        document.getElementById('reportModal').style.display = 'none';
+      } else {
+        alert("신고 처리 중 오류가 발생했습니다.");
+      }
+    });
   });
 </script>
 

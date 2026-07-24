@@ -9,4 +9,7 @@ public interface GroupChatService {
     
     // 특정 방의 과거 채팅 내역 조회
     List<ChatMessageDTO> getChatHistory(Long groupId);
+    
+    // 채팅 메시지 신고
+    void reportMessage(Long memberId, com.example.planslot.groupchat.dto.GroupReportDTO.Request request);
 }

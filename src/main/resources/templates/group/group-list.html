@@ -47,13 +47,17 @@
 <div class="toast" id="toast"></div>
 
   <div class="modal-overlay" id="createGroupModal" style="display:none;">
-    <div class="modal-content">
-      <h2>새로운 모임 만들기</h2>
-      <p style="font-size: 14px; color: var(--ink-soft); margin-bottom: 20px;">모임 이름과 대표 사진을 설정해주세요.</p>
-      <input type="text" id="newGroupName" class="modal-input" placeholder="모임 이름을 입력하세요 (최대 30자)">
-      <input type="file" id="newGroupImage" class="modal-input" accept="image/*" style="padding: 10px; margin-bottom: 20px;">
-      <div class="modal-actions">
-        <button class="btn btn-secondary" id="createCancel">취소</button>
+    <div class="modal-box">
+      <h3>새 모임 만들기</h3>
+      <p style="font-size: 14px; color: var(--ink-soft); margin-bottom: 16px;">모임 이름과 대표 사진을 설정해주세요.</p>
+      
+      <div style="margin-bottom: 16px;">
+        <input id="newGroupName" placeholder="모임 이름 (최대 30자)" maxlength="30" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; margin-bottom: 8px;">
+        <input type="file" id="newGroupImage" accept="image/*" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box;">
+      </div>
+      
+      <div class="modal-actions" style="display: flex; gap: 8px;">
+        <button class="btn btn-ghost" id="createCancel">취소</button>
         <button class="btn btn-primary" id="createConfirm">만들기</button>
       </div>
     </div>

@@ -46,19 +46,18 @@
 
 <div class="toast" id="toast"></div>
 
-<div class="modal-overlay" id="createGroupModal" style="display:none;">
-  <div class="modal-box">
-    <h3>새 모임 만들기</h3>
-    <p>새로운 모임을 만들고 인원을 초대해보세요.</p>
-    <div style="margin: 16px 0;">
-      <input id="newGroupName" placeholder="모임 이름 (1~30자)" maxlength="30" style="width: 100%; padding: 8px;">
-    </div>
-    <div class="modal-actions" style="display: flex; gap: 8px;">
-      <button class="btn btn-ghost" id="createCancel">취소</button>
-      <button class="btn btn-primary" id="createConfirm">생성하기</button>
+  <div class="modal-overlay" id="createGroupModal" style="display:none;">
+    <div class="modal-content">
+      <h2>새로운 모임 만들기</h2>
+      <p style="font-size: 14px; color: var(--ink-soft); margin-bottom: 20px;">모임 이름과 대표 사진을 설정해주세요.</p>
+      <input type="text" id="newGroupName" class="modal-input" placeholder="모임 이름을 입력하세요 (최대 30자)">
+      <input type="file" id="newGroupImage" class="modal-input" accept="image/*" style="padding: 10px; margin-bottom: 20px;">
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="createCancel">취소</button>
+        <button class="btn btn-primary" id="createConfirm">만들기</button>
+      </div>
     </div>
   </div>
-</div>
 
 <script th:src="@{/js/group/group-shared.js}" src="../../static/js/group/group-shared.js"></script>
 <script>
@@ -90,9 +89,16 @@ function renderGrid(){
     const card = document.createElement('a');
     card.className = 'group-card';
     card.href = linkToDetail(g.id);
+    let avatarHtml = '';
+    if (g.profileImageUrl) {
+      avatarHtml = `<div class="group-avatar" style="background:none; border:none; padding:0; overflow:hidden;"><img src="${g.profileImageUrl}" style="width:100%; height:100%; object-fit:cover;"></div>`;
+    } else {
+      avatarHtml = `<div class="group-avatar" style="background: #e2e8f0; display:flex; justify-content:center; align-items:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>`;
+    }
+
     card.innerHTML = `
       <div class="top-row">
-        <div class="group-avatar">${initials(g.name || '')}</div>
+        ${avatarHtml}
         <div>
           <b>${g.name}</b>
           <div class="count">참여자 ${g.members.length}명</div>
@@ -128,16 +134,20 @@ document.getElementById('createCancel').addEventListener('click', ()=>{
 
 document.getElementById('createConfirm').addEventListener('click', ()=>{
   const input = document.getElementById('newGroupName');
+  const fileInput = document.getElementById('newGroupImage');
   const name = input.value.trim();
   if(!name){ showToast('모임 이름을 입력해주세요.'); return; }
   if(name.length > 30){ showToast('모임 이름은 30자 이하로 입력해주세요.'); return; }
 
+  const formData = new FormData();
+  formData.append('groupName', name);
+  if (fileInput.files.length > 0) {
+    formData.append('file', fileInput.files[0]);
+  }
+
   fetchApi('/group/register', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ groupName: name })
+    body: formData
   })
     .then(res => {
       if(!res.ok) throw new Error('서버 에러가 발생했습니다.');
@@ -172,6 +182,7 @@ async function fetchAndRenderGrid() {
         name: d.name,
         ownerId: d.ownerId,
         filter: d.filter,
+        profileImageUrl: d.profileImageUrl,
         members: new Array(d.memberCount).fill({}),
         waiting: [],
         mySchedules: [],

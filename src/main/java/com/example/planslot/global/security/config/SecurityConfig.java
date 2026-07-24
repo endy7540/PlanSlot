@@ -41,9 +41,12 @@ public class SecurityConfig {
                                 "/members/checkDuplicate",
 
                                 // 도메인 화면 및 기타
-                                "/group/**", "/notification/list",
+                                "/group/**", "/groupChat/**", "/notification/list",
                                 "/board", "/board/notice", "/board/study", "/board/group", "/board/free",
-                                "/board/read/**", "/board/register/**"
+                                "/board/read/**", "/board/register/**",
+                                
+                                // WebSocket Endpoint
+                                "/ws-stomp/**"
                         ).permitAll()
                         // 비로그인 게시판 목록 조회
                         .requestMatchers(HttpMethod.GET, "/board/type/**").permitAll()

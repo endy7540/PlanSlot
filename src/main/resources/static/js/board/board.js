@@ -224,8 +224,12 @@ async function submitBoardReport() {
     showBoardToast('신고 사유를 선택해 주세요.', true);
     return;
   }
+  if (!reasonDetail) {
+    showBoardToast('신고 세부내용을 입력해 주세요.', true);
+    return;
+  }
   if (reasonDetail.length > 200) {
-    showBoardToast('신고 상세 내용은 200자 이하로 입력해 주세요.', true);
+    showBoardToast('신고 세부내용은 200자 이하로 입력해 주세요.', true);
     return;
   }
 
@@ -245,6 +249,10 @@ async function submitBoardReport() {
       closeReportModal();
       showBoardToast('신고가 접수되었습니다.', false, 'success');
     } catch (error) {
+      if (error.status === 409) {
+        showBoardToast(target.targetType === 'POST' ? '이미 신고한 게시글입니다.' : '이미 신고한 댓글입니다.', true);
+        return;
+      }
       showBoardToast(error.message, true);
     }
   });

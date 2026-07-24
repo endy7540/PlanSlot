@@ -25,10 +25,29 @@
   
   * { box-sizing: border-box; }
   
-  body, html {
+  .chat-sidebar-btn {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 16px;
+    transition: all 0.2s;
+  }
+  .chat-sidebar-btn:hover { background: #e2e8f0; }
+  .chat-sidebar-btn.active {
+    background: #0ea5e9;
+    color: #fff;
+    border-color: #0ea5e9;
+  }
+
+  body {
     margin: 0;
     padding: 0;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     font-family: Pretendard, sans-serif;
     background: var(--bg);
     color: var(--ink);
@@ -297,8 +316,8 @@
       <h2 style="flex:1;" th:text="${group.name}">모임 방 이름</h2>
       
       <div style="display:flex; align-items:center; gap:8px;">
-        <button id="btnToggleRightSidebar" style="border:1px solid #cbd5e1; background:#f8fafc; color:var(--ink-soft); cursor:pointer; font-size:13px; font-weight:600; padding:6px 12px; border-radius:16px; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f8fafc'" title="채팅방 인원 열기">채팅방 인원</button>
-        <button id="btnToggleLeftSidebar" style="border:1px solid #cbd5e1; background:#f8fafc; color:var(--ink-soft); cursor:pointer; font-size:13px; font-weight:600; padding:6px 12px; border-radius:16px; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f8fafc'" title="모임방 목록 열기">모임방 목록</button>
+        <button id="btnToggleLeftSidebar" class="chat-sidebar-btn" title="모임방 목록">모임방 목록</button>
+        <button id="btnToggleRightSidebar" class="chat-sidebar-btn active" title="채팅방 인원">채팅방 인원</button>
       </div>
     </div>
 
@@ -342,7 +361,7 @@
   </div>
 
   <!-- 우측 참여자 사이드바 -->
-  <div class="chat-sidebar hidden">
+  <div class="chat-sidebar">
     <div class="sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
       <span>채팅방 인원</span>
     </div>
@@ -378,15 +397,15 @@
     <div style="flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
       <a th:href="@{/groupChat/{id}(id=${g.id})}" th:each="g : ${myGroups}" 
          style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; text-decoration: none; color: inherit; cursor: pointer; transition: background 0.2s;"
-         onmouseover="if(this.style.background!=='rgb(226, 232, 240)' && this.style.background!=='#e2e8f0') this.style.background='#f1f5f9'" 
-         onmouseout="if(this.style.background!=='rgb(226, 232, 240)' && this.style.background!=='#e2e8f0') this.style.background='transparent'"
-         th:styleappend="${g.id == groupId.toString() ? 'background: #e2e8f0; font-weight: bold;' : ''}">
+         onmouseover="if(this.style.background!=='rgb(224, 242, 254)' && this.style.background!=='#e0f2fe') this.style.background='#f1f5f9'" 
+         onmouseout="if(this.style.background!=='rgb(224, 242, 254)' && this.style.background!=='#e0f2fe') this.style.background='transparent'"
+         th:styleappend="${g.id == groupId.toString() ? 'background: #e0f2fe; color: #0284c7; font-weight: bold;' : ''}">
         
-        <div th:if="${g.profileImageUrl != null}" style="width: 36px; height: 36px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 1px solid var(--line);">
+        <div th:if="${g.profileImageUrl != null}" style="width: 36px; height: 36px; border-radius: 12px; overflow: hidden; flex-shrink: 0; border: 1px solid var(--line);">
           <img th:src="${g.profileImageUrl}" style="width: 100%; height: 100%; object-fit: cover;">
         </div>
-        <div th:unless="${g.profileImageUrl != null}" style="width: 36px; height: 36px; border-radius: 50%; background: #e2e8f0; display: flex; justify-content: center; align-items: center; flex-shrink: 0; border: 1px solid var(--line);">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+        <div th:unless="${g.profileImageUrl != null}" style="width: 36px; height: 36px; border-radius: 12px; background: #e2e8f0; display: flex; justify-content: center; align-items: center; flex-shrink: 0; border: 1px solid var(--line);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         </div>
         
         <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13.5px;" th:text="${g.name}">그룹명</div>
@@ -524,49 +543,28 @@
   const btnToggleLeft = document.getElementById('btnToggleLeftSidebar');
   const btnToggleRight = document.getElementById('btnToggleRightSidebar');
 
-  // 모임방 목록 (왼쪽 사이드바) 토글
+  // 모임방 목록 (왼쪽 사이드바) 선택
   if (btnToggleLeft && leftSidebar) {
     btnToggleLeft.addEventListener('click', function() {
-      if (leftSidebar.classList.contains('hidden')) {
-        // 열기
-        leftSidebar.classList.remove('hidden');
-        btnToggleLeft.innerText = '닫기';
-        btnToggleLeft.style.order = '-1'; // 닫기 버튼을 채팅방 인원 왼쪽으로 이동
-        // 오른쪽 창이 열려있다면 닫기
-        if (rightSidebar && !rightSidebar.classList.contains('hidden')) {
-          rightSidebar.classList.add('hidden');
-          if (btnToggleRight) {
-             btnToggleRight.innerText = '채팅방 인원';
-          }
-        }
-      } else {
-        // 닫기
-        leftSidebar.classList.add('hidden');
-        btnToggleLeft.innerText = '모임방 목록';
-        btnToggleLeft.style.order = ''; // 원래 위치로 복원
+      leftSidebar.classList.remove('hidden');
+      btnToggleLeft.classList.add('active');
+      
+      if (rightSidebar) {
+        rightSidebar.classList.add('hidden');
+        if (btnToggleRight) btnToggleRight.classList.remove('active');
       }
     });
   }
 
-  // 대화 인원 (오른쪽 사이드바) 토글
+  // 대화 인원 (오른쪽 사이드바) 선택
   if (btnToggleRight && rightSidebar) {
     btnToggleRight.addEventListener('click', function() {
-      if (rightSidebar.classList.contains('hidden')) {
-        // 열기
-        rightSidebar.classList.remove('hidden');
-        btnToggleRight.innerText = '닫기';
-        // 왼쪽 창이 열려있다면 닫기
-        if (leftSidebar && !leftSidebar.classList.contains('hidden')) {
-          leftSidebar.classList.add('hidden');
-          if (btnToggleLeft) {
-             btnToggleLeft.innerText = '모임방 목록';
-             btnToggleLeft.style.order = '';
-          }
-        }
-      } else {
-        // 닫기
-        rightSidebar.classList.add('hidden');
-        btnToggleRight.innerText = '채팅방 인원';
+      rightSidebar.classList.remove('hidden');
+      btnToggleRight.classList.add('active');
+      
+      if (leftSidebar) {
+        leftSidebar.classList.add('hidden');
+        if (btnToggleLeft) btnToggleLeft.classList.remove('active');
       }
     });
   }

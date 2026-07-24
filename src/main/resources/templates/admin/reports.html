@@ -41,18 +41,19 @@
                 총 접수 건 <strong style="color:#0ea5e9;" id="totalReportCountSpan" th:text="${reports.size()}">0</strong>건
             </div>
 
-            <table class="admin-table" id="reportTable">
+            <div style="overflow-x: auto; width: 100%;">
+                <table class="admin-table" id="reportTable">
                 <thead>
                     <tr>
                         <th class="no-wrap" style="width: 50px;">ID</th>
                         <th class="no-wrap" style="width: 60px;">유형</th>
-                        <th class="no-wrap" style="width: 150px;">신고 대상 (제목)</th>
-                        <th class="no-wrap">신고 사유</th>
+                        <th class="no-wrap">신고 대상 (제목)</th>
+                        <th style="width: 160px;">신고 사유</th>
                         <th class="no-wrap" style="width: 80px;">신고자</th>
                         <th class="no-wrap" style="width: 80px;">피신고자</th>
                         <th class="no-wrap" style="width: 90px;">접수일</th>
                         <th class="no-wrap" style="width: 90px;">상태</th>
-                        <th class="no-wrap" style="width: 120px;">관리</th>
+                        <th class="no-wrap" style="width: 80px;">관리</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -63,13 +64,13 @@
                     </tr>
                     <tr th:each="report : ${reports}" class="report-row">
                         <td class="no-wrap" th:text="${report.reportId}">1</td>
-                        <td class="no-wrap" th:text="${report.targetType == 'POST' ? '게시글' : '댓글'}">게시글</td>
+                        <td class="no-wrap" th:text="${report.targetType == 'POST' ? '게시글' : (report.targetType == 'COMMENT' ? '댓글' : '채팅')}">게시글</td>
                         <td>
                             <div class="truncate truncate-target clickable-title report-target" 
                                  th:attr="onclick=|openModal('${report.targetType}', '${#strings.escapeJavaScript(report.targetContent)}', '${#strings.escapeJavaScript(report.targetBody != null ? report.targetBody : '')}', '${report.reasonCode}', '${#strings.escapeJavaScript(report.reasonDetail != null ? report.reasonDetail : '없음')}', '${report.reporterNickname}')|" 
                                  th:text="${report.targetContent}">글 제목이 표시됩니다...</div>
                         </td>
-                        <td class="no-wrap report-reason" th:text="${report.reasonCode}">스팸·광고</td>
+                        <td class="report-reason" th:text="${report.reasonCode}">스팸·광고</td>
                         <td class="no-wrap">
                             <div class="truncate truncate-reporter report-reporter" th:text="${report.reporterNickname}">홍길동</div>
                         </td>
@@ -82,15 +83,16 @@
                                   th:text="${report.status == 'WAITING' ? '대기중' : (report.status == 'APPROVED' ? '삭제 조치' : '기각됨')}">대기중</span>
                         </td>
                         <td class="no-wrap">
-                            <div th:if="${report.status == 'WAITING'}" style="display:flex; justify-content:center;">
-                                <button type="button" class="btn-approve" th:attr="onclick=|processReport(${report.reportId}, 'approve')|" style="width: 70px;">삭제 조치</button>
-                                <button type="button" class="btn-reject" th:attr="onclick=|processReport(${report.reportId}, 'reject')|" style="width: 70px;">기각</button>
+                            <div th:if="${report.status == 'WAITING'}" style="display:flex; flex-direction:column; gap: 4px; align-items:center;">
+                                <button type="button" class="btn-approve" th:attr="onclick=|processReport('${report.reportId}', 'approve')|" style="padding: 4px 8px; width: 100%; font-size: 11px;">삭제조치</button>
+                                <button type="button" class="btn-reject" th:attr="onclick=|processReport('${report.reportId}', 'reject')|" style="padding: 4px 8px; width: 100%; font-size: 11px;">기각</button>
                             </div>
                             <span th:if="${report.status != 'WAITING'}" style="color:#94a3b8; font-size:13px;">처리됨</span>
                         </td>
                     </tr>
                 </tbody>
-            </table>
+                </table>
+            </div>
             
             <!-- 페이지네이션 컨트롤 -->
             <div class="board-pagination" id="paginationContainer"></div>
@@ -218,11 +220,16 @@
         document.getElementById('modalReporter').innerText = reporterNickname;
         document.getElementById('modalReasonDetail').innerText = reasonDetail;
         
-        document.getElementById('modalTargetLabel').innerText = targetType === 'POST' ? '신고 대상 게시물' : '신고 대상 댓글';
-        document.getElementById('modalTitleBadge').innerText = targetType === 'POST' ? '제목' : '내용';
+        let targetLabelText = '신고 대상';
+        if (targetType === 'POST') targetLabelText = '신고 대상 게시물';
+        else if (targetType === 'COMMENT') targetLabelText = '신고 대상 댓글';
+        else if (targetType === 'CHAT') targetLabelText = '신고 대상 채팅방';
+        
+        document.getElementById('modalTargetLabel').innerText = targetLabelText;
+        document.getElementById('modalTitleBadge').innerText = targetType === 'POST' ? '제목' : (targetType === 'CHAT' ? '방 이름' : '내용');
         document.getElementById('modalTargetContent').innerText = targetContent;
         
-        if (targetType === 'POST' && targetBody) {
+        if ((targetType === 'POST' || targetType === 'CHAT') && targetBody) {
             document.getElementById('modalTargetBodyContainer').style.display = 'block';
             document.getElementById('modalTargetBody').innerText = targetBody;
         } else {
@@ -238,7 +245,7 @@
     }
 
     async function processReport(reportId, action) {
-        if(!confirm(action === 'approve' ? '해당 게시물을 정말로 [삭제 조치] 하시겠습니까?' : '이 신고를 [기각] 처리하시겠습니까? (대상 게시물은 유지됩니다)')) {
+        if(!confirm(action === 'approve' ? '해당 대상을 정말로 [삭제 조치] 하시겠습니까?' : '이 신고를 [기각] 처리하시겠습니까? (대상은 유지됩니다)')) {
             return;
         }
 

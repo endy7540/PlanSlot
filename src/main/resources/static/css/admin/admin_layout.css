@@ -17,19 +17,14 @@ button {
 
 .admin-layout {
     display: flex;
-    max-width: 1400px;
-    width: 95%;
+    max-width: 1280px;
+    width: 100%;
     margin: 24px auto;
     padding: 0 28px;
     gap: 40px;
     align-items: flex-start;
 }
 
-@media (max-width: 1280px) {
-    .admin-layout {
-        width: 100%;
-    }
-}
 
 .admin-sidebar {
     flex: 0 0 180px;

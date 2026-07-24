@@ -34,7 +34,7 @@ public class BoardGroupController {
         return ResponseEntity.ok(boardGroupService.getCandidates(boardId, getLoginEmail(principal)));
     }
 
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<BoardGroupDTO.CreateResponse> createGroup(@PathVariable Long boardId, @RequestBody BoardGroupDTO.CreateRequest request, Principal principal) {
         Long groupId = boardGroupService.createGroup(boardId, request, getLoginEmail(principal));
         return ResponseEntity.status(HttpStatus.CREATED).body(new BoardGroupDTO.CreateResponse(groupId));

@@ -47,4 +47,9 @@ public class ChatMessage {
         this.sender = sender;
         this.content = content;
     }
+
+    public void delete() {
+        this.isDeleted = true;
+        this.content = "(관리자에 의해 삭제된 메시지입니다.)";
+    }
 }

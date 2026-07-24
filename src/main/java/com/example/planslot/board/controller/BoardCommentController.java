@@ -13,12 +13,20 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
 public class BoardCommentController {
 
     private final BoardCommentService boardCommentService;
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, String>> handleBoardCommentError(ResponseStatusException exception) {
+        String message = exception.getReason();
+        if (message == null || message.isBlank()) message = "요청 처리에 실패했습니다.";
+        return ResponseEntity.status(exception.getStatusCode()).body(Map.of("message", message));
+    }
 
     // 댓글 및 대댓글 등록
     @PostMapping("/board/{boardId}/comment")

@@ -224,6 +224,14 @@ async function submitBoardReport() {
     showBoardToast('신고 사유를 선택해 주세요.', true);
     return;
   }
+  if (!reasonDetail) {
+    showBoardToast('신고 세부내용을 입력해 주세요.', true);
+    return;
+  }
+  if (reasonDetail.length > 200) {
+    showBoardToast('신고 세부내용은 200자 이하로 입력해 주세요.', true);
+    return;
+  }
 
   const target = { ...reportTarget };
   const path = target.targetType === 'POST'
@@ -241,6 +249,10 @@ async function submitBoardReport() {
       closeReportModal();
       showBoardToast('신고가 접수되었습니다.', false, 'success');
     } catch (error) {
+      if (error.status === 409) {
+        showBoardToast(target.targetType === 'POST' ? '이미 신고한 게시글입니다.' : '이미 신고한 댓글입니다.', true);
+        return;
+      }
       showBoardToast(error.message, true);
     }
   });
@@ -875,7 +887,7 @@ async function createBoardGroup() {
   const createButton = document.getElementById('boardGroupCreate');
   await runBoardRequest(`create-group-${currentReadBoard.boardId}`, createButton, '생성 중...', async () => {
     try {
-      const response = await fetchBoardJson(`/board/${currentReadBoard.boardId}/group`, {
+      const response = await fetchBoardJson(`/board/${currentReadBoard.boardId}/group/create`, {
         method: 'POST',
         body: JSON.stringify({
           groupName,
@@ -1034,8 +1046,8 @@ async function createBoardComment(boardId, parentCommentId = null, content = nul
     showBoardToast('댓글 내용을 입력해 주세요.', true);
     return;
   }
-  if (commentContent.length > 1000) {
-    showBoardToast('댓글은 1000자 이하로 입력해 주세요.', true);
+  if (commentContent.length > 500) {
+    showBoardToast('댓글은 500자 이하로 입력해 주세요.', true);
     return;
   }
 
@@ -1085,7 +1097,7 @@ function showCommentInlineForm(commentElement, mode, boardId) {
 
   slot.innerHTML = `
     <div class="board-inline-form">
-      <textarea maxlength="1000" placeholder="${mode === 'edit' ? '수정할 내용을 입력하세요.' : '답글을 입력하세요.'}">${escapeBoardHtml(initialContent)}</textarea>
+      <textarea maxlength="500" placeholder="${mode === 'edit' ? '수정할 내용을 입력하세요.' : '답글을 입력하세요.'}">${escapeBoardHtml(initialContent)}</textarea>
       <button class="board-btn board-btn-primary board-btn-small" type="button">${mode === 'edit' ? '수정' : '등록'}</button>
       <button class="board-btn board-btn-ghost board-btn-small" type="button">취소</button>
     </div>
@@ -1109,8 +1121,8 @@ async function updateBoardComment(commentId, content, boardId, button) {
     showBoardToast('댓글 내용을 입력해 주세요.', true);
     return;
   }
-  if (trimmed.length > 1000) {
-    showBoardToast('댓글은 1000자 이하로 입력해 주세요.', true);
+  if (trimmed.length > 500) {
+    showBoardToast('댓글은 500자 이하로 입력해 주세요.', true);
     return;
   }
 
@@ -1153,6 +1165,11 @@ function updateBoardCommentCount(change) {
 
 async function initializeBoardRegister() {
   const type = getRegisterBoardType();
+  if (!type || !BOARD_TYPE_INFO[type]) {
+    showRegisterAccessDenied('게시판 유형을 확인할 수 없습니다. 목록에서 다시 글쓰기를 눌러 주세요.');
+    return;
+  }
+
   document.body.dataset.boardType = type;
   document.querySelectorAll('[data-board-nav]').forEach(link => link.classList.toggle('active', link.dataset.boardNav === type));
 
@@ -1261,10 +1278,15 @@ async function saveBoardPost(event, type, boardId) {
           body: JSON.stringify({ title, content })
         });
       } else {
-        savedBoardId = await fetchBoardJson(`/board/type/${type.toLowerCase()}`, {
+        const boardTypePath = BOARD_TYPE_INFO[type]?.path;
+        if (!boardTypePath) throw new Error('게시판 유형을 확인할 수 없습니다.');
+
+        savedBoardId = await fetchBoardJson(`/board/type/${encodeURIComponent(boardTypePath)}`, {
           method: 'POST',
           body: JSON.stringify({ title, content })
         });
+        savedBoardId = Number(savedBoardId);
+        if (!Number.isInteger(savedBoardId) || savedBoardId <= 0) throw new Error('등록된 게시글 번호를 확인할 수 없습니다.');
       }
     } catch (error) {
       showBoardToast(error.message, true);
@@ -1400,12 +1422,12 @@ function showBoardLoginPanel() {
 }
 
 function getRegisterBoardType() {
+  const dataType = (document.body.dataset.boardType || '').toUpperCase();
+  if (BOARD_TYPE_INFO[dataType]) return dataType;
+
   const path = location.pathname.split('/').filter(Boolean);
   const value = (path[path.length - 1] || '').toUpperCase();
-
-  return Object.values(BOARD_TYPE_INFO).some(info => info.path.toUpperCase() === value)
-      ? Object.keys(BOARD_TYPE_INFO).find(key => BOARD_TYPE_INFO[key].path.toUpperCase() === value)
-      : 'FREE';
+  return Object.keys(BOARD_TYPE_INFO).find(key => BOARD_TYPE_INFO[key].path.toUpperCase() === value) || null;
 }
 
 function getPathNumberAfter(segment) {

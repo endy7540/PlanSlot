@@ -38,12 +38,13 @@
                 총 회원 수 <strong style="color:#0ea5e9;" id="totalCountSpan" th:text="${members.size()}">0</strong>명
             </div>
 
-            <table class="admin-table" id="memberTable">
+            <div style="overflow-x: auto; width: 100%;">
+                <table class="admin-table" id="memberTable">
                 <thead>
                     <tr>
                         <th class="no-wrap" style="width: 50px;">ID</th>
-                        <th class="no-wrap" style="width: 150px;">이메일</th>
-                        <th class="no-wrap" style="width: 120px;">닉네임</th>
+                        <th>이메일</th>
+                        <th style="width: 120px;">닉네임</th>
                         <th class="no-wrap" style="width: 80px;">제재 횟수</th>
                         <th class="no-wrap" style="width: 120px;">가입일</th>
                         <th class="no-wrap" style="width: 250px;">상태 관리</th>
@@ -57,23 +58,23 @@
                     </tr>
                     <tr th:each="member : ${members}" class="member-row">
                         <td class="no-wrap" th:text="${member.id}">1</td>
-                        <td class="no-wrap member-email" th:text="${member.email}">user@test.com</td>
-                        <td class="no-wrap member-nickname" th:text="${member.nickname}">홍길동</td>
+                        <td class="member-email" style="word-break: break-all;" th:text="${member.email}">user@test.com</td>
+                        <td class="member-nickname" style="word-break: break-all;" th:text="${member.nickname}">홍길동</td>
                         <td class="no-wrap">
                             <span th:if="${member.reportedCount > 0}" style="color: #ef4444; font-weight: bold;" th:text="${member.reportedCount} + '회'">1회</span>
                             <span th:if="${member.reportedCount == 0}" style="color: #94a3b8;">-</span>
                         </td>
                         <td class="no-wrap" th:text="${#temporals.format(member.createdAt, 'yyyy-MM-dd')}">2026-07-20</td>
                         
-                        <td class="no-wrap">
+                        <td>
                             <div th:if="${member.status == 'WITHDRAWN'}">
                                 <span class="badge-member-status badge-withdrawn">탈퇴 회원</span>
                             </div>
                             <div th:unless="${member.status == 'WITHDRAWN'}">
                                 <select class="select-status" th:attr="onchange=|updateStatus(${member.id}, this.value, this)|" th:data-original="${member.status}">
-                                    <option value="ACTIVE" th:selected="${member.status == 'ACTIVE'}">정상 (ACTIVE)</option>
-                                    <option value="SUSPENDED" th:selected="${member.status == 'SUSPENDED'}">정지 (SUSPENDED)</option>
-                                    <option value="BANNED" th:selected="${member.status == 'BANNED'}">영구 정지 (BANNED)</option>
+                                    <option value="ACTIVE" th:selected="${member.status == 'ACTIVE'}">정상</option>
+                                    <option value="SUSPENDED" th:selected="${member.status == 'SUSPENDED'}">임시 정지</option>
+                                    <option value="BANNED" th:selected="${member.status == 'BANNED'}">영구 정지</option>
                                 </select>
                                 <div th:if="${member.status == 'SUSPENDED' && member.suspendedUntil != null}" class="suspension-info">
                                     ~ <span th:text="${#temporals.format(member.suspendedUntil, 'yyyy-MM-dd HH:mm')}"></span> 까지
@@ -82,7 +83,8 @@
                         </td>
                     </tr>
                 </tbody>
-            </table>
+                </table>
+            </div>
             
             <!-- 페이지네이션 컨트롤 -->
             <div class="board-pagination" id="paginationContainer"></div>

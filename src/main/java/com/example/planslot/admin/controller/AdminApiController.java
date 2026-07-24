@@ -8,19 +8,32 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-public class AdminApiController {
+public class
+AdminApiController {
 
     private final AdminReportService adminReportService;
 
     @PostMapping("/reports/{reportId}/approve")
-    public ResponseEntity<String> approveReport(@PathVariable Long reportId) {
-        adminReportService.approveReport(reportId);
+    public ResponseEntity<String> approveReport(@PathVariable String reportId) {
+        if (reportId.startsWith("B_")) {
+            adminReportService.approveReport(Long.parseLong(reportId.substring(2)));
+        } else if (reportId.startsWith("C_")) {
+            adminReportService.approveGroupReport(Long.parseLong(reportId.substring(2)));
+        } else {
+            return ResponseEntity.badRequest().body("잘못된 신고 ID 입니다.");
+        }
         return ResponseEntity.ok("신고가 승인되어 대상이 처리되었습니다.");
     }
 
     @PostMapping("/reports/{reportId}/reject")
-    public ResponseEntity<String> rejectReport(@PathVariable Long reportId) {
-        adminReportService.rejectReport(reportId);
+    public ResponseEntity<String> rejectReport(@PathVariable String reportId) {
+        if (reportId.startsWith("B_")) {
+            adminReportService.rejectReport(Long.parseLong(reportId.substring(2)));
+        } else if (reportId.startsWith("C_")) {
+            adminReportService.rejectGroupReport(Long.parseLong(reportId.substring(2)));
+        } else {
+            return ResponseEntity.badRequest().body("잘못된 신고 ID 입니다.");
+        }
         return ResponseEntity.ok("신고가 반려되었습니다.");
     }
 

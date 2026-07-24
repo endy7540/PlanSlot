@@ -70,4 +70,14 @@ public class GroupReport {
             this.status = status;
         }
     }
+
+    public void approve() {
+        this.status = ReportStatus.APPROVED;
+        this.processedAt = LocalDateTime.now();
+    }
+
+    public void reject() {
+        this.status = ReportStatus.REJECTED;
+        this.processedAt = LocalDateTime.now();
+    }
 }

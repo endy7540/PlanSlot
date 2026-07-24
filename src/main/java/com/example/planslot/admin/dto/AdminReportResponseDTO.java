@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Getter
 @Builder
 public class AdminReportResponseDTO {
-    private Long reportId;
+    private String reportId;
     private String reporterNickname;
     private String targetType;
     private Long targetId;
@@ -24,7 +24,7 @@ public class AdminReportResponseDTO {
 
     public static AdminReportResponseDTO fromEntity(BoardReport report, String targetContent, String targetBody, String reportedNickname) {
         return AdminReportResponseDTO.builder()
-                .reportId(report.getReportId())
+                .reportId("B_" + report.getReportId())
                 .reporterNickname(report.getReporter().getNickname())
                 .reportedNickname(reportedNickname)
                 .targetType(report.getTargetType().name())
@@ -35,6 +35,21 @@ public class AdminReportResponseDTO {
                 .createdAt(report.getCreatedAt())
                 .targetContent(targetContent)
                 .targetBody(targetBody)
+                .build();
+    }
+    public static AdminReportResponseDTO fromGroupEntity(com.example.planslot.groupchat.entity.GroupReport report) {
+        return AdminReportResponseDTO.builder()
+                .reportId("C_" + report.getId())
+                .reporterNickname(report.getMember().getNickname())
+                .reportedNickname(report.getReportedMember().getNickname())
+                .targetType("CHAT")
+                .targetId(report.getChatMessage().getId())
+                .reasonCode(report.getReason())
+                .reasonDetail(report.getReasonDetail())
+                .status(report.getStatus().name())
+                .createdAt(report.getCreatedAt())
+                .targetContent(report.getGroup().getGroupName() + " 채팅방")
+                .targetBody(report.getChatMessage().getContent())
                 .build();
     }
 }

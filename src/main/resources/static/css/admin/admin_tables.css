@@ -6,6 +6,8 @@
 /* 테이블 기본 뼈대 */
 .admin-table {
     width: 100%;
+    min-width: 750px;
+    table-layout: fixed;
     border-collapse: collapse;
     font-size: 14px;
     text-align: left;
@@ -14,11 +16,11 @@
     background-color: #f1f5f9;
     color: #475569;
     font-weight: 600;
-    padding: 14px 16px;
+    padding: 12px 10px;
     border-bottom: 1px solid #e2e8f0;
 }
 .admin-table td {
-    padding: 16px;
+    padding: 12px 10px;
     border-bottom: 1px solid #f1f5f9;
     vertical-align: middle;
     color: #334155;
@@ -38,8 +40,8 @@
     text-overflow: ellipsis;
     vertical-align: middle;
 }
-.truncate-target { max-width: 130px; }
-.truncate-reporter { max-width: 70px; }
+.truncate-target { width: 100%; max-width: 100%; }
+.truncate-reporter { width: 100%; max-width: 100%; }
 
 /* 뱃지 통일 (상태, 권한 등) */
 .badge-status {
@@ -204,4 +206,4 @@
     text-decoration: underline;
 }
 .clickable-title:hover { color: #0369a1; }
-.suspension-info { font-size: 12px; color: #854d0e; background: #fef08a; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block; }
+.suspension-info { font-size: 12px; color: #854d0e; background: #fef08a; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: block; width: fit-content; white-space: nowrap; }

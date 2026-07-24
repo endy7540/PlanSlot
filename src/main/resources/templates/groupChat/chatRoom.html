@@ -420,6 +420,29 @@
   </div>
 </div>
 
+<script>
+  // 페이지 렌더링(페인트) 직전에 동기적으로 상태를 복구하여 깜빡임(잔상) 방지
+  (function() {
+    const activeTab = sessionStorage.getItem('chatActiveTab') || 'right';
+    const leftSidebar = document.querySelector('.chat-left-sidebar');
+    const rightSidebar = document.querySelector('.chat-sidebar');
+    const btnToggleLeft = document.getElementById('btnToggleLeftSidebar');
+    const btnToggleRight = document.getElementById('btnToggleRightSidebar');
+
+    if (activeTab === 'left') {
+      if (leftSidebar) leftSidebar.classList.remove('hidden');
+      if (btnToggleLeft) btnToggleLeft.classList.add('active');
+      if (rightSidebar) rightSidebar.classList.add('hidden');
+      if (btnToggleRight) btnToggleRight.classList.remove('active');
+    } else {
+      if (rightSidebar) rightSidebar.classList.remove('hidden');
+      if (btnToggleRight) btnToggleRight.classList.add('active');
+      if (leftSidebar) leftSidebar.classList.add('hidden');
+      if (btnToggleLeft) btnToggleLeft.classList.remove('active');
+    }
+  })();
+</script>
+
 <!-- 신고 모달 -->
 <div class="modal-overlay" id="reportModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(11,37,64,.45); z-index:100; justify-content:center; align-items:center;">
   <div class="modal-box" style="background:#fff; border-radius:16px; padding:22px; max-width:380px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,.25);">
@@ -559,6 +582,7 @@
         rightSidebar.classList.add('hidden');
         if (btnToggleRight) btnToggleRight.classList.remove('active');
       }
+      sessionStorage.setItem('chatActiveTab', 'left');
     });
   }
 
@@ -572,6 +596,7 @@
         leftSidebar.classList.add('hidden');
         if (btnToggleLeft) btnToggleLeft.classList.remove('active');
       }
+      sessionStorage.setItem('chatActiveTab', 'right');
     });
   }
 

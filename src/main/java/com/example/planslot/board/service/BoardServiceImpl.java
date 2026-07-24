@@ -420,6 +420,11 @@ public class BoardServiceImpl implements BoardService {
         if (reportRequestDTO.getReasonCode() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 사유를 선택해 주세요.");
         }
+
+        String reasonDetail = normalizeReportDetail(reportRequestDTO.getReasonDetail());
+        if (reasonDetail != null && reasonDetail.length() > 200) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 상세 내용은 200자 이하로 입력해 주세요.");
+        }
     }
 
     // 신고 세부내용 정리

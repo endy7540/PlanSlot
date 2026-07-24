@@ -224,6 +224,10 @@ async function submitBoardReport() {
     showBoardToast('신고 사유를 선택해 주세요.', true);
     return;
   }
+  if (reasonDetail.length > 200) {
+    showBoardToast('신고 상세 내용은 200자 이하로 입력해 주세요.', true);
+    return;
+  }
 
   const target = { ...reportTarget };
   const path = target.targetType === 'POST'

@@ -38,6 +38,7 @@ public class GroupServiceImpl implements GroupService {
     private final ScheduleRepository scheduleRepository;
     private final NotificationService notificationService;
     private final com.example.planslot.group.repository.GroupScheduleShareRepository groupScheduleShareRepository;
+    private final com.example.planslot.groupchat.repository.GroupChatRoomRepository groupChatRoomRepository;
     private final com.example.planslot.schedule.entity.SourceType sourceType = null; // Unused dummy to prevent import issue
 
     @Override
@@ -54,6 +55,12 @@ public class GroupServiceImpl implements GroupService {
 
         GroupMember ownerMembership = GroupMember.createOwner(group, owner);
         groupMemberRepository.save(ownerMembership);
+
+        // 모임 생성 시 해당 모임의 채팅방도 자동 생성
+        com.example.planslot.groupchat.entity.GroupChatRoom chatRoom = com.example.planslot.groupchat.entity.GroupChatRoom.builder()
+                .group(group)
+                .build();
+        groupChatRoomRepository.save(chatRoom);
 
         return GroupDTO.Response.from(group);
     }
@@ -141,9 +148,27 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional
     public void updateGroupName(Long groupId, String newName, Long memberId) {
-        Group group = groupRepository.findById(groupId).orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
-        if (!group.getOwner().getId().equals(memberId)) throw new IllegalArgumentException("권한이 없습니다.");
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
+
+        if (!group.getOwner().getId().equals(memberId)) {
+            throw new IllegalArgumentException("모임장만 이름을 수정할 수 있습니다.");
+        }
+
         group.updateGroupName(newName);
+    }
+
+    @Override
+    @Transactional
+    public void updateGroupProfileImage(Long groupId, String imageUrl, Long memberId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
+
+        if (!group.getOwner().getId().equals(memberId)) {
+            throw new IllegalArgumentException("모임장만 프로필 사진을 수정할 수 있습니다.");
+        }
+
+        group.updateProfileImageUrl(imageUrl);
     }
 
     @Override

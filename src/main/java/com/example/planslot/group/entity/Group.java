@@ -37,12 +37,20 @@ public class Group {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+    
+    @Column(name = "profile_image_url")
+    private String profileImageUrl;
 
     @Builder
-    private Group(String groupName, Member owner) {
+    private Group(String groupName, Member owner, String profileImageUrl) {
         this.groupName = groupName;
         this.owner = owner;
         this.personCount = 1;
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    public void updateProfileImageUrl(String url) {
+        this.profileImageUrl = url;
     }
 
     public void increasePersonCount() {

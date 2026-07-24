@@ -1,18 +1,12 @@
 /* Layout Wrapper */
 .mypage-layout {
     display: flex;
-    width: 50%;
+    width: 100%;
+    max-width: 1280px;
     margin: 24px auto;
     padding: 0 28px;
     gap: 40px;
     align-items: flex-start;
-}
-
-/* 반응형: 브라우저 창 크기가 1280px 이하로 작아지면 화면을 100% 꽉 채웁니다 */
-@media (max-width: 1280px) {
-    .mypage-layout {
-        width: 100%;
-    }
 }
 
 /* Sidebar Styling */

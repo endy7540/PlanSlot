@@ -67,13 +67,43 @@ public class GroupController {
     }
 
     // 모임 생성 요청 처리
-    @PostMapping("/register")
+    @PostMapping(value = "/register", consumes = "multipart/form-data")
     public ResponseEntity<GroupDTO.Response> registerGroup(
-            @Valid @RequestBody GroupDTO.CreateRequest request,
+            @RequestParam("groupName") String groupName,
+            @RequestParam(value = "file", required = false) org.springframework.web.multipart.MultipartFile file,
             Authentication authentication
     ) {
+        if (groupName == null || groupName.trim().isEmpty() || groupName.length() > 30) {
+            return ResponseEntity.badRequest().build();
+        }
+
         Long memberId = getAuthenticatedMemberId(authentication);
+        GroupDTO.CreateRequest request = new GroupDTO.CreateRequest(groupName.trim());
         GroupDTO.Response response = groupService.createGroup(memberId, request);
+
+        if (file != null && !file.isEmpty()) {
+            try {
+                String originalFilename = file.getOriginalFilename();
+                String extension = ".jpg";
+                if (originalFilename != null && originalFilename.contains(".")) {
+                    extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+                }
+                String newFilename = java.util.UUID.randomUUID().toString() + extension;
+                
+                java.nio.file.Path uploadPath = java.nio.file.Paths.get(System.getProperty("user.dir"), "uploads", "group");
+                if (!java.nio.file.Files.exists(uploadPath)) {
+                    java.nio.file.Files.createDirectories(uploadPath);
+                }
+                
+                java.nio.file.Path filePath = uploadPath.resolve(newFilename);
+                file.transferTo(filePath.toFile());
+                String imageUrl = "/uploads/group/" + newFilename;
+                
+                groupService.updateGroupProfileImage(response.groupId(), imageUrl, memberId);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

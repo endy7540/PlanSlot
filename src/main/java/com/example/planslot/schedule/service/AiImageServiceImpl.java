@@ -48,6 +48,7 @@ public class AiImageServiceImpl implements AiImageService {
     private final AiImageRepository aiImageRepository;
     private final MemberRepository memberRepository;
     private final ScheduleRepository scheduleRepository;
+    private final GoogleCalendarService googleCalendarService;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
 
     @Value("${file.upload.ai-image-path:./uploads/ai-image}")
@@ -231,12 +232,19 @@ public class AiImageServiceImpl implements AiImageService {
                 }
             }
 
+            String listJson = null;
+            try {
+                listJson = objectMapper.writeValueAsString(list);
+            } catch (Exception ex) {
+                log.error("Failed to serialize extracted schedules list", ex);
+            }
+
             if (!list.isEmpty()) {
                 // 대표값 설정 (첫 번째 일정으로 기존 단일 필드들 덮어쓰기)
                 AiImageDTO.ExtractedSchedule first = list.get(0);
-                aiImage.completeAnalysis(first.getTitle(), first.getStartDate(), first.getEndDate(), first.getLocation(), BigDecimal.valueOf(98.50));
+                aiImage.completeAnalysis(first.getTitle(), first.getStartDate(), first.getEndDate(), first.getLocation(), BigDecimal.valueOf(98.50), listJson);
             } else {
-                aiImage.completeAnalysis("AI 분석 일정", LocalDateTime.now(), LocalDateTime.now().plusHours(1), "회의실", BigDecimal.valueOf(90.00));
+                aiImage.completeAnalysis("AI 분석 일정", LocalDateTime.now(), LocalDateTime.now().plusHours(1), "회의실", BigDecimal.valueOf(90.00), "[]");
             }
             
             log.info("[AI IMAGE] AI Analysis successfully completed via Claude API integration! Found {} items.", list.size());
@@ -362,7 +370,11 @@ public class AiImageServiceImpl implements AiImageService {
                 .build());
 
         BigDecimal confidence = BigDecimal.valueOf(95.50);
-        aiImage.completeAnalysis(title, extractedStart, extractedEnd, location, confidence);
+        String listJson = null;
+        try {
+            listJson = objectMapper.writeValueAsString(list);
+        } catch (Exception ex) {}
+        aiImage.completeAnalysis(title, extractedStart, extractedEnd, location, confidence, listJson);
         return AiImageDTO.Response.from(aiImage, list);
     }
 
@@ -371,9 +383,18 @@ public class AiImageServiceImpl implements AiImageService {
         AiImage aiImage = aiImageRepository.findByIdAndMemberId(requestId, memberId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "요청 정보를 찾을 수 없습니다."));
         
-        // 상세 조회 시 기본적으로 단일 분석 기록 기반으로 1개 목록을 만들어서 제공
         List<AiImageDTO.ExtractedSchedule> list = new ArrayList<>();
-        if (aiImage.getExtractedTitle() != null) {
+        if (aiImage.getExtractedSchedulesJson() != null && !aiImage.getExtractedSchedulesJson().isBlank()) {
+            try {
+                AiImageDTO.ExtractedSchedule[] arr = objectMapper.readValue(aiImage.getExtractedSchedulesJson(), AiImageDTO.ExtractedSchedule[].class);
+                list = new ArrayList<>(Arrays.asList(arr));
+            } catch (Exception e) {
+                log.error("Failed to deserialize extracted schedules JSON from DB", e);
+            }
+        }
+        
+        // 만약 JSON 복원에 실패했거나 비어있는 경우 Fallback으로 단일 대표 일정을 리스트에 담음
+        if (list.isEmpty() && aiImage.getExtractedTitle() != null) {
             list.add(AiImageDTO.ExtractedSchedule.builder()
                     .title(aiImage.getExtractedTitle())
                     .startDate(aiImage.getExtractedStartDate())
@@ -399,12 +420,18 @@ public class AiImageServiceImpl implements AiImageService {
             return analyzeAiImage(memberId, requestId);
         }
 
+        String listJson = null;
+        try {
+            listJson = objectMapper.writeValueAsString(updateRequest.getExtractedSchedules());
+        } catch (Exception ex) {}
+
         aiImage.completeAnalysis(
                 updateRequest.getExtractedTitle() != null ? updateRequest.getExtractedTitle() : aiImage.getExtractedTitle(),
                 updateRequest.getExtractedStartDate() != null ? updateRequest.getExtractedStartDate() : aiImage.getExtractedStartDate(),
                 updateRequest.getExtractedEndDate() != null ? updateRequest.getExtractedEndDate() : aiImage.getExtractedEndDate(),
                 updateRequest.getExtractedLocation() != null ? updateRequest.getExtractedLocation() : aiImage.getExtractedLocation(),
-                updateRequest.getConfidenceScore() != null ? updateRequest.getConfidenceScore() : aiImage.getConfidenceScore()
+                updateRequest.getConfidenceScore() != null ? updateRequest.getConfidenceScore() : aiImage.getConfidenceScore(),
+                listJson != null ? listJson : aiImage.getExtractedSchedulesJson()
         );
 
         List<AiImageDTO.ExtractedSchedule> list = updateRequest.getExtractedSchedules();
@@ -424,47 +451,24 @@ public class AiImageServiceImpl implements AiImageService {
     @Override
     @Transactional
     public AiImageDTO.Response confirmAiImageSchedule(Long memberId, Long requestId, List<AiImageDTO.ConfirmRequest> confirmRequests) {
-        AiImage aiImage = aiImageRepository.findByIdAndMemberId(requestId, memberId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "요청 정보를 찾을 수 없습니다."));
+        try {
+            System.out.println("[AI-Confirm] Starting schedule confirmation for memberId: " + memberId + ", requestId: " + requestId);
+            AiImage aiImage = aiImageRepository.findByIdAndMemberId(requestId, memberId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "요청 정보를 찾을 수 없습니다."));
 
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
+            Member member = memberRepository.findById(memberId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
 
-        if (confirmRequests == null || confirmRequests.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "등록할 일정이 없습니다.");
-        }
+            if (confirmRequests == null || confirmRequests.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "등록할 일정이 없습니다.");
+            }
 
-        Schedule lastSaved = null;
-        for (AiImageDTO.ConfirmRequest req : confirmRequests) {
-            List<Schedule> existingList = scheduleRepository.findDuplicateSchedule(
-                    memberId, req.getTitle(), req.getStartDate(), req.getEndDate()
-            );
+            System.out.println("[AI-Confirm] Number of request schedules to confirm: " + confirmRequests.size());
 
-            Schedule schedule;
-            if (!existingList.isEmpty()) {
-                Schedule existing = existingList.get(0);
-                existing.update(
-                        req.getTitle(),
-                        req.getDescription(),
-                        ScheduleType.valueOf(req.getScheduleType() != null ? req.getScheduleType() : "DAILY"),
-                        req.getStartDate(),
-                        req.getEndDate(),
-                        Boolean.TRUE.equals(req.getIsPublic()) ? "Y" : "N",
-                        req.getLocation(),
-                        existing.getRecurrenceEndDate()
-                );
-                schedule = scheduleRepository.save(existing);
-
-                // 만약 첫 번째 외에 추가적인 중복 일정들이 더 있다면, 소프트 딜리트 처리
-                if (existingList.size() > 1) {
-                    for (int i = 1; i < existingList.size(); i++) {
-                        Schedule extra = existingList.get(i);
-                        extra.softDelete();
-                        scheduleRepository.save(extra);
-                    }
-                }
-            } else {
-                schedule = Schedule.builder()
+            Schedule lastSaved = null;
+            for (AiImageDTO.ConfirmRequest req : confirmRequests) {
+                System.out.println("[AI-Confirm] Creating new schedule. Title: " + req.getTitle() + " | Start: " + req.getStartDate());
+                Schedule schedule = Schedule.builder()
                         .member(member)
                         .title(req.getTitle())
                         .description(req.getDescription())
@@ -477,15 +481,43 @@ public class AiImageServiceImpl implements AiImageService {
                         .location(req.getLocation())
                         .build();
                 schedule = scheduleRepository.save(schedule);
+
+                // 구글 캘린더 Push (CompletableFuture로 비동기 스레드에서 처리하여 지연 방지)
+                if (member.isGoogleSyncEnabled() && member.getGoogleAccessToken() != null) {
+                    final Long scheduleId = schedule.getScheduleId();
+                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                        try {
+                            Member currentMember = memberRepository.findById(memberId).orElse(null);
+                            Schedule currentSchedule = scheduleRepository.findById(scheduleId).orElse(null);
+                            if (currentMember != null && currentSchedule != null) {
+                                String googleEventId = googleCalendarService.insertEvent(currentMember, currentSchedule);
+                                if (googleEventId != null) {
+                                    currentSchedule.syncGoogleCalendar(googleEventId);
+                                    scheduleRepository.save(currentSchedule);
+                                    System.out.println("[AI-Confirm] Asynchronously synced schedule ID: " + scheduleId + " with Google Calendar. Event ID: " + googleEventId);
+                                }
+                            }
+                        } catch (Exception e) {
+                            System.err.println("[AI-Confirm] Failed to async sync schedule with Google Calendar: " + e.getMessage());
+                        }
+                    });
+                }
+
+                lastSaved = schedule;
             }
-            lastSaved = schedule;
-        }
 
-        if (lastSaved != null) {
-            aiImage.confirmSchedule(lastSaved);
-        }
+            if (lastSaved != null) {
+                System.out.println("[AI-Confirm] Setting lastSaved schedule ID: " + lastSaved.getScheduleId() + " into aiImage: " + requestId);
+                aiImage.confirmSchedule(lastSaved);
+            }
 
-        return AiImageDTO.Response.from(aiImage, null);
+            System.out.println("[AI-Confirm] Schedule confirmation completed successfully!");
+            return AiImageDTO.Response.from(aiImage, null);
+        } catch (Exception ex) {
+            System.err.println("[AI-Confirm] Error occurred during confirmAiImageSchedule!");
+            ex.printStackTrace();
+            throw ex;
+        }
     }
 
     @Override

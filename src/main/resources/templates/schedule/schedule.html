@@ -679,7 +679,8 @@
         dateKeys.forEach(dk => {
             const evs = schedulesByDate[dk] || [];
             evs.forEach(e => {
-                uniqueEventsMap.set(e.scheduleId, e);
+                const startStr = getDateOnly(e.startDate);
+                uniqueEventsMap.set(e.scheduleId + "_" + startStr, e);
             });
         });
         const allEvents = Array.from(uniqueEventsMap.values());
@@ -1058,6 +1059,36 @@
                 if (dateParam) highlightDate(dateParam);
                 renderSelectedDateEvents(selectedDateKey);
             });
+
+            // 다른 페이지에서 [결과 확인]을 눌러 리다이렉트되어 온 경우
+            if (params.get('showAiResult') === 'true') {
+                const showModalFn = () => {
+                    const cachedDataStr = localStorage.getItem('ps_ai_cached_result');
+                    if (cachedDataStr) {
+                        try {
+                            const resultData = JSON.parse(cachedDataStr);
+                            aiCachedResultData = resultData;
+
+                            const modal = document.getElementById('aiImageModal');
+                            if (modal) {
+                                modal.style.display = 'flex';
+                                document.getElementById('aiUploadStep').style.display = 'none';
+                                document.getElementById('aiLoadingStep').style.display = 'none';
+                                displayAnalysisResult(aiCachedResultData);
+                            }
+                        } catch (e) {
+                            console.error("AI 모달 복구 에러:", e);
+                            if (typeof clearAiStorage === 'function') clearAiStorage();
+                        }
+                    }
+                };
+
+                if (document.readyState === 'loading') {
+                    window.addEventListener('DOMContentLoaded', showModalFn);
+                } else {
+                    showModalFn();
+                }
+            }
         }
     })();
 
@@ -1071,6 +1102,7 @@
 
     // ===== AI 이미지 일정 분석 모달 연동 스크립트 =====
     let aiSelectedFile = null;
+    let aiCachedResultData = null;
 
     function openAiImageModal() {
         if (!token) {
@@ -1098,10 +1130,17 @@
     function onPromptTypeChange() {
         const type = document.getElementById('aiPromptType').value;
         const presets = document.getElementById('aiPromptPresets');
+        const promptText = document.getElementById('aiPromptText');
         if (type === '예시') {
             presets.style.display = 'flex';
+            promptText.readOnly = true;
+            promptText.style.background = '#F8FAFC';
+            promptText.style.color = '#64748B';
         } else {
             presets.style.display = 'none';
+            promptText.readOnly = false;
+            promptText.style.background = '#FFFFFF';
+            promptText.style.color = '#334155';
         }
     }
 
@@ -1176,66 +1215,86 @@
         const promptType = document.getElementById('aiPromptType').value;
         const promptText = document.getElementById('aiPromptText').value.trim();
 
-        // 1단계: 업로드 로딩 켜기
-        document.getElementById('aiUploadStep').style.display = 'none';
-        document.getElementById('aiLoadingStep').style.display = 'block';
-        document.getElementById('aiProgressTitle').innerText = '이미지 업로드 중...';
-        document.getElementById('aiProgressDesc').innerText = '파일을 서버로 업로드하고 요청을 생성하고 있습니다.';
+        // 모달창을 즉시 닫고, 다른 작업을 하실 수 있도록 백그라운드로 돌립니다.
+        closeAiImageModal();
+
+        // 1) 우선 로컬 스토리지 상태를 'PROCESSING'으로 세팅하고 위젯을 공통 호출로 가동합니다.
+        localStorage.setItem('ps_ai_status', 'PROCESSING');
+        localStorage.removeItem('ps_ai_cached_result');
+        localStorage.removeItem('ps_ai_fail_reason');
+        
+        if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
+            checkAndRecoverAiBackgroundProcess();
+        }
 
         const formData = new FormData();
         formData.append('image', aiSelectedFile);
         formData.append('promptType', promptType);
         formData.append('promptText', promptText);
 
-        try {
-            // A. 이미지 업로드 API 호출
-            const uploadRes = await fetch(`${API_BASE}/ai-image-schedule`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData
-            });
+        // 비동기 백그라운드 통신 기동
+        (async () => {
+            try {
+                // A. 이미지 업로드 API 호출
+                const uploadRes = await fetch(`${API_BASE}/ai-image-schedule`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
 
-            if (!uploadRes.ok) {
-                const err = await uploadRes.json();
-                throw new Error(err.message || '업로드 실패');
+                if (!uploadRes.ok) {
+                    const err = await uploadRes.json();
+                    throw new Error(err.message || '업로드 실패');
+                }
+
+                const uploadData = await uploadRes.json();
+                const requestId = uploadData.id;
+
+                // B. 로컬 스토리지에 requestId 기입
+                localStorage.setItem('ps_ai_request_id', requestId);
+
+                // C. 공통 헤더 폴링 복구 호출 (폴링을 즉시 시작하여 위젯 UI를 변경하게 함)
+                if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
+                    checkAndRecoverAiBackgroundProcess();
+                }
+
+                // D. 분석 실행 API 호출
+                const analyzeRes = await fetch(`${API_BASE}/ai-image-schedule/${requestId}/analyze`, {
+                    method: 'POST',
+                    headers: authHeaders()
+                });
+
+                if (!analyzeRes.ok) {
+                    throw new Error('AI 분석 도중 에러가 발생했습니다.');
+                }
+
+                const resultData = await analyzeRes.json();
+
+                if (resultData.status === 'FAILED') {
+                    throw new Error(resultData.failReason || 'AI 분석이 실패했습니다.');
+                }
+
+                // E. 캐시 세팅 및 완료 처리
+                localStorage.setItem('ps_ai_status', 'COMPLETED');
+                localStorage.setItem('ps_ai_cached_result', JSON.stringify(resultData));
+                aiCachedResultData = resultData;
+
+                // 공통 헤더 위젯 UI 업데이트 유도
+                if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
+                    checkAndRecoverAiBackgroundProcess();
+                }
+
+            } catch (e) {
+                console.error(e);
+                localStorage.setItem('ps_ai_status', 'FAILED');
+                localStorage.setItem('ps_ai_fail_reason', e.message);
+                if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
+                    checkAndRecoverAiBackgroundProcess();
+                }
             }
-
-            const uploadData = await uploadRes.json();
-            const requestId = uploadData.id;
-
-            // B. 분석 의뢰 로딩 갱신
-            document.getElementById('aiProgressTitle').innerText = 'AI 일정 분석 중...';
-            document.getElementById('aiProgressDesc').innerText = 'AI가 이미지를 토대로 일정을 정밀하게 파싱하고 있습니다.';
-
-            // C. 분석 실행 API 호출
-            const analyzeRes = await fetch(`${API_BASE}/ai-image-schedule/${requestId}/analyze`, {
-                method: 'POST',
-                headers: authHeaders()
-            });
-
-            if (!analyzeRes.ok) {
-                throw new Error('AI 분석 도중 에러가 발생했습니다.');
-            }
-
-            const resultData = await analyzeRes.json();
-
-            // AI 분석 중 백엔드 예외 또는 API 통신 실패가 난 경우
-            if (resultData.status === 'FAILED') {
-                showToast('AI 분석 실패: ' + (resultData.failReason || '알 수 없는 이유'), true);
-                resetStep();
-                return;
-            }
-
-            // 3단계: 분석 결과 표시
-            displayAnalysisResult(resultData);
-
-        } catch (e) {
-            console.error(e);
-            showToast('에러: ' + e.message, true);
-            resetStep();
-        }
+        })();
     }
 
     let currentExtractedList = [];
@@ -1364,12 +1423,38 @@
     }
 
     async function confirmSchedule() {
-        const requestId = document.getElementById('aiRequestId').value;
+        const confirmBtn = document.getElementById('aiConfirmBtn');
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerText = '⏳ 등록 처리 중...';
+            confirmBtn.style.opacity = '0.6';
+            confirmBtn.style.pointerEvents = 'none';
+        }
+
+        const restoreBtn = () => {
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerText = '📅 캘린더 등록 확정';
+                confirmBtn.style.opacity = '1';
+                confirmBtn.style.pointerEvents = 'auto';
+            }
+        };
+
+        let requestId = document.getElementById('aiRequestId').value;
+        if (!requestId) {
+            requestId = localStorage.getItem('ps_ai_request_id');
+        }
+        if (!requestId) {
+            showToast('AI 분석 요청 ID가 유효하지 않습니다. 새로고침 후 다시 시도해 주세요.', true);
+            restoreBtn();
+            return;
+        }
         const container = document.getElementById('aiSchedulesContainer');
         const cards = container.querySelectorAll('.ai-schedule-card');
         
         if (cards.length === 0) {
             showToast('등록할 일정이 없습니다.', true);
+            restoreBtn();
             return;
         }
 
@@ -1432,7 +1517,10 @@
             });
         });
 
-        if (hasError) return;
+        if (hasError) {
+            restoreBtn();
+            return;
+        }
 
         try {
             const res = await fetch(`${API_BASE}/ai-image-schedule/${requestId}/confirm`, {
@@ -1451,6 +1539,7 @@
 
             showToast(`🎉 총 ${confirmRequests.length}개의 일정이 성공적으로 개인 캘린더에 추가되었습니다!`);
             closeAiImageModal();
+            if (typeof clearAiStorage === 'function') clearAiStorage();
             
             if (typeof loadMonthSchedules === 'function') {
                 await loadMonthSchedules();
@@ -1461,6 +1550,7 @@
         } catch (e) {
             console.error(e);
             showToast('확정 등록 오류: ' + e.message, true);
+            restoreBtn();
         }
     }
     function getDateOnly(dateStr) {
@@ -1564,7 +1654,7 @@
                 <button class="ghost" onclick="reAnalyze()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; color: #4F46E5; border: 2px solid #E2E8F0; font-weight: bold; background: white; cursor: pointer;">🔄 다시 분석</button>
                 <div style="display: flex; gap: 6px;">
                     <button class="ghost" onclick="resetStep()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; cursor: pointer;">처음으로</button>
-                    <button class="primary" onclick="confirmSchedule()" style="padding: 10px 20px; font-size: 13px; border-radius: 8px; border: 0; background: linear-gradient(135deg, #10B981, #059669); color: white; font-weight: bold; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); cursor: pointer;">📅 캘린더 등록 확정</button>
+                    <button id="aiConfirmBtn" class="primary" onclick="confirmSchedule()" style="padding: 10px 20px; font-size: 13px; border-radius: 8px; border: 0; background: linear-gradient(135deg, #10B981, #059669); color: white; font-weight: bold; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); cursor: pointer;">📅 캘린더 등록 확정</button>
                 </div>
             </div>
         </div>

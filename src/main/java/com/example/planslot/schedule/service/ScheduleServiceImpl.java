@@ -48,6 +48,12 @@ public class ScheduleServiceImpl implements ScheduleService {
             }
         }
 
+        if (requestDTO.getStartDate() != null && requestDTO.getEndDate() != null) {
+            if (requestDTO.getEndDate().isBefore(requestDTO.getStartDate())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "종료 날짜는 시작 날짜보다 빠를 수 없습니다.");
+            }
+        }
+
         Schedule schedule = Schedule.builder()
                 .member(member)
                 .title(requestDTO.getTitle())
@@ -99,6 +105,12 @@ public class ScheduleServiceImpl implements ScheduleService {
         if (requestDTO.getDeadlineDate() != null && requestDTO.getStartDate() != null) {
             if (requestDTO.getDeadlineDate().isAfter(requestDTO.getStartDate().toLocalDate())) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "데드라인 날짜는 일정 시작일보다 이후일 수 없습니다.");
+            }
+        }
+
+        if (requestDTO.getStartDate() != null && requestDTO.getEndDate() != null) {
+            if (requestDTO.getEndDate().isBefore(requestDTO.getStartDate())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "종료 날짜는 시작 날짜보다 빠를 수 없습니다.");
             }
         }
 

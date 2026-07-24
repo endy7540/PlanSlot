@@ -342,25 +342,248 @@
     }
 
     async function deleteCurrentSchedule() {
-        if (!confirm('정말 이 일정을 삭제하시겠습니까?')) return;
-        
+        const params = new URLSearchParams(window.location.search);
+        const targetDateParam = params.get('date');
+
         try {
-            const res = await fetch(`${API_BASE}/schedule/${scheduleId}`, {
-                method: 'DELETE',
-                headers: authHeaders()
-            });
-            if (!res.ok) {
-                showToast('삭제 실패: ' + res.status, true);
+            const origRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, { headers: authHeaders() });
+            if (!origRes.ok) {
+                showToast('일정 정보 조회 실패', true);
                 return;
             }
-            showToast('일정이 성공적으로 삭제되었습니다. 캘린더로 이동합니다...');
-            setTimeout(() => {
-                window.location.href = '/schedule';
-            }, 800);
+            const origSchedule = await origRes.json();
+            const originalType = origSchedule.scheduleType;
+            const isOrigRecurrent = (originalType && originalType !== 'DAILY');
+
+            if (!isOrigRecurrent || !targetDateParam) {
+                if (!confirm('정말 이 일정을 삭제하시겠습니까?')) return;
+                await performDeleteAll(scheduleId);
+                return;
+            }
+
+            const choice = await askDeleteChoice(targetDateParam);
+            if (choice === 'future') {
+                await deleteFutureSchedules(origSchedule, targetDateParam);
+            } else if (choice === 'day') {
+                await deleteSingleDaySchedule(origSchedule, targetDateParam);
+            }
         } catch (e) {
             console.error(e);
-            showToast('삭제 중 오류가 발생했습니다.', true);
+            showToast('삭제 요청 처리 중 오류가 발생했습니다.', true);
         }
+    }
+
+    async function performDeleteAll(id) {
+        const res = await fetch(`${API_BASE}/schedule/${id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+        });
+        if (!res.ok) {
+            showToast('삭제 실패: ' + res.status, true);
+            return;
+        }
+        showToast('일정이 성공적으로 삭제되었습니다.');
+        setTimeout(() => { window.location.href = '/schedule'; }, 800);
+    }
+
+    async function deleteFutureSchedules(origSchedule, targetDateParam) {
+        const targetDate = new Date(targetDateParam);
+        const padLocal = (n) => String(n).padStart(2, '0');
+
+        const prevEndDate = new Date(targetDateParam);
+        const originalType = origSchedule.scheduleType;
+        if (originalType === 'WEEKLY') {
+            prevEndDate.setDate(prevEndDate.getDate() - 7);
+        } else if (originalType === 'MONTHLY') {
+            prevEndDate.setMonth(prevEndDate.getMonth() - 1);
+        } else if (originalType === 'YEARLY') {
+            prevEndDate.setFullYear(prevEndDate.getFullYear() - 1);
+        }
+        const prevEndDateStr = `${prevEndDate.getFullYear()}-${padLocal(prevEndDate.getMonth()+1)}-${padLocal(prevEndDate.getDate())}`;
+
+        const updateOrigBody = {
+            title: origSchedule.title,
+            description: origSchedule.description,
+            scheduleType: origSchedule.scheduleType,
+            startDate: origSchedule.startDate,
+            endDate: origSchedule.endDate,
+            isPublic: origSchedule.isPublic,
+            location: origSchedule.location,
+            recurrenceEndDate: prevEndDateStr
+        };
+        if (origSchedule.deadlineDate) {
+            updateOrigBody.deadlineDate = origSchedule.deadlineDate;
+            updateOrigBody.notifyDaysBefore = origSchedule.notifyDaysBefore || 0;
+        }
+
+        const putRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify(updateOrigBody)
+        });
+        if (!putRes.ok) {
+            showToast('향후 일정 삭제 처리 실패', true);
+            return;
+        }
+
+        showToast('선택한 날짜부터의 향후 일정이 모두 삭제되었습니다.');
+        setTimeout(() => { window.location.href = '/schedule'; }, 800);
+    }
+
+    async function deleteSingleDaySchedule(origSchedule, targetDateParam) {
+        const targetDate = new Date(targetDateParam);
+        const padLocal = (n) => String(n).padStart(2, '0');
+
+        const prevEndDate = new Date(targetDateParam);
+        const originalType = origSchedule.scheduleType;
+        if (originalType === 'WEEKLY') {
+            prevEndDate.setDate(prevEndDate.getDate() - 7);
+        } else if (originalType === 'MONTHLY') {
+            prevEndDate.setMonth(prevEndDate.getMonth() - 1);
+        } else if (originalType === 'YEARLY') {
+            prevEndDate.setFullYear(prevEndDate.getFullYear() - 1);
+        }
+        const prevEndDateStr = `${prevEndDate.getFullYear()}-${padLocal(prevEndDate.getMonth()+1)}-${padLocal(prevEndDate.getDate())}`;
+
+        const updateOrigBody = {
+            title: origSchedule.title,
+            description: origSchedule.description,
+            scheduleType: origSchedule.scheduleType,
+            startDate: origSchedule.startDate,
+            endDate: origSchedule.endDate,
+            isPublic: origSchedule.isPublic,
+            location: origSchedule.location,
+            recurrenceEndDate: prevEndDateStr
+        };
+        if (origSchedule.deadlineDate) {
+            updateOrigBody.deadlineDate = origSchedule.deadlineDate;
+            updateOrigBody.notifyDaysBefore = origSchedule.notifyDaysBefore || 0;
+        }
+
+        const putRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify(updateOrigBody)
+        });
+        if (!putRes.ok) {
+            showToast('일정 단축 처리 실패', true);
+            return;
+        }
+
+        const nextStartDate = new Date(targetDateParam);
+        if (originalType === 'WEEKLY') {
+            nextStartDate.setDate(nextStartDate.getDate() + 7);
+        } else if (originalType === 'MONTHLY') {
+            nextStartDate.setMonth(nextStartDate.getMonth() + 1);
+        } else if (originalType === 'YEARLY') {
+            nextStartDate.setFullYear(nextStartDate.getFullYear() + 1);
+        }
+        const nextStartDateStr = `${nextStartDate.getFullYear()}-${padLocal(nextStartDate.getMonth()+1)}-${padLocal(nextStartDate.getDate())}`;
+
+        let hasFuture = true;
+        if (origSchedule.recurrenceEndDate) {
+            const limitDate = new Date(origSchedule.recurrenceEndDate);
+            if (nextStartDate > limitDate) {
+                hasFuture = false;
+            }
+        }
+
+        if (hasFuture) {
+            const timePart = extractTime(origSchedule.startDate);
+            const nextStartStrWithTime = `${nextStartDateStr}T${timePart}`;
+            let nextEndStrWithTime = null;
+            if (origSchedule.endDate && origSchedule.startDate) {
+                const origStart = new Date(origSchedule.startDate);
+                const origEnd = new Date(origSchedule.endDate);
+                const diffMs = origEnd - origStart;
+                const nextEnd = new Date(nextStartDate.getTime() + diffMs);
+                nextEndStrWithTime = `${nextEnd.getFullYear()}-${padLocal(nextEnd.getMonth()+1)}-${padLocal(nextEnd.getDate())}T${extractTime(origSchedule.endDate)}`;
+            }
+
+            const nextScheduleBody = {
+                title: origSchedule.title,
+                description: origSchedule.description,
+                scheduleType: origSchedule.scheduleType,
+                startDate: nextStartStrWithTime,
+                endDate: nextEndStrWithTime,
+                isPublic: origSchedule.isPublic,
+                location: origSchedule.location,
+                recurrenceEndDate: origSchedule.recurrenceEndDate || null
+            };
+            if (origSchedule.deadlineDate) {
+                nextScheduleBody.deadlineDate = origSchedule.deadlineDate;
+                nextScheduleBody.notifyDaysBefore = origSchedule.notifyDaysBefore || 0;
+            }
+
+            const postNextRes = await fetch(`${API_BASE}/schedule`, {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify(nextScheduleBody)
+            });
+            if (!postNextRes.ok) {
+                showToast('다음 반복 일정 분리 실패', true);
+                return;
+            }
+        }
+
+        showToast('선택한 당일 하루 일정이 삭제되었습니다.');
+        setTimeout(() => { window.location.href = '/schedule'; }, 800);
+    }
+
+    function extractTime(dtStr) {
+        if (!dtStr) return "00:00:00";
+        const parts = dtStr.split('T');
+        if (parts.length < 2) return "00:00:00";
+        let timePart = parts[1];
+        const timeSplits = timePart.split(':');
+        if (timeSplits.length === 2) {
+            return timePart + ":00";
+        }
+        return timePart;
+    }
+
+    function askDeleteChoice(date) {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.style = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.5); display: flex; align-items: center;
+                justify-content: center; z-index: 10000; font-family: sans-serif;
+            `;
+            modal.innerHTML = `
+                <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+                    <h3 style="margin-top: 0; color: #0f172a; font-size: 18px; font-weight: 800;">반복 일정 삭제 선택</h3>
+                    <p style="color: #475569; font-size: 14px; line-height: 1.5; margin: 12px 0 20px;">
+                        이 일정은 반복되는 일정입니다.<br>삭제 방식을 선택해 주세요.
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button id="btnDeleteDay" style="background: #FEF2F2; color: #EF4444; border: 1px solid #FEE2E2; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; text-align: left; transition: all 0.2s;">
+                            🗑️ 선택한 당일(\${date})만 삭제
+                        </button>
+                        <button id="btnDeleteFuture" style="background: #EF4444; color: white; border: 0; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; text-align: left; transition: all 0.2s;">
+                            📅 선택한 날부터 향후 일정을 모두 삭제
+                        </button>
+                        <button id="btnCancelDelete" style="background: #F1F5F9; color: #475569; border: 0; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; margin-top: 5px;">
+                            취소
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            modal.querySelector('#btnDeleteDay').onclick = () => {
+                document.body.removeChild(modal);
+                resolve('day');
+            };
+            modal.querySelector('#btnDeleteFuture').onclick = () => {
+                document.body.removeChild(modal);
+                resolve('future');
+            };
+            modal.querySelector('#btnCancelDelete').onclick = () => {
+                document.body.removeChild(modal);
+                resolve('cancel');
+            };
+        });
     }
 
     if (checkAuth()) {

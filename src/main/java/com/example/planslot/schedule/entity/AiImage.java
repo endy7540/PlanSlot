@@ -55,12 +55,15 @@ public class AiImage {
     @Column(name = "confidence_score", precision = 5, scale = 2)
     private BigDecimal confidenceScore;
 
-    @Column(name = "fail_reason", length = 200)
+    @Column(name = "fail_reason", length = 1000)
     private String failReason;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id")
     private Schedule schedule;
+
+    @Column(name = "extracted_schedules_json", columnDefinition = "TEXT")
+    private String extractedSchedulesJson;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -78,7 +81,7 @@ public class AiImage {
         this.status = status;
     }
 
-    public void completeAnalysis(String title, LocalDateTime startDate, LocalDateTime endDate, String location, BigDecimal confidenceScore) {
+    public void completeAnalysis(String title, LocalDateTime startDate, LocalDateTime endDate, String location, BigDecimal confidenceScore, String extractedSchedulesJson) {
         this.status = "COMPLETED";
         this.extractedTitle = title;
         this.extractedStartDate = startDate;
@@ -87,11 +90,16 @@ public class AiImage {
         this.confidenceScore = confidenceScore;
         this.analyzedAt = LocalDateTime.now();
         this.failReason = null;
+        this.extractedSchedulesJson = extractedSchedulesJson;
     }
 
     public void failAnalysis(String failReason) {
         this.status = "FAILED";
-        this.failReason = failReason;
+        if (failReason != null && failReason.length() > 990) {
+            this.failReason = failReason.substring(0, 985) + "...";
+        } else {
+            this.failReason = failReason;
+        }
         this.analyzedAt = LocalDateTime.now();
         this.extractedTitle = null;
         this.extractedStartDate = null;

@@ -439,11 +439,15 @@
             return;
         }
 
-        if (!isAllDay && startTime && endTime) {
-            if (endTime < startTime && dateVal === endDateVal) {
-                showToast('종료 시간은 시작 시간보다 과거일 수 없습니다.', true);
-                return;
-            }
+        const startDtStr = isAllDay ? `${dateVal}T00:00:00` : `${dateVal}T${startTime || '00:00'}:00`;
+        const endDtStr = isAllDay ? `${endDateVal}T23:59:59` : `${endDateVal}T${endTime || '23:59'}:00`;
+
+        const startDt = new Date(startDtStr);
+        const endDt = new Date(endDtStr);
+
+        if (endDt < startDt) {
+            showToast('종료일시는 시작일시보다 빠를 수 없습니다.', true);
+            return;
         }
 
         const origRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, { headers: authHeaders() });
@@ -470,11 +474,114 @@
         const scheduleType = document.getElementById('f-scheduleType').value;
 
         try {
-            if (isMiddleInstance && isOrigRecurrent) {
+            // A. 기존 일정이 반복 일정(isOrigRecurrent)이었고, 사용자가 이 날의 인스턴스를 DAILY(일간)로 변경하는 경우
+            if (isOrigRecurrent && scheduleType === 'DAILY') {
                 const targetDate = new Date(targetDateParam);
                 const padLocal = (n) => String(n).padStart(2, '0');
 
-                if (scheduleType === 'DAILY') {
+                // A-1. 첫 번째 인스턴스를 DAILY로 변경하는 경우
+                if (originalStartDateOnly === targetDateParam) {
+                    // 1) 원래 반복 일정의 시작 날짜를 1주 뒤(다음 인스턴스 일자)로 밀어서 갱신 (PUT)
+                    const nextStartDate = new Date(targetDateParam);
+                    if (originalType === 'WEEKLY') {
+                        nextStartDate.setDate(nextStartDate.getDate() + 7);
+                    } else if (originalType === 'MONTHLY') {
+                        nextStartDate.setMonth(nextStartDate.getMonth() + 1);
+                    } else if (originalType === 'YEARLY') {
+                        nextStartDate.setFullYear(nextStartDate.getFullYear() + 1);
+                    }
+                    const nextStartDateStr = `${nextStartDate.getFullYear()}-${padLocal(nextStartDate.getMonth()+1)}-${padLocal(nextStartDate.getDate())}`;
+
+                    let hasFuture = true;
+                    if (origSchedule.recurrenceEndDate) {
+                        const limitDate = new Date(origSchedule.recurrenceEndDate);
+                        if (nextStartDate > limitDate) {
+                            hasFuture = false;
+                        }
+                    }
+
+                    if (hasFuture) {
+                        const nextStartStrWithTime = `${nextStartDateStr}T${extractTime(origSchedule.startDate)}`;
+                        let nextEndStrWithTime = null;
+                        if (origSchedule.endDate && origSchedule.startDate) {
+                            const origStart = new Date(origSchedule.startDate);
+                            const origEnd = new Date(origSchedule.endDate);
+                            const diffMs = origEnd - origStart;
+                            const nextEnd = new Date(nextStartDate.getTime() + diffMs);
+                            nextEndStrWithTime = `${nextEnd.getFullYear()}-${padLocal(nextEnd.getMonth()+1)}-${padLocal(nextEnd.getDate())}T${extractTime(origSchedule.endDate)}`;
+                        }
+
+                        const updateOrigBody = {
+                            title: origSchedule.title,
+                            description: origSchedule.description,
+                            scheduleType: origSchedule.scheduleType,
+                            startDate: nextStartStrWithTime,
+                            endDate: nextEndStrWithTime,
+                            isPublic: origSchedule.isPublic,
+                            location: origSchedule.location,
+                            recurrenceEndDate: origSchedule.recurrenceEndDate || null
+                        };
+                        if (origSchedule.deadlineDate) {
+                            updateOrigBody.deadlineDate = origSchedule.deadlineDate;
+                            updateOrigBody.notifyDaysBefore = origSchedule.notifyDaysBefore || 0;
+                        }
+
+                        const putRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, {
+                            method: 'PUT',
+                            headers: authHeaders(),
+                            body: JSON.stringify(updateOrigBody)
+                        });
+                        if (!putRes.ok) {
+                            showToast('기존 반복 일정 시작일 갱신 실패: ' + putRes.status, true);
+                            return;
+                        }
+                    } else {
+                        // 미래 반복이 없으면 그냥 기존 일정을 삭제합니다.
+                        const delRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, {
+                            method: 'DELETE',
+                            headers: authHeaders()
+                        });
+                        if (!delRes.ok) {
+                            showToast('기존 반복 일정 삭제 실패', true);
+                            return;
+                        }
+                    }
+
+                    // 2) 수정한 내용을 새로운 DAILY 일정으로 생성 (POST)
+                    const newDailyBody = {
+                        title: body.title,
+                        description: body.description,
+                        scheduleType: 'DAILY',
+                        startDate: body.startDate,
+                        endDate: body.endDate,
+                        isPublic: body.isPublic,
+                        location: body.location,
+                        recurrenceEndDate: null
+                    };
+                    if (body.deadlineDate) {
+                        newDailyBody.deadlineDate = body.deadlineDate;
+                        newDailyBody.notifyDaysBefore = body.notifyDaysBefore || 0;
+                    }
+
+                    const postDailyRes = await fetch(`${API_BASE}/schedule`, {
+                        method: 'POST',
+                        headers: authHeaders(),
+                        body: JSON.stringify(newDailyBody)
+                    });
+                    if (!postDailyRes.ok) {
+                        showToast('새 단일 일정 생성 실패', true);
+                        return;
+                    }
+
+                    showToast('첫 번째 반복 일정이 분리되어 당일 일정으로 등록되었습니다.');
+                    const dateKey = newDailyBody.startDate.slice(0, 10);
+                    setTimeout(() => {
+                        window.location.href = `/schedule?date=${dateKey}`;
+                    }, 800);
+                    return;
+                }
+                // A-2. 중간/미래 인스턴스를 DAILY로 변경하는 경우
+                else if (originalStartDateOnly < targetDateParam) {
                     let prevEndDateStr = '';
                     const prevEndDate = new Date(targetDateParam);
                     if (originalType === 'WEEKLY') {
@@ -555,14 +662,14 @@
                     }
 
                     if (hasFuture) {
-                        const nextStartStrWithTime = `${nextStartDateStr}T${origSchedule.startDate.slice(11, 19)}`;
+                        const nextStartStrWithTime = `${nextStartDateStr}T${extractTime(origSchedule.startDate)}`;
                         let nextEndStrWithTime = null;
                         if (origSchedule.endDate && origSchedule.startDate) {
                             const origStart = new Date(origSchedule.startDate);
                             const origEnd = new Date(origSchedule.endDate);
                             const diffMs = origEnd - origStart;
                             const nextEnd = new Date(nextStartDate.getTime() + diffMs);
-                            nextEndStrWithTime = `${nextEnd.getFullYear()}-${padLocal(nextEnd.getMonth()+1)}-${padLocal(nextEnd.getDate())}T${padLocal(nextEnd.getHours())}:${padLocal(nextEnd.getMinutes())}:${padLocal(nextEnd.getSeconds())}`;
+                            nextEndStrWithTime = `${nextEnd.getFullYear()}-${padLocal(nextEnd.getMonth()+1)}-${padLocal(nextEnd.getDate())}T${extractTime(origSchedule.endDate)}`;
                         }
 
                         const nextScheduleBody = {
@@ -598,69 +705,72 @@
                     }, 800);
                     return;
                 }
-                else {
-                    const dayBeforeStr = `${targetDate.getFullYear()}-${padLocal(targetDate.getMonth()+1)}-${padLocal(targetDate.getDate() - 1)}`;
+            }
+            // B. 기존 일정이 반복 일정(isOrigRecurrent)이었고, 사용자가 이 날의 인스턴스를 반복 유형 그대로(WEEKLY 등) 두면서 "이 일정 및 향후 일정"을 변경(수정)하는 경우
+            else if (isOrigRecurrent && isMiddleInstance) {
+                const targetDate = new Date(targetDateParam);
+                const padLocal = (n) => String(n).padStart(2, '0');
+                const dayBeforeStr = `${targetDate.getFullYear()}-${padLocal(targetDate.getMonth()+1)}-${padLocal(targetDate.getDate() - 1)}`;
 
-                    const updateOrigBody = {
-                        title: origSchedule.title,
-                        description: origSchedule.description,
-                        scheduleType: origSchedule.scheduleType,
-                        startDate: origSchedule.startDate,
-                        endDate: origSchedule.endDate,
-                        isPublic: origSchedule.isPublic,
-                        location: origSchedule.location,
-                        recurrenceEndDate: dayBeforeStr
-                    };
-                    if (origSchedule.deadlineDate) {
-                        updateOrigBody.deadlineDate = origSchedule.deadlineDate;
-                        updateOrigBody.notifyDaysBefore = origSchedule.notifyDaysBefore || 0;
-                    }
+                const updateOrigBody = {
+                    title: origSchedule.title,
+                    description: origSchedule.description,
+                    scheduleType: origSchedule.scheduleType,
+                    startDate: origSchedule.startDate,
+                    endDate: origSchedule.endDate,
+                    isPublic: origSchedule.isPublic,
+                    location: origSchedule.location,
+                    recurrenceEndDate: dayBeforeStr
+                };
+                if (origSchedule.deadlineDate) {
+                    updateOrigBody.deadlineDate = origSchedule.deadlineDate;
+                    updateOrigBody.notifyDaysBefore = origSchedule.notifyDaysBefore || 0;
+                }
 
-                    const putRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, {
-                        method: 'PUT',
-                        headers: authHeaders(),
-                        body: JSON.stringify(updateOrigBody)
-                    });
-                    if (!putRes.ok) {
-                        showToast('기존 일정 기간 축소 실패: ' + putRes.status, true);
-                        return;
-                    }
-
-                    const newScheduleBody = {
-                        title: body.title,
-                        description: body.description,
-                        scheduleType: body.scheduleType,
-                        startDate: body.startDate,
-                        endDate: body.endDate,
-                        isPublic: body.isPublic,
-                        location: body.location,
-                        recurrenceEndDate: origSchedule.recurrenceEndDate || null
-                    };
-                    if (body.deadlineDate) {
-                        newScheduleBody.deadlineDate = body.deadlineDate;
-                        newScheduleBody.notifyDaysBefore = body.notifyDaysBefore || 0;
-                    }
-
-                    const postRes = await fetch(`${API_BASE}/schedule`, {
-                        method: 'POST',
-                        headers: authHeaders(),
-                        body: JSON.stringify(newScheduleBody)
-                    });
-                    if (!postRes.ok) {
-                        showToast('새로운 일정 등록 실패: ' + postRes.status, true);
-                        return;
-                    }
-
-                    showToast('이 일정 및 향후 일정이 수정되었습니다. 캘린더로 이동합니다...');
-                    const dateKey = newScheduleBody.startDate.slice(0, 10);
-                    setTimeout(() => {
-                        window.location.href = `/schedule?date=${dateKey}`;
-                    }, 800);
+                const putRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, {
+                    method: 'PUT',
+                    headers: authHeaders(),
+                    body: JSON.stringify(updateOrigBody)
+                });
+                if (!putRes.ok) {
+                    showToast('기존 일정 기간 축소 실패: ' + putRes.status, true);
                     return;
                 }
+
+                const newScheduleBody = {
+                    title: body.title,
+                    description: body.description,
+                    scheduleType: body.scheduleType,
+                    startDate: body.startDate,
+                    endDate: body.endDate,
+                    isPublic: body.isPublic,
+                    location: body.location,
+                    recurrenceEndDate: origSchedule.recurrenceEndDate || null
+                };
+                if (body.deadlineDate) {
+                    newScheduleBody.deadlineDate = body.deadlineDate;
+                    newScheduleBody.notifyDaysBefore = body.notifyDaysBefore || 0;
+                }
+
+                const postRes = await fetch(`${API_BASE}/schedule`, {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify(newScheduleBody)
+                });
+                if (!postRes.ok) {
+                    showToast('새로운 일정 등록 실패: ' + postRes.status, true);
+                    return;
+                }
+
+                showToast('이 일정 및 향후 일정이 수정되었습니다. 캘린더로 이동합니다...');
+                const dateKey = newScheduleBody.startDate.slice(0, 10);
+                setTimeout(() => {
+                    window.location.href = `/schedule?date=${dateKey}`;
+                }, 800);
+                return;
             }
 
-            // 일반적인 수정의 경우 PUT 전송
+            // C. 일반적인 단순 수정(DAILY 일정을 수정하거나, 혹은 첫 번째 날의 반복 일정 정보를 통째로 갱신하는 경우)
             const url = `${API_BASE}/schedule/${scheduleId}`;
             const res = await fetch(url, {
                 method: 'PUT',
@@ -679,7 +789,7 @@
 
         } catch (e) {
             console.error(e);
-            showToast('수정 중 오류 발생', true);
+            showToast('수정 처리 중 오류가 발생했습니다.', true);
         }
     }
 
@@ -689,6 +799,18 @@
             document.getElementById('f-deadlineDate').min = '';
             document.getElementById('f-deadlineDate').max = dateVal;
         }
+    }
+
+    function extractTime(dtStr) {
+        if (!dtStr) return "00:00:00";
+        const parts = dtStr.split('T');
+        if (parts.length < 2) return "00:00:00";
+        let timePart = parts[1];
+        const timeSplits = timePart.split(':');
+        if (timeSplits.length === 2) {
+            return timePart + ":00";
+        }
+        return timePart;
     }
 
     document.getElementById('f-date').addEventListener('change', updateDeadlineMax);

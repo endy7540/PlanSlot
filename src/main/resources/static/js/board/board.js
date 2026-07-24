@@ -472,7 +472,6 @@ function renderBoardRows(boards) {
 
   list.innerHTML = boards.map(board => `
     <a class="board-list-row ${type === 'NOTICE' ? 'board-notice-row' : ''}" href="${escapeBoardAttribute(buildBoardReadUrl(board.boardId, returnTo))}">
-      <div class="board-list-number"><span class="board-type-badge">${BOARD_TYPE_INFO[type].label}</span></div>
       <div class="board-list-title">
         <span class="board-list-title-text">${escapeBoardHtml(board.title)}</span>
         ${board.commentCount > 0 ? `<span class="board-comment-count">[${board.commentCount}]</span>` : ''}
@@ -594,15 +593,11 @@ function renderBoardReadWriter(board) {
 
 function renderBoardProfileAvatar(profileImageUrl, nickname, avatarClass) {
   const safeNickname = nickname || '알 수 없음';
-  const initial = escapeBoardHtml(safeNickname.slice(0, 1));
-  const image = profileImageUrl
-      ? `<img src="${escapeBoardAttribute(profileImageUrl)}" alt="${escapeBoardAttribute(safeNickname)} 프로필 이미지" loading="lazy" data-board-profile-image>`
-      : '';
+  const imageUrl = profileImageUrl || '/images/default-avatar.png';
 
   return `
     <span class="board-profile-avatar ${avatarClass}">
-      <span class="board-profile-avatar-fallback" aria-hidden="true">${initial}</span>
-      ${image}
+      <img src="${escapeBoardAttribute(imageUrl)}" alt="${escapeBoardAttribute(safeNickname)} 프로필 이미지" loading="lazy" data-board-profile-image>
     </span>
   `;
 }
@@ -610,6 +605,8 @@ function renderBoardProfileAvatar(profileImageUrl, nickname, avatarClass) {
 function initializeBoardProfileImages(container) {
   container.querySelectorAll('[data-board-profile-image]').forEach(image => {
     const avatar = image.closest('.board-profile-avatar');
+    const localDefaultImage = '/images/default-avatar.png';
+    const externalDefaultImage = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png';
 
     const showImage = () => {
       image.hidden = false;
@@ -617,12 +614,22 @@ function initializeBoardProfileImages(container) {
     };
 
     const showFallback = () => {
+      if (!image.dataset.boardLocalFallback && image.getAttribute('src') !== localDefaultImage) {
+        image.dataset.boardLocalFallback = 'true';
+        image.src = localDefaultImage;
+        return;
+      }
+      if (!image.dataset.boardExternalFallback) {
+        image.dataset.boardExternalFallback = 'true';
+        image.src = externalDefaultImage;
+        return;
+      }
       image.hidden = true;
       avatar?.classList.remove('has-profile-image');
     };
 
-    image.addEventListener('load', showImage, { once: true });
-    image.addEventListener('error', showFallback, { once: true });
+    image.addEventListener('load', showImage);
+    image.addEventListener('error', showFallback);
 
     if (image.complete) {
       if (image.naturalWidth > 0) showImage();

@@ -875,7 +875,7 @@ async function createBoardGroup() {
   const createButton = document.getElementById('boardGroupCreate');
   await runBoardRequest(`create-group-${currentReadBoard.boardId}`, createButton, '생성 중...', async () => {
     try {
-      const response = await fetchBoardJson(`/board/${currentReadBoard.boardId}/group`, {
+      const response = await fetchBoardJson(`/board/${currentReadBoard.boardId}/group/create`, {
         method: 'POST',
         body: JSON.stringify({
           groupName,
@@ -1153,6 +1153,11 @@ function updateBoardCommentCount(change) {
 
 async function initializeBoardRegister() {
   const type = getRegisterBoardType();
+  if (!type || !BOARD_TYPE_INFO[type]) {
+    showRegisterAccessDenied('게시판 유형을 확인할 수 없습니다. 목록에서 다시 글쓰기를 눌러 주세요.');
+    return;
+  }
+
   document.body.dataset.boardType = type;
   document.querySelectorAll('[data-board-nav]').forEach(link => link.classList.toggle('active', link.dataset.boardNav === type));
 
@@ -1261,10 +1266,15 @@ async function saveBoardPost(event, type, boardId) {
           body: JSON.stringify({ title, content })
         });
       } else {
-        savedBoardId = await fetchBoardJson(`/board/type/${type.toLowerCase()}`, {
+        const boardTypePath = BOARD_TYPE_INFO[type]?.path;
+        if (!boardTypePath) throw new Error('게시판 유형을 확인할 수 없습니다.');
+
+        savedBoardId = await fetchBoardJson(`/board/type/${encodeURIComponent(boardTypePath)}`, {
           method: 'POST',
           body: JSON.stringify({ title, content })
         });
+        savedBoardId = Number(savedBoardId);
+        if (!Number.isInteger(savedBoardId) || savedBoardId <= 0) throw new Error('등록된 게시글 번호를 확인할 수 없습니다.');
       }
     } catch (error) {
       showBoardToast(error.message, true);
@@ -1400,12 +1410,12 @@ function showBoardLoginPanel() {
 }
 
 function getRegisterBoardType() {
+  const dataType = (document.body.dataset.boardType || '').toUpperCase();
+  if (BOARD_TYPE_INFO[dataType]) return dataType;
+
   const path = location.pathname.split('/').filter(Boolean);
   const value = (path[path.length - 1] || '').toUpperCase();
-
-  return Object.values(BOARD_TYPE_INFO).some(info => info.path.toUpperCase() === value)
-      ? Object.keys(BOARD_TYPE_INFO).find(key => BOARD_TYPE_INFO[key].path.toUpperCase() === value)
-      : 'FREE';
+  return Object.keys(BOARD_TYPE_INFO).find(key => BOARD_TYPE_INFO[key].path.toUpperCase() === value) || null;
 }
 
 function getPathNumberAfter(segment) {

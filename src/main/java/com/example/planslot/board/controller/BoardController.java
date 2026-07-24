@@ -76,8 +76,10 @@ public class BoardController {
 
     // 게시글 등록 및 수정 화면
     @GetMapping("/register/{boardType}")
-    public ModelAndView boardRegisterPage() {
-        return new ModelAndView("board/board-register");
+    public ModelAndView boardRegisterPage(@PathVariable String boardType) {
+        ModelAndView modelAndView = new ModelAndView("board/board-register");
+        modelAndView.addObject("boardType", parseBoardType(boardType).name());
+        return modelAndView;
     }
 
     // 로그인 회원 조회
@@ -86,8 +88,14 @@ public class BoardController {
         return ResponseEntity.ok(boardService.getLoginMember(getLoginEmail(principal)));
     }
 
+    // 게시판 유형이 누락된 요청 차단
+    @RequestMapping(value = "/type", method = {RequestMethod.GET, RequestMethod.POST})
+    public ResponseEntity<Map<String, String>> rejectMissingBoardType() {
+        return ResponseEntity.badRequest().body(Map.of("message", "게시판 유형을 확인할 수 없습니다."));
+    }
+
     // 게시글 등록
-    @PostMapping("/type/{boardType}")
+    @PostMapping(value = "/type/{boardType}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Long> createBoard(@PathVariable String boardType,
                                             @RequestBody BoardDTO boardDTO,
                                             Principal principal) {

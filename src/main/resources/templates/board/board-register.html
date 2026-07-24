@@ -7,7 +7,7 @@
   <link rel="stylesheet" th:href="@{/css/notification/notification.css}" href="/css/notification/notification.css">
   <link rel="stylesheet" th:href="@{/css/board/board.css}" href="/css/board/board.css">
 </head>
-<body data-board-page="register" data-board-type="">
+<body data-board-page="register" data-board-type="" th:attr="data-board-type=${boardType}">
 
 <div th:replace="~{global/header :: headerFragment}"></div>
 
@@ -95,6 +95,6 @@
 
 
 <div class="board-toast" id="boardToast"></div>
-<script th:src="@{/js/board/board.js}" src="/js/board/board.js"></script>
+<script th:src="@{/js/board/board.js(v='44-group-write-path-fix')}" src="/js/board/board.js?v=44-group-write-path-fix"></script>
 </body>
 </html>

@@ -6,9 +6,9 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum BoardReportReasonCode {
-    ABUSE("욕설·비방"),
-    SPAM("스팸·광고"),
-    INAPPROPRIATE("음란·부적절한 내용"),
+    SPAM("스팸/도배"),
+    ABUSE("욕설/비하"),
+    INAPPROPRIATE("음란물/부적절"),
     PERSONAL_INFORMATION("개인정보 노출"),
     OTHER("기타");
 

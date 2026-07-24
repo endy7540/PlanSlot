@@ -81,16 +81,16 @@
       <label for="boardReportReason">신고 사유 <span class="board-required">*</span></label>
       <select class="board-select" id="boardReportReason">
         <option value="">신고 사유 선택</option>
-        <option value="ABUSE">욕설·비방</option>
-        <option value="SPAM">스팸·광고</option>
-        <option value="INAPPROPRIATE">음란·부적절한 내용</option>
+        <option value="SPAM">스팸/도배</option>
+        <option value="ABUSE">욕설/비하</option>
+        <option value="INAPPROPRIATE">음란물/부적절</option>
         <option value="PERSONAL_INFORMATION">개인정보 노출</option>
         <option value="OTHER">기타</option>
       </select>
     </div>
     <div class="board-field">
-      <label for="boardReportDetail">세부내용</label>
-      <textarea class="board-textarea" id="boardReportDetail" style="min-height:130px" placeholder="필요한 경우 신고 내용을 자세히 입력해 주세요."></textarea>
+      <label for="boardReportDetail">세부내용 <span class="board-required">*</span></label>
+      <textarea class="board-textarea" id="boardReportDetail" style="min-height:130px" placeholder="신고 내용을 입력해 주세요. (200자 이하)"></textarea>
     </div>
     <div class="board-modal-actions">
       <button class="board-btn board-btn-ghost" id="boardReportCancel" type="button">취소</button>

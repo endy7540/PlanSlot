@@ -323,8 +323,11 @@ public class BoardCommentServiceImpl implements BoardCommentService {
         }
 
         String reasonDetail = normalizeReportDetail(reportRequestDTO.getReasonDetail());
-        if (reasonDetail != null && reasonDetail.length() > 200) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 상세 내용은 200자 이하로 입력해 주세요.");
+        if (reasonDetail == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용을 입력해 주세요.");
+        }
+        if (reasonDetail.length() > 200) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용은 200자 이하로 입력해 주세요.");
         }
     }
 

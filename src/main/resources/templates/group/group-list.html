@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <script>
@@ -150,10 +150,13 @@ function renderGrid(){
         ${isWaiting ? '' : `<div class="favorite-btn" data-group-id="${g.id}" style="padding:4px; z-index:10; display:flex; align-items:center;" onclick="event.preventDefault(); event.stopPropagation(); toggleFavorite('${g.id}')">${favoriteIcon}</div>`}
       </div>
       ${badge}
-      <div class="card-actions" style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid var(--border); padding-top:12px;">
+      <div class="card-actions" style="margin-top:12px; display:flex; justify-content:${isWaiting ? 'space-between' : 'flex-end'}; align-items:center; border-top:1px solid var(--border); padding-top:12px;">
         ${isWaiting 
-          ? `<button class="btn btn-ghost" style="padding:6px 12px; font-size:13px;" onclick="event.preventDefault(); event.stopPropagation(); handleInvitation(${g.id}, 'REJECT')">거절</button>
-             <button class="btn btn-primary" style="padding:6px 12px; font-size:13px;" onclick="event.preventDefault(); event.stopPropagation(); handleInvitation(${g.id}, 'ACCEPT')">수락</button>` 
+          ? `<div><button class="btn btn-ghost" style="padding:4px 8px; font-size:12px; color:var(--primary);" onclick="event.preventDefault(); event.stopPropagation(); showWaitingGroupInfo(${g.id})">🔍 모임 인원 확인</button></div>
+             <div style="display:flex; gap:8px;">
+               <button class="btn btn-ghost" style="padding:6px 12px; font-size:13px;" onclick="event.preventDefault(); event.stopPropagation(); handleInvitation(${g.id}, 'REJECT')">거절</button>
+               <button class="btn btn-primary" style="padding:6px 12px; font-size:13px;" onclick="event.preventDefault(); event.stopPropagation(); handleInvitation(${g.id}, 'ACCEPT')">수락</button>
+             </div>` 
           : `<button class="btn btn-sky" style="padding:6px 12px; font-size:13px;" onclick="event.preventDefault(); event.stopPropagation(); window.location.href='/groupChat/${g.id}'">채팅방 가기</button>`
         }
       </div>
@@ -389,14 +392,14 @@ window.toggleFavorite = function(groupId) {
 window.handleInvitation = async function(groupId, action) {
   if (action === 'ACCEPT') {
     try {
-      const gRes = await fetchApi(`/group/${groupId}`);
+      const gRes = await fetchApi(`/group/read/${groupId}`);
       if (!gRes.ok) throw new Error('Failed to load group');
       const gData = await gRes.json();
       
       const modal = document.createElement('div');
       modal.className = 'modal-overlay open';
       modal.innerHTML = `
-        <div class="modal" style="width:320px;">
+        <div class="modal-box" style="width:320px;">
           <h3 style="margin-top:0;">캘린더 색상 선택</h3>
           <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">참여할 모임에서 사용할 색상을 선택해주세요.</p>
           <div id="acceptColorContainer" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; justify-content:center;"></div>
@@ -455,6 +458,7 @@ window.handleInvitation = async function(groupId, action) {
           if(res.ok) {
             modal.remove();
             showToast('초대를 수락했습니다.');
+            if (typeof refreshNotificationUI === 'function') refreshNotificationUI();
             fetchAndRenderGrid();
           } else {
             const err = await res.json().catch(()=>({}));
@@ -472,12 +476,82 @@ window.handleInvitation = async function(groupId, action) {
     .then(res => {
       if (res.ok) {
         showToast('초대를 거절했습니다.');
+        if (typeof refreshNotificationUI === 'function') refreshNotificationUI();
         fetchAndRenderGrid();
       } else {
         showToast('초대 처리에 실패했습니다.');
       }
     })
     .catch(console.error);
+  }
+};
+
+window.showWaitingGroupInfo = async function(groupId) {
+  try {
+    const res = await fetchApi(`/group/read/${groupId}`);
+    if(!res.ok) throw new Error();
+    const data = await res.json();
+    
+    const myWaiting = (data.waiting || []).find(w => w.isMe);
+    const inviterName = myWaiting ? myWaiting.inviterName : '방장';
+    
+    let membersHtml = '';
+    if(data.members && data.members.length > 0) {
+      membersHtml = data.members.map(m => `
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+          ${m.profileImageUrl 
+            ? `<img src="${m.profileImageUrl}" style="width:36px; height:36px; border-radius:50%; object-fit:cover;">`
+            : `<div style="width:36px; height:36px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>`
+          }
+          <div style="flex:1;">
+            <div style="font-size:14px; font-weight:700; color:#1e293b;">${m.name}</div>
+            <div style="font-size:12px; color:#64748B;">${m.role === 'owner' ? '👑 방장' : '👤 모임원'}</div>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      membersHtml = '<div style="font-size:14px; color:#64748B; text-align:center; padding:20px 0;">현재 참여 중인 인원이 없습니다.</div>';
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop open';
+    modal.style = "display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;";
+    modal.innerHTML = `
+      <div class="panel" style="width: 100%; max-width: 550px; min-height: 600px; max-height: 85vh; border-radius: 16px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.5); padding: 24px; position: relative; display: flex; flex-direction: column;">
+        <button style="position: absolute; top: 16px; right: 16px; background: none; border: 0; font-size: 24px; color: #64748B; cursor: pointer; font-weight: bold;" onclick="this.closest('.modal-backdrop').remove()">×</button>
+        
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+            <span style="font-size: 24px;">👥</span>
+            <h3 style="margin: 0; font-size: 20px; font-weight: 800; color: #1E293B;">모임 참여 인원</h3>
+        </div>
+        
+        <p style="color: #64748B; font-size: 13px; margin: 0 0 20px; line-height: 1.5;">
+            <b>${data.name}</b> 모임의 현재 참여 인원입니다. 아래에서 모임원 목록을 확인해 보세요.
+        </p>
+
+        <!-- 나를 초대한 사람을 상단에 고정 표시 -->
+        <div style="margin-bottom: 20px; padding: 16px; background: #E0F2FE; border: 1px solid #BAE6FD; border-radius: 12px;">
+            <div style="font-size: 12px; font-weight: 700; color: #0284C7; margin-bottom: 4px;">💌 나를 초대한 사람</div>
+            <div style="font-size: 16px; font-weight: 800; color: #0369A1;">${inviterName}</div>
+        </div>
+
+        <div style="font-size: 14px; font-weight: 700; color: #1E293B; margin-bottom: 12px;">전체 모임원 (${data.members ? data.members.length : 0}명)</div>
+        
+        <!-- 인원 목록 (스크롤 가능) -->
+        <div style="overflow-y:auto; flex:1; margin-bottom:16px; padding-right:8px;">
+          ${membersHtml}
+        </div>
+        
+        <!-- 하단 확인 버튼 -->
+        <div style="display:flex; justify-content:center;">
+          <button class="primary" onclick="this.closest('.modal-backdrop').remove()" style="padding: 12px 24px; font-size: 14px; border-radius: 8px; border: 0; background: linear-gradient(135deg, #6366F1, #3B82F6); color: white; cursor: pointer; font-weight: bold; width: 100%;">닫기</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  } catch(e) {
+    console.error(e);
+    showToast('모임 정보를 불러오지 못했습니다.');
   }
 };
 </script>

@@ -124,7 +124,7 @@ public class NotificationServiceImpl implements NotificationService {
         Member receiver = findReceiver(receiverId);
         NotificationSetting setting = getOrCreateNotificationSetting(receiver);
 
-        if (!setting.isAllEnabled() || !setting.isApplicationEnabled()) {
+        if (!setting.isAllEnabled() || !setting.isGroupEnabled()) {
             return;
         }
 
@@ -229,6 +229,15 @@ public class NotificationServiceImpl implements NotificationService {
     public void readNotificationsByTarget(Long memberId, String targetType, Long targetId) {
         List<Notification> unreadList = notificationRepository.findAllByReceiver_IdAndTargetTypeAndTargetIdAndIsReadFalse(memberId, targetType, targetId);
         unreadList.forEach(Notification::read);
+    }
+
+    // 특정 타겟(모임 초대 등)과 관련된 알림을 모두 삭제 처리
+    @Override
+    @Transactional
+    public void deleteNotificationsByTarget(Long memberId, String targetType, Long targetId) {
+        List<Notification> targetList = notificationRepository.findAllByReceiver_IdAndTargetTypeAndTargetIdAndNotificationType(
+                memberId, targetType, targetId, com.example.planslot.notification.entity.NotificationType.INVITATION);
+        notificationRepository.deleteAll(targetList);
     }
 
     // 전체 및 기능별 알림 설정 조회

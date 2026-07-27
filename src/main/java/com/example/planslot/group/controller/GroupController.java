@@ -175,7 +175,7 @@ public class GroupController {
     @ResponseBody
     public ResponseEntity<Void> inviteMember(@PathVariable("groupId") Long groupId, @RequestBody Map<String, String> body, Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        groupService.inviteMember(groupId, body.get("email"), memberId);
+        groupService.inviteMember(groupId, body.get("nickname"), memberId);
         return ResponseEntity.ok().build();
     }
 
@@ -221,16 +221,16 @@ public class GroupController {
         return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
     }
 
-    // 이메일 검색 (초대 시 자동완성 용도)
-    @GetMapping("/search-email")
+    // 닉네임 검색 (초대 시 자동완성 용도)
+    @GetMapping("/search-nickname")
     @ResponseBody
-    public ResponseEntity<List<String>> searchEmail(@RequestParam("prefix") String prefix) {
-        List<String> emails = memberRepository.findAll().stream()
-                .map(member -> member.getEmail())
-                .filter(email -> email != null && email.toLowerCase().startsWith(prefix.toLowerCase()))
+    public ResponseEntity<List<String>> searchNickname(@RequestParam("prefix") String prefix) {
+        List<String> nicknames = memberRepository.findAll().stream()
+                .map(member -> member.getNickname())
+                .filter(nickname -> nickname != null && nickname.toLowerCase().startsWith(prefix.toLowerCase()))
                 .limit(5)
                 .toList();
-        return ResponseEntity.ok(emails);
+        return ResponseEntity.ok(nicknames);
     }
 
     // 모임 캘린더에 일정 추가 및 공유

@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Update Form
             emailInput.value = maskedEmail;
-            nicknameInput.value = data.nickname || '';
+            nicknameInput.value = data.displayName || data.nickname || '';
 
             // Update Profile Image
             if (data.profileImageUrl) {
@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateForm.style.display = 'none';
         viewMode.style.display = 'block';
         // Reset form to current data
-        nicknameInput.value = currentData.nickname || '';
+        nicknameInput.value = currentData.displayName || currentData.nickname || '';
         
         if (currentData.address) {
             const parts = currentData.address.split(' ');
@@ -227,12 +227,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 const headerNickname = document.getElementById("headerNickname");
                 if (headerNickname) headerNickname.innerText = nickname + '님';
             } else {
-                const errorData = await res.json();
-                throw new Error(errorData.message || "정보 수정에 실패했습니다.");
+                let errorMsg = "정보 수정에 실패했습니다.";
+                try {
+                    const errorData = await res.json();
+                    if (errorData && errorData.message) errorMsg = errorData.message;
+                } catch (parseErr) {
+                    console.error("비정상적인 서버 응답:", parseErr);
+                }
+                throw new Error(errorMsg);
             }
         })
         .catch(err => {
-            alert(err.message);
+            if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+                alert("서버와 통신할 수 없습니다. 서버가 켜져 있는지 확인해주세요.");
+            } else {
+                alert(err.message);
+            }
         });
     });
 

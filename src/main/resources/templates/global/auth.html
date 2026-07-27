@@ -486,6 +486,7 @@
                 showFieldMsg('loginPwMsg', `로그인 성공! 홈 화면으로 이동합니다...`, true);
 
                 const tokenStr = result.replace("Bearer ", "").trim();
+                sessionStorage.removeItem("planslotChatbotMessages");
                 localStorage.setItem("jwtToken", tokenStr);
                 document.cookie = "jwtToken=" + tokenStr + "; path=/;";
 

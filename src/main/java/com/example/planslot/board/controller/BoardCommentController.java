@@ -16,6 +16,7 @@ import java.security.Principal;
 import java.util.Map;
 
 @RestController
+@RequestMapping("/board")
 @RequiredArgsConstructor
 public class BoardCommentController {
 
@@ -29,7 +30,7 @@ public class BoardCommentController {
     }
 
     // 댓글 및 대댓글 등록
-    @PostMapping("/board/{boardId}/comment")
+    @PostMapping("/{boardId}/comment")
     public ResponseEntity<Long> createComment(@PathVariable Long boardId,
                                               @RequestBody BoardCommentDTO commentDTO,
                                               Principal principal) {
@@ -39,14 +40,14 @@ public class BoardCommentController {
     }
 
     // 게시글 부모 댓글 페이징 조회 및 대댓글 함께 조회
-    @GetMapping("/board/{boardId}/comments")
+    @GetMapping("/{boardId}/comments")
     public ResponseEntity<Page<BoardCommentDTO>> getCommentList(@PathVariable Long boardId,
                                                                  @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(boardCommentService.getCommentList(boardId, pageable));
     }
 
     // 댓글 및 대댓글 수정
-    @PutMapping("/board/comment/{commentId}")
+    @PutMapping("/comment/{commentId}")
     public ResponseEntity<BoardCommentDTO> updateComment(@PathVariable Long commentId,
                                                          @RequestBody BoardCommentDTO commentDTO,
                                                          Principal principal) {
@@ -57,7 +58,7 @@ public class BoardCommentController {
     }
 
     // 댓글 및 대댓글 삭제
-    @DeleteMapping("/board/comment/{commentId}")
+    @DeleteMapping("/comment/{commentId}")
     public ResponseEntity<Void> deleteComment(@PathVariable Long commentId, Principal principal) {
         boardCommentService.deleteComment(commentId, getLoginEmail(principal));
 
@@ -65,7 +66,7 @@ public class BoardCommentController {
     }
 
     // 댓글 및 대댓글 신고
-    @PostMapping("/board/comment/{commentId}/report")
+    @PostMapping("/comment/{commentId}/report")
     public ResponseEntity<Long> reportComment(@PathVariable Long commentId,
                                               @RequestBody BoardReportRequestDTO reportRequestDTO,
                                               Principal principal) {

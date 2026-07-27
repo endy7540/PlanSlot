@@ -58,6 +58,9 @@ public interface NotificationService {
 
     // 내 알림 전체 읽음 처리
     void readAllNotifications(Long memberId);
+    
+    // 특정 타겟(채팅방 등)과 관련된 알림을 모두 읽음 처리
+    void readNotificationsByTarget(Long memberId, String targetType, Long targetId);
 
     // 전체 및 기능별 알림 설정 조회
     NotificationSettingDTO getNotificationSetting(Long memberId);

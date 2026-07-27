@@ -1,146 +1,146 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PlanSlot - AI 시간 추천</title>
-<link rel="stylesheet" th:href="@{/css/group/group-shared.css}">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Pretendard/1.3.9/static/pretendard.css">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
-<style>
-  :root{
-    --bg: #F6FAF8;
-    --panel: #FFFFFF;
-    --ink: #16231F;
-    --ink-soft: #5B6B66;
-    --line: #E4EEEA;
-    --teal: #0D9488;
-    --teal-deep: #0A6F66;
-    --navy: #1E3A5F;
-    --sky: #38BDF8;
-    --amber: #F59E0B;
-    --amber-soft: #FEF3E2;
-    --radius: 18px;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0;
-    background:var(--bg);
-    font-family:'Pretendard', -apple-system, sans-serif;
-    color:var(--ink);
-  }
-  .mono{ font-family:'IBM Plex Mono', monospace; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlanSlot - AI 시간 추천</title>
+  <link rel="stylesheet" th:href="@{/css/group/group-shared.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Pretendard/1.3.9/static/pretendard.css">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
+  <style>
+    :root{
+      --bg: #F6FAF8;
+      --panel: #FFFFFF;
+      --ink: #16231F;
+      --ink-soft: #5B6B66;
+      --line: #E4EEEA;
+      --teal: #0D9488;
+      --teal-deep: #0A6F66;
+      --navy: #1E3A5F;
+      --sky: #38BDF8;
+      --amber: #F59E0B;
+      --amber-soft: #FEF3E2;
+      --radius: 18px;
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0;
+      background:var(--bg);
+      font-family:'Pretendard', -apple-system, sans-serif;
+      color:var(--ink);
+    }
+    .mono{ font-family:'IBM Plex Mono', monospace; }
 
-  /* ---- Header ---- */
-  main{ max-width:1180px; margin:0 auto; padding:36px 40px 80px; }
-  .crumb{ font-size:13px; color:var(--ink-soft); margin-bottom:6px; }
-  .crumb a{ color:inherit; text-decoration:none; }
-  .crumb b{ color:var(--teal-deep); }
-  h1{ font-size:30px; margin:2px 0 6px; letter-spacing:-0.02em; }
-  .sub{ color:var(--ink-soft); font-size:14.5px; margin-bottom:28px; }
-  .back-btn{
-    position:absolute; top:36px; right:40px;
-    font-size:13px; background:white; border:1px solid var(--line);
-    padding:9px 16px; border-radius:100px; color:var(--ink); cursor:pointer; text-decoration:none;
-  }
-  .header-wrap{ position:relative; }
+    /* ---- Header ---- */
+    main{ max-width:1180px; margin:0 auto; padding:36px 40px 80px; }
+    .crumb{ font-size:13px; color:var(--ink-soft); margin-bottom:6px; }
+    .crumb a{ color:inherit; text-decoration:none; }
+    .crumb b{ color:var(--teal-deep); }
+    h1{ font-size:30px; margin:2px 0 6px; letter-spacing:-0.02em; }
+    .sub{ color:var(--ink-soft); font-size:14.5px; margin-bottom:28px; }
+    .back-btn{
+      position:absolute; top:36px; right:40px;
+      font-size:13px; background:white; border:1px solid var(--line);
+      padding:9px 16px; border-radius:100px; color:var(--ink); cursor:pointer; text-decoration:none;
+    }
+    .header-wrap{ position:relative; }
 
-  /* ---- Grid layout ---- */
-  .grid{ display:flex; flex-direction:column; gap:24px; }
+    /* ---- Grid layout ---- */
+    .grid{ display:flex; flex-direction:column; gap:24px; }
 
-  .panel{ background:var(--panel); border-radius:var(--radius); padding:32px 34px; border:1px solid var(--line); }
-  .panel h2{ font-size:16px; margin:0 0 4px; }
-  .panel .desc{ font-size:13px; color:var(--ink-soft); margin-bottom:22px; }
+    .panel{ background:var(--panel); border-radius:var(--radius); padding:32px 34px; border:1px solid var(--line); }
+    .panel h2{ font-size:16px; margin:0 0 4px; }
+    .panel .desc{ font-size:13px; color:var(--ink-soft); margin-bottom:22px; }
 
-  /* ---- Rhythm ribbons (signature element) ---- */
-  .day-labels{ display:grid; grid-template-columns: 84px repeat(7,1fr); column-gap:8px; font-size:13px; font-weight:700; color:var(--ink-soft); margin-bottom:12px; }
-  .day-labels span{ text-align:center; }
-  .ribbon-row{ display:grid; grid-template-columns: 84px repeat(7,1fr); align-items:center; column-gap:8px; margin-bottom:12px; position:relative; }
-  .ribbon-row .name{ font-size:15px; font-weight:700; color:var(--ink); }
-  .day-cell{ height:52px; border-radius:14px; background:#E2E8F0; } /* 회색 (바쁨) */
-  .day-cell.partial{ background:#BAE6FD; } /* 연한 하늘색 (일부 가능) */
-  .day-cell.free{ background:#3B82F6; } /* 파란색 (모두 가능) */
-  .ribbon-row.total{ margin-bottom:14px; padding-bottom:16px; border-bottom:1px dashed var(--line); }
-  .ribbon-row.total .name{ color:var(--teal-deep); font-weight:800; }
-  .ribbon-row.total .day-cell{ height:60px; }
-  .ribbon-row.total .day-cell{ background:#CBD5E1; } /* 회색 진하게 */
-  .ribbon-row.total .day-cell.partial{ background:#7DD3FC; } /* 연한 하늘색 진하게 */
-  .ribbon-row.total .day-cell.free{ background:#2563EB; } /* 파란색 진하게 */
+    /* ---- Rhythm ribbons (signature element) ---- */
+    .day-labels{ display:grid; grid-template-columns: 84px repeat(7,1fr); column-gap:8px; font-size:13px; font-weight:700; color:var(--ink-soft); margin-bottom:12px; }
+    .day-labels span{ text-align:center; }
+    .ribbon-row{ display:grid; grid-template-columns: 84px repeat(7,1fr); align-items:center; column-gap:8px; margin-bottom:12px; position:relative; }
+    .ribbon-row .name{ font-size:15px; font-weight:700; color:var(--ink); }
+    .day-cell{ height:52px; border-radius:14px; background:#E2E8F0; } /* 회색 (바쁨) */
+    .day-cell.partial{ background:#BAE6FD; } /* 연한 하늘색 (일부 가능) */
+    .day-cell.free{ background:#3B82F6; } /* 파란색 (모두 가능) */
+    .ribbon-row.total{ margin-bottom:14px; padding-bottom:16px; border-bottom:1px dashed var(--line); }
+    .ribbon-row.total .name{ color:var(--teal-deep); font-weight:800; }
+    .ribbon-row.total .day-cell{ height:60px; }
+    .ribbon-row.total .day-cell{ background:#CBD5E1; } /* 회색 진하게 */
+    .ribbon-row.total .day-cell.partial{ background:#7DD3FC; } /* 연한 하늘색 진하게 */
+    .ribbon-row.total .day-cell.free{ background:#2563EB; } /* 파란색 진하게 */
 
-  .ribbons-wrap{
-    position:relative; padding-top:30px; padding-bottom:4px;
-  }
+    .ribbons-wrap{
+      position:relative; padding-top:30px; padding-bottom:4px;
+    }
 
-  .legend{ display:flex; align-items:center; gap:22px; margin-top:24px; font-size:13.5px; color:var(--ink-soft); }
-  .legend-dot{ width:12px; height:12px; border-radius:4px; display:inline-block; margin-right:6px; }
+    .legend{ display:flex; align-items:center; gap:22px; margin-top:24px; font-size:13.5px; color:var(--ink-soft); }
+    .legend-dot{ width:12px; height:12px; border-radius:4px; display:inline-block; margin-right:6px; }
 
-  /* ---- Right column ---- */
-  .top3-head{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;}
-  select, .cta-btn{ font-family:inherit; }
-  .selector-row{ display:flex; gap:10px; margin-bottom:20px; }
-  select{
-    flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--line); font-size:14px; background:white; outline:none;
-  }
-  
-  .chip-btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    background: #f1f5f9; color: var(--ink-soft);
-    border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 500;
-    cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; user-select: none;
-  }
-  .chip-btn:hover { background: #e2e8f0; }
-  input[type="checkbox"]:checked + .chip-btn {
-    background: #e0f2fe; color: var(--sky); border-color: var(--sky); font-weight: 600;
-  }
-  .chip-input {
-    background: #f1f5f9; color: var(--ink); border-radius: 20px; padding: 5px 14px;
-    font-size: 13px; font-weight: 500; border: 1px solid transparent; outline: none; transition: all 0.2s ease;
-    font-family: inherit; cursor: pointer;
-  }
-  .chip-input:focus {
-    background: #fff; border-color: var(--sky); box-shadow: 0 0 0 2px #e0f2fe;
-  }
+    /* ---- Right column ---- */
+    .top3-head{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;}
+    select, .cta-btn{ font-family:inherit; }
+    .selector-row{ display:flex; gap:10px; margin-bottom:20px; }
+    select{
+      flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--line); font-size:14px; background:white; outline:none;
+    }
 
-  .refresh-btn{
-    background:var(--sky); color:white; border:none; border-radius:10px; padding:10px 18px; font-size:14px; font-weight:600; cursor:pointer;
-  }
-  .fallback-note{ font-size:12px; color:var(--ink-soft); margin-bottom:16px; }
+    .chip-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #f1f5f9; color: var(--ink-soft);
+      border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; user-select: none;
+    }
+    .chip-btn:hover { background: #e2e8f0; }
+    input[type="checkbox"]:checked + .chip-btn {
+      background: #e0f2fe; color: var(--sky); border-color: var(--sky); font-weight: 600;
+    }
+    .chip-input {
+      background: #f1f5f9; color: var(--ink); border-radius: 20px; padding: 5px 14px;
+      font-size: 13px; font-weight: 500; border: 1px solid transparent; outline: none; transition: all 0.2s ease;
+      font-family: inherit; cursor: pointer;
+    }
+    .chip-input:focus {
+      background: #fff; border-color: var(--sky); box-shadow: 0 0 0 2px #e0f2fe;
+    }
 
-  .rank-card{
-    position:relative; border:1px solid var(--line); border-radius:14px; padding:18px 18px 16px 64px; margin-bottom:14px; overflow:hidden;
-    transition: all 0.2s ease; cursor:pointer;
-  }
-  .rank-card.active {
-    border-color: var(--sky) !important;
-    box-shadow: 0 0 0 2px var(--sky) !important;
-    background-color: #f0f9ff !important;
-  }
-  .rank-card.rank1{ border-color: var(--amber); background:var(--amber-soft); }
-  .ghost-num{
-    position:absolute; left:10px; top:6px; font-size:52px; font-weight:800; color:var(--line);
-    font-family:'IBM Plex Mono', monospace; line-height:1;
-  }
-  .rank1 .ghost-num{ color:#FBDBA7; }
-  .rank-date{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:16px; margin-bottom:8px; }
-  .tag-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
-  .tag{ font-size:11px; padding:3px 9px; border-radius:100px; background:#EFF6F4; color:var(--teal-deep); font-weight:600; }
-  .tag.warn{ background:#FBEAEA; color:#B5443C; }
-  .fit-badge{
-    display:inline-block; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:100px;
-    background:var(--sky); color:white; margin-top:2px;
-  }
-  .fit-badge.partial{ background:var(--sky); opacity:0.8; }
+    .refresh-btn{
+      background:var(--sky); color:white; border:none; border-radius:10px; padding:10px 18px; font-size:14px; font-weight:600; cursor:pointer;
+    }
+    .fallback-note{ font-size:12px; color:var(--ink-soft); margin-bottom:16px; }
 
-  .register-btn{
-    width:100%; padding:14px; margin-top:6px; border:none; border-radius:12px;
-    background:linear-gradient(90deg,var(--sky),#0284C7); color:white; font-size:15px; font-weight:700; cursor:pointer;
-  }
-  .register-btn:disabled{ opacity:0.6; cursor:not-allowed; }
-  .register-note{ font-size:12px; color:var(--ink-soft); text-align:center; margin-top:10px; }
-</style>
+    .rank-card{
+      position:relative; border:1px solid var(--line); border-radius:14px; padding:18px 18px 16px 64px; margin-bottom:14px; overflow:hidden;
+      transition: all 0.2s ease; cursor:pointer;
+    }
+    .rank-card.active {
+      border-color: var(--sky) !important;
+      box-shadow: 0 0 0 2px var(--sky) !important;
+      background-color: #f0f9ff !important;
+    }
+    .rank-card.rank1{ border-color: var(--amber); background:var(--amber-soft); }
+    .ghost-num{
+      position:absolute; left:10px; top:6px; font-size:52px; font-weight:800; color:var(--line);
+      font-family:'IBM Plex Mono', monospace; line-height:1;
+    }
+    .rank1 .ghost-num{ color:#FBDBA7; }
+    .rank-date{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:16px; margin-bottom:8px; }
+    .tag-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+    .tag{ font-size:11px; padding:3px 9px; border-radius:100px; background:#EFF6F4; color:var(--teal-deep); font-weight:600; }
+    .tag.warn{ background:#FBEAEA; color:#B5443C; }
+    .fit-badge{
+      display:inline-block; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:100px;
+      background:var(--sky); color:white; margin-top:2px;
+    }
+    .fit-badge.partial{ background:var(--sky); opacity:0.8; }
+
+    .register-btn{
+      width:100%; padding:14px; margin-top:6px; border:none; border-radius:12px;
+      background:linear-gradient(90deg,var(--sky),#0284C7); color:white; font-size:15px; font-weight:700; cursor:pointer;
+    }
+    .register-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+    .register-note{ font-size:12px; color:var(--ink-soft); text-align:center; margin-top:10px; }
+  </style>
 </head>
 <body>
 
@@ -239,10 +239,10 @@
   <div style="background:#fff; padding:24px; border-radius:16px; width:90%; max-width:400px; box-shadow:0 10px 25px rgba(0,0,0,0.1);">
     <h3 style="margin-top:0; margin-bottom:8px;">정확한 일정 지정하기</h3>
     <p style="font-size:13px; color:var(--ink-soft); margin-bottom:16px;">AI가 추천한 여유 시간 중, 모임을 진행할 정확한 기간과 시간을 선택해 주세요.</p>
-    
+
     <label style="font-size:13px; font-weight:700; margin-bottom:4px; display:block;">선택할 일정</label>
     <input type="text" id="exactRegDate" class="chip-input" style="width:100%; text-align:left; font-size:14px; margin-bottom:20px; border:1px solid var(--border);" placeholder="정확한 날짜/시간을 선택하세요">
-    
+
     <div style="display:flex; gap:10px;">
       <button class="chip-btn" id="btnCancelReg" style="flex:1; padding:10px; background:#f1f5f9; color:var(--ink);">취소</button>
       <button class="register-btn" id="btnConfirmReg" style="flex:1; margin-top:0; padding:10px;">확인 및 등록</button>
@@ -254,234 +254,328 @@
 
 <script th:src="@{/js/group/group-shared.js}" src="../../static/js/group/group-shared.js"></script>
 <script>
-const groupId = getQueryParam('id');
-let heatmapEl, recList, registerBtn, heatLegend, btnRecommend, dayLabels, registerNote;
-let bookmarkBtn, actionBtnGroup;
-let selectedRec = null;
+  const groupId = getQueryParam('id');
+  let heatmapEl, recList, registerBtn, heatLegend, btnRecommend, dayLabels, registerNote;
+  let bookmarkBtn, actionBtnGroup;
+  let selectedRec = null;
 
-let heatData = [];
-let currentHeatPage = 0;
-let heatStartDateStr = '';
-let selectedStartDate = null;
-let selectedEndDate = null;
+  let heatData = [];
+  let currentHeatPage = 0;
+  let heatStartDateStr = '';
+  let selectedStartDate = null;
+  let selectedEndDate = null;
+  let lastAiStartDateStr = '';
 
-async function initAiPage() {
-  heatmapEl = document.getElementById('heatmap');
-  recList = document.getElementById('recList');
-  registerBtn = document.getElementById('btnRegisterRec');
-  bookmarkBtn = document.getElementById('btnBookmarkRec');
-  actionBtnGroup = document.getElementById('actionBtnGroup');
-  heatLegend = document.getElementById('heatLegend');
-  btnRecommend = document.getElementById('btnRecommend');
-  dayLabels = document.getElementById('dayLabels');
-  registerNote = document.getElementById('registerNote');
+  // header.html이 폴링하다가 완료/실패를 감지하면 이 이벤트를 쏴준다.
+  // (다른 페이지로 이동했다가 이 페이지로 돌아온 경우에도, 같은 그룹의 알림이면 그대로 반영)
+  window.addEventListener('planslot:groupAiCompleted', (e) => {
+    const { groupId: eventGroupId, data } = e.detail || {};
+    if (String(eventGroupId) !== String(groupId)) return; // 다른 모임의 결과면 무시
 
-  let exactFlatpickr = flatpickr("#exactRegDate", {
-    mode: "range",
-    enableTime: true,
-    dateFormat: "Y-m-d H:i",
-    locale: "ko"
+    renderAiResult(data, lastAiStartDateStr);
+    btnRecommend.disabled = false;
+    btnRecommend.textContent = '추천받기';
+
+    const widget = document.getElementById('groupAiFloatingWidget');
+    if (widget) widget.style.display = 'none';
+    if (typeof window.clearGroupAiStorage === 'function') window.clearGroupAiStorage();
   });
 
-  registerBtn.addEventListener('click', () => {
-    if (!selectedRec) {
-      alert('등록할 추천 일정을 먼저 선택해주세요.');
-      return;
-    }
-    // TODO: We could pre-fill exactFlatpickr based on selectedRec.date and selectedRec.time
-    document.getElementById('regModal').style.display = 'flex';
+  window.addEventListener('planslot:groupAiFailed', (e) => {
+    const { groupId: eventGroupId, reason } = e.detail || {};
+    if (String(eventGroupId) !== String(groupId)) return;
+
+    heatmapEl.innerHTML = `<div style="text-align:center; padding:20px; color:var(--ink-soft); font-size:14px;">${reason || '분석 중 오류가 발생했습니다.'}</div>`;
+    btnRecommend.disabled = false;
+    btnRecommend.textContent = '추천받기';
+
+    if (typeof window.clearGroupAiStorage === 'function') window.clearGroupAiStorage();
   });
 
-  document.getElementById('btnCancelReg').addEventListener('click', () => {
-    document.getElementById('regModal').style.display = 'none';
-  });
+  async function initAiPage() {
+    heatmapEl = document.getElementById('heatmap');
+    recList = document.getElementById('recList');
+    registerBtn = document.getElementById('btnRegisterRec');
+    bookmarkBtn = document.getElementById('btnBookmarkRec');
+    actionBtnGroup = document.getElementById('actionBtnGroup');
+    heatLegend = document.getElementById('heatLegend');
+    btnRecommend = document.getElementById('btnRecommend');
+    dayLabels = document.getElementById('dayLabels');
+    registerNote = document.getElementById('registerNote');
 
-  document.getElementById('btnConfirmReg').addEventListener('click', async () => {
-    const dates = exactFlatpickr.selectedDates;
-    if (dates.length === 0) {
-       alert("일정을 선택해주세요.");
-       return;
-    }
-    
-    const finalStartDate = flatpickr.formatDate(dates[0], "Y-m-d");
-    const finalStartTime = flatpickr.formatDate(dates[0], "H:i");
-    const finalEndDate = dates[1] ? flatpickr.formatDate(dates[1], "Y-m-d") : finalStartDate;
-    const finalEndTime = dates[1] ? flatpickr.formatDate(dates[1], "H:i") : finalStartTime;
-    
-    try {
-      const confirmBtn = document.getElementById('btnConfirmReg');
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = '등록 중...';
-      const res = await fetchApi(`/group/${groupId}/schedules`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: selectedRec.title || `[추천] ${selectedRec.label}`,
-          date: finalStartDate,
-          time: finalStartTime,
-          endDate: finalEndDate,
-          endTime: finalEndTime,
-          visibility: 'public'
-        })
-      });
-      if (!res.ok) throw new Error('Failed to register');
+    let exactFlatpickr = flatpickr("#exactRegDate", {
+      mode: "range",
+      enableTime: true,
+      dateFormat: "Y-m-d H:i",
+      locale: "ko"
+    });
+
+    restoreGroupAiJobIfAny();
+
+    registerBtn.addEventListener('click', () => {
+      if (!selectedRec) {
+        alert('등록할 추천 일정을 먼저 선택해주세요.');
+        return;
+      }
+      // TODO: We could pre-fill exactFlatpickr based on selectedRec.date and selectedRec.time
+      document.getElementById('regModal').style.display = 'flex';
+    });
+
+    document.getElementById('btnCancelReg').addEventListener('click', () => {
       document.getElementById('regModal').style.display = 'none';
-      showToast('추천 일정을 모임 일정에 등록했어요.');
-      setTimeout(() => location.href = linkToDetail(groupId), 1000);
-    } catch(e) {
-      console.error(e);
-      alert('일정 등록에 실패했습니다.');
-      const confirmBtn = document.getElementById('btnConfirmReg');
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = '확인 및 등록';
-    }
-  });
+    });
 
-  bookmarkBtn.addEventListener('click', async ()=>{
-    if (!selectedRec) {
-      alert('찜할 추천 일정을 먼저 선택해주세요.');
-      return;
-    }
-    // TODO: 백엔드 API 호출로 변경
-    showToast('일정을 찜했습니다! (백엔드 API 연결 대기 중)');
-  });
-
-  btnRecommend.addEventListener('click', loadAiRecommendations);
-  
-  flatpickr("#recDateRange", {
-    mode: "range",
-    locale: "ko",
-    dateFormat: "Y-m-d",
-    minDate: "today",
-    showMonths: 2, // 두 달치를 한 번에 보여줌
-    onReady: function(selectedDates, dateStr, instance) {
-      // 달력 위에서 마우스 휠을 굴리면 달이 넘어가도록 설정
-      instance.calendarContainer.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        if (e.deltaY > 0) {
-          instance.changeMonth(1);
-        } else if (e.deltaY < 0) {
-          instance.changeMonth(-1);
-        }
-      }, { passive: false });
-    },
-    onChange: function(selectedDates) {
-      if (selectedDates.length === 2) {
-         selectedStartDate = selectedDates[0];
-         selectedEndDate = selectedDates[1];
-      } else {
-         selectedStartDate = null;
-         selectedEndDate = null;
+    document.getElementById('btnConfirmReg').addEventListener('click', async () => {
+      const dates = exactFlatpickr.selectedDates;
+      if (dates.length === 0) {
+        alert("일정을 선택해주세요.");
+        return;
       }
-    }
-  });
 
-  document.getElementById('btnHeatPrev').addEventListener('click', () => renderHeatmapPage(currentHeatPage - 1));
-  document.getElementById('btnHeatNext').addEventListener('click', () => renderHeatmapPage(currentHeatPage + 1));
+      const finalStartDate = flatpickr.formatDate(dates[0], "Y-m-d");
+      const finalStartTime = flatpickr.formatDate(dates[0], "H:i");
+      const finalEndDate = dates[1] ? flatpickr.formatDate(dates[1], "Y-m-d") : finalStartDate;
+      const finalEndTime = dates[1] ? flatpickr.formatDate(dates[1], "H:i") : finalStartTime;
 
-  // 하루종일, N박 M일 선택 시 시간대 비활성화 및 교차 선택 해제
-  const durCbs = document.querySelectorAll('input[name="recDuration"]');
-  const timeCbs = document.querySelectorAll('input[name="recTime"]');
-  durCbs.forEach(cb => {
-    cb.addEventListener('change', (e) => {
-      const isMultiDay = e.target.value.includes('일');
-      
-      // 방금 누른 것이 체크되었다면, 성격이 다른(시간 vs 일) 체크박스들을 해제
-      if (e.target.checked) {
-        durCbs.forEach(otherCb => {
-          if (otherCb !== e.target) {
-            const otherIsMultiDay = otherCb.value.includes('일');
-            if (isMultiDay && !otherIsMultiDay) {
-              otherCb.checked = false;
-            } else if (!isMultiDay && otherIsMultiDay) {
-              otherCb.checked = false;
-            }
-          }
+      try {
+        const confirmBtn = document.getElementById('btnConfirmReg');
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = '등록 중...';
+        const res = await fetchApi(`/group/${groupId}/schedules`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: selectedRec.title || `[추천] ${selectedRec.label}`,
+            date: finalStartDate,
+            time: finalStartTime,
+            endDate: finalEndDate,
+            endTime: finalEndTime,
+            visibility: 'public'
+          })
         });
+        if (!res.ok) throw new Error('Failed to register');
+        document.getElementById('regModal').style.display = 'none';
+        showToast('추천 일정을 모임 일정에 등록했어요.');
+        setTimeout(() => location.href = linkToDetail(groupId), 1000);
+      } catch(e) {
+        console.error(e);
+        alert('일정 등록에 실패했습니다.');
+        const confirmBtn = document.getElementById('btnConfirmReg');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '확인 및 등록';
       }
+    });
 
-      const hasMultiDay = Array.from(durCbs).some(c => c.checked && c.value.includes('일'));
-      timeCbs.forEach(tcb => {
-        tcb.disabled = hasMultiDay;
-        if (hasMultiDay) tcb.checked = false;
-        tcb.parentElement.style.opacity = hasMultiDay ? '0.4' : '1';
-        tcb.parentElement.style.pointerEvents = hasMultiDay ? 'none' : 'auto';
+    bookmarkBtn.addEventListener('click', async ()=>{
+      if (!selectedRec) {
+        alert('찜할 추천 일정을 먼저 선택해주세요.');
+        return;
+      }
+      // TODO: 백엔드 API 호출로 변경
+      showToast('일정을 찜했습니다! (백엔드 API 연결 대기 중)');
+    });
+
+    btnRecommend.addEventListener('click', loadAiRecommendations);
+
+    flatpickr("#recDateRange", {
+      mode: "range",
+      locale: "ko",
+      dateFormat: "Y-m-d",
+      minDate: "today",
+      showMonths: 2, // 두 달치를 한 번에 보여줌
+      onReady: function(selectedDates, dateStr, instance) {
+        // 달력 위에서 마우스 휠을 굴리면 달이 넘어가도록 설정
+        instance.calendarContainer.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          if (e.deltaY > 0) {
+            instance.changeMonth(1);
+          } else if (e.deltaY < 0) {
+            instance.changeMonth(-1);
+          }
+        }, { passive: false });
+      },
+      onChange: function(selectedDates) {
+        if (selectedDates.length === 2) {
+          selectedStartDate = selectedDates[0];
+          selectedEndDate = selectedDates[1];
+        } else {
+          selectedStartDate = null;
+          selectedEndDate = null;
+        }
+      }
+    });
+
+    document.getElementById('btnHeatPrev').addEventListener('click', () => renderHeatmapPage(currentHeatPage - 1));
+    document.getElementById('btnHeatNext').addEventListener('click', () => renderHeatmapPage(currentHeatPage + 1));
+
+    // 하루종일, N박 M일 선택 시 시간대 비활성화 및 교차 선택 해제
+    const durCbs = document.querySelectorAll('input[name="recDuration"]');
+    const timeCbs = document.querySelectorAll('input[name="recTime"]');
+    durCbs.forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        const isMultiDay = e.target.value.includes('일');
+
+        // 방금 누른 것이 체크되었다면, 성격이 다른(시간 vs 일) 체크박스들을 해제
+        if (e.target.checked) {
+          durCbs.forEach(otherCb => {
+            if (otherCb !== e.target) {
+              const otherIsMultiDay = otherCb.value.includes('일');
+              if (isMultiDay && !otherIsMultiDay) {
+                otherCb.checked = false;
+              } else if (!isMultiDay && otherIsMultiDay) {
+                otherCb.checked = false;
+              }
+            }
+          });
+        }
+
+        const hasMultiDay = Array.from(durCbs).some(c => c.checked && c.value.includes('일'));
+        timeCbs.forEach(tcb => {
+          tcb.disabled = hasMultiDay;
+          if (hasMultiDay) tcb.checked = false;
+          tcb.parentElement.style.opacity = hasMultiDay ? '0.4' : '1';
+          tcb.parentElement.style.pointerEvents = hasMultiDay ? 'none' : 'auto';
+        });
       });
     });
-  });
 
-  if (!groupId) {
-    alert('잘못된 접근입니다.');
-    location.href = '/group/list';
-    return;
-  }
-
-  try {
-    const detailRes = await fetchApi(`/group/${groupId}`);
-    if (detailRes.ok) {
-      const groupData = await detailRes.json();
-      document.getElementById('groupTitle').textContent = `AI 시간 추천 · ${groupData.name}`;
-      document.getElementById('crumbGroup').textContent = groupData.name;
+    if (!groupId) {
+      alert('잘못된 접근입니다.');
+      location.href = '/group/list';
+      return;
     }
-  } catch(e) { console.error(e); }
 
-  document.getElementById('crumbGroup').href = linkToDetail(groupId);
-  document.getElementById('btnBack').href = linkToDetail(groupId);
-}
+    try {
+      const detailRes = await fetchApi(`/group/${groupId}`);
+      if (detailRes.ok) {
+        const groupData = await detailRes.json();
+        document.getElementById('groupTitle').textContent = `AI 시간 추천 · ${groupData.name}`;
+        document.getElementById('crumbGroup').textContent = groupData.name;
+      }
+    } catch(e) { console.error(e); }
 
-async function loadAiRecommendations() {
-  const durationCheckboxes = document.querySelectorAll('input[name="recDuration"]:checked');
-  if (durationCheckboxes.length === 0) {
-    alert('최소 하나의 소요 시간을 선택해주세요.');
-    return;
+    document.getElementById('crumbGroup').href = linkToDetail(groupId);
+    document.getElementById('btnBack').href = linkToDetail(groupId);
   }
-  const duration = Array.from(durationCheckboxes).map(cb => cb.value).join(', ');
-  
-  const hasMultiDay = Array.from(durationCheckboxes).some(c => c.value.includes('일'));
 
-  const timeCheckboxes = document.querySelectorAll('input[name="recTime"]:checked');
-  if (!hasMultiDay && timeCheckboxes.length === 0) {
-    alert('최소 하나의 시간대를 선택해주세요.');
-    return;
+  // 새로고침하거나 다른 페이지 갔다가 다시 이 페이지로 들어왔을 때,
+  // 이 모임에 대한 AI 추천 작업이 진행 중/완료/실패 상태였다면 화면에 반영한다.
+  function restoreGroupAiJobIfAny() {
+    const cachedGroupId = localStorage.getItem('ps_group_ai_group_id');
+    if (cachedGroupId !== String(groupId)) return; // 다른 모임 작업이면 이 페이지와 무관
+
+    const status = localStorage.getItem('ps_group_ai_status');
+
+    if (status === 'PROCESSING') {
+      heatmapEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--ink-soft); font-size:14px;">AI가 분석 중입니다... 잠시만 기다려주세요.</div>';
+      btnRecommend.disabled = true;
+      btnRecommend.textContent = '분석 중...';
+    } else if (status === 'COMPLETED') {
+      const cachedResultStr = localStorage.getItem('ps_group_ai_cached_result');
+      if (cachedResultStr) {
+        lastAiStartDateStr = localStorage.getItem('ps_group_ai_start_date') || '';
+        renderAiResult(JSON.parse(cachedResultStr), lastAiStartDateStr);
+        const widget = document.getElementById('groupAiFloatingWidget');
+        if (widget) widget.style.display = 'none';
+        if (typeof window.clearGroupAiStorage === 'function') window.clearGroupAiStorage();
+      }
+    } else if (status === 'FAILED') {
+      const reason = localStorage.getItem('ps_group_ai_fail_reason') || '분석 중 오류가 발생했습니다.';
+      heatmapEl.innerHTML = `<div style="text-align:center; padding:20px; color:var(--ink-soft); font-size:14px;">${reason}</div>`;
+      if (typeof window.clearGroupAiStorage === 'function') window.clearGroupAiStorage();
+    }
   }
-  const times = hasMultiDay ? '해당없음(종일/숙박)' : Array.from(timeCheckboxes).map(cb => cb.value).join(', ');
-  const type = encodeURIComponent(`가능한 소요시간: ${duration}, 가능한 시간대: ${times}`);
-  
-  if (!selectedStartDate || !selectedEndDate) {
-    alert('추천을 받을 시작 날짜와 끝 날짜를 모두 지정해주세요.');
-    return;
+
+  async function loadAiRecommendations() {
+    // 이미 다른 모임의 AI 추천이 진행 중이면(=localStorage에 다른 groupId로 PROCESSING 상태가 남아있으면)
+    // 여기서 새로 시작하지 않는다. 그대로 진행하면 이전 모임의 job 추적 정보(jobId)가
+    // 덮어써져서, 먼저 시작한 모임의 결과를 다시는 받을 방법이 없어지기 때문.
+    const activeJobGroupId = localStorage.getItem('ps_group_ai_group_id');
+    const activeJobStatus = localStorage.getItem('ps_group_ai_status');
+    if (activeJobStatus === 'PROCESSING' && activeJobGroupId && activeJobGroupId !== String(groupId)) {
+      alert('다른 모임의 AI 추천 분석이 아직 진행 중이에요. 완료된 후에 다시 시도해주세요.');
+      return;
+    }
+
+    const durationCheckboxes = document.querySelectorAll('input[name="recDuration"]:checked');
+    if (durationCheckboxes.length === 0) {
+      alert('최소 하나의 소요 시간을 선택해주세요.');
+      return;
+    }
+    const duration = Array.from(durationCheckboxes).map(cb => cb.value).join(', ');
+
+    const hasMultiDay = Array.from(durationCheckboxes).some(c => c.value.includes('일'));
+
+    const timeCheckboxes = document.querySelectorAll('input[name="recTime"]:checked');
+    if (!hasMultiDay && timeCheckboxes.length === 0) {
+      alert('최소 하나의 시간대를 선택해주세요.');
+      return;
+    }
+    const times = hasMultiDay ? '해당없음(종일/숙박)' : Array.from(timeCheckboxes).map(cb => cb.value).join(', ');
+    const type = encodeURIComponent(`가능한 소요시간: ${duration}, 가능한 시간대: ${times}`);
+
+    if (!selectedStartDate || !selectedEndDate) {
+      alert('추천을 받을 시작 날짜와 끝 날짜를 모두 지정해주세요.');
+      return;
+    }
+
+    const startDateStr = flatpickr.formatDate(selectedStartDate, "Y-m-d");
+    const endDateStr = flatpickr.formatDate(selectedEndDate, "Y-m-d");
+
+    let queryParams = `type=${type}&startDate=${startDateStr}&endDate=${endDateStr}`;
+
+    heatmapEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--ink-soft); font-size:14px;">AI가 분석 중입니다... 잠시만 기다려주세요.</div>';
+    recList.innerHTML = '';
+    dayLabels.style.display = 'none';
+    actionBtnGroup.style.display = 'none';
+    registerNote.style.display = 'none';
+    dayLabels.style.display = 'none';
+    btnRecommend.disabled = true;
+    btnRecommend.textContent = '분석 중...';
+    selectedRec = null;
+
+    lastAiStartDateStr = startDateStr;
+
+    try {
+      // 1. 분석 시작 API 호출 (Job 등록) - 결과는 바로 안 오고 jobId만 온다.
+      const startRes = await fetchApi(`/group/${groupId}/ai-recommendations/start?${queryParams}`, {
+        method: 'POST'
+      });
+      if (!startRes.ok) throw new Error('Failed to start AI recommendation job');
+
+      const startData = await startRes.json();
+      if (!startData.jobId) throw new Error('No jobId returned from server');
+
+      // 2. 폴링은 header.html이 전담한다. 이렇게 하면 이 페이지를 벗어나 다른 화면으로
+      //    이동해도 계속 분석이 진행되고, 완료되면 우측 하단 플로팅 위젯으로 알려준다.
+      //    (버튼/로딩 상태 복구는 아래 planslot:groupAiCompleted / groupAiFailed 이벤트에서 처리)
+      if (typeof window.registerGroupAiJob === 'function') {
+        window.registerGroupAiJob(startData.jobId, groupId, startDateStr);
+      } else {
+        console.warn('registerGroupAiJob을 찾을 수 없습니다. header.html이 정상적으로 로드되었는지 확인하세요.');
+        btnRecommend.disabled = false;
+        btnRecommend.textContent = '추천받기';
+      }
+    } catch (e) {
+      console.error('Error starting AI recommendation:', e);
+      heatmapEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--ink-soft); font-size:14px;">분석 중 오류가 발생했습니다.</div>';
+      btnRecommend.disabled = false;
+      btnRecommend.textContent = '추천받기';
+    }
   }
-  
-  const startDateStr = flatpickr.formatDate(selectedStartDate, "Y-m-d");
-  const endDateStr = flatpickr.formatDate(selectedEndDate, "Y-m-d");
-  
-  let queryParams = `type=${type}&startDate=${startDateStr}&endDate=${endDateStr}`;
 
-  heatmapEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--ink-soft); font-size:14px;">AI가 분석 중입니다... 잠시만 기다려주세요.</div>';
-  recList.innerHTML = '';
-  dayLabels.style.display = 'none';
-  actionBtnGroup.style.display = 'none';
-  registerNote.style.display = 'none';
-  dayLabels.style.display = 'none';
-  btnRecommend.disabled = true;
-  btnRecommend.textContent = '분석 중...';
-  selectedRec = null;
-
-  try {
-    const res = await fetchApi(`/group/${groupId}/ai-recommendations?${queryParams}`);
-    if (!res.ok) throw new Error('Failed to load');
-
-    const data = await res.json();
-
+  // header.html의 폴링(진행 중/완료 이벤트)과 페이지 재진입 복구 로직에서 공통으로 사용하는 렌더링 함수
+  function renderAiResult(data, startDateStrForHeat) {
     if (!data.heat || data.heat.length === 0) {
       heatmapEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--ink-soft); font-size:14px;">아직 공유된 일정이 없어서 분석할 수 없어요.</div>';
       document.getElementById('heatPagination').style.display = 'none';
     } else {
       heatData = data.heat;
-      heatStartDateStr = startDateStr;
+      heatStartDateStr = startDateStrForHeat;
       renderHeatmapPage(0);
     }
 
+    recList.innerHTML = '';
     if (!data.recs || data.recs.length === 0) {
       recList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--ink-soft); font-size:14px;">추천할 시간이 아직 없어요. 모임원이 일정을 공유하면 여기에 추천이 나타나요.</div>';
     } else {
@@ -489,12 +583,12 @@ async function loadAiRecommendations() {
         const el = document.createElement('div');
         el.className = 'rank-card' + (r.rank === 1 ? ' rank1' : '');
         el.innerHTML = `
-          <div class="ghost-num">${r.rank}</div>
-          <div class="rank-date">${r.label}</div>
-          <span class="fit-badge ${r.rank > 1 ? 'partial' : ''}">${r.tag}</span>
-          <div class="tag-row" style="margin-top:10px;">
-            <span class="tag">${r.sub}</span>
-          </div>`;
+        <div class="ghost-num">${r.rank}</div>
+        <div class="rank-date">${r.label}</div>
+        <span class="fit-badge ${r.rank > 1 ? 'partial' : ''}">${r.tag}</span>
+        <div class="tag-row" style="margin-top:10px;">
+          <span class="tag">${r.sub}</span>
+        </div>`;
         el.addEventListener('click', () => {
           document.querySelectorAll('.rank-card').forEach(n => {
             n.classList.remove('active');
@@ -508,49 +602,42 @@ async function loadAiRecommendations() {
       registerNote.style.display = 'block';
       registerBtn.disabled = false;
     }
-  } catch (e) {
-    console.error(e);
-    heatmapEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--ink-soft); font-size:14px;">분석 중 오류가 발생했습니다.</div>';
-  } finally {
-    btnRecommend.disabled = false;
-    btnRecommend.textContent = '추천받기';
   }
-}
 
-initAiPage();
+  initAiPage();
 
-function renderHeatmapPage(page) {
-  if (!heatData || heatData.length === 0) return;
-  const itemsPerPage = 7;
-  const totalCols = heatData[0].row.length;
-  const totalPages = Math.ceil(totalCols / itemsPerPage);
-  if (page < 0) page = 0;
-  if (page >= totalPages) page = totalPages - 1;
-  currentHeatPage = page;
+  function renderHeatmapPage(page) {
+    if (!heatData || heatData.length === 0) return;
+    const itemsPerPage = 7;
+    const totalCols = heatData[0].row.length;
+    const totalPages = Math.ceil(totalCols / itemsPerPage);
+    if (page < 0) page = 0;
+    if (page >= totalPages) page = totalPages - 1;
+    currentHeatPage = page;
 
-  const startCol = page * itemsPerPage;
-  const endCol = Math.min(startCol + itemsPerPage, totalCols);
-  const colsToShow = endCol - startCol;
+    const startCol = page * itemsPerPage;
+    const endCol = Math.min(startCol + itemsPerPage, totalCols);
+    const colsToShow = endCol - startCol;
 
-  const totalRow = [];
-  for(let c = startCol; c < endCol; c++){
-    const freeCount = heatData.filter(r => r.row[c] === 'free').length;
-    if(freeCount === heatData.length) totalRow.push('free');
-    else if(freeCount >= Math.ceil(heatData.length/2)) totalRow.push('mid');
-    else totalRow.push('busy');
-  }
-  
-  let html = `<div class="ribbon-row total">
+    const totalRow = [];
+    for(let c = startCol; c < endCol; c++){
+      const freeCount = heatData.filter(r => r.row[c] === 'free').length;
+      if(freeCount === heatData.length) totalRow.push('free');
+      else if(freeCount >= Math.ceil(heatData.length/2)) totalRow.push('mid');
+      else totalRow.push('busy');
+    }
+
+    let html = `<div class="ribbon-row total">
     <span class="name">전체</span>
     ${totalRow.map(v => {
-        if (v === 'free') return '<div class="day-cell free"></div>';
-        if (v === 'mid') return '<div class="day-cell partial"></div>';
-        return '<div class="day-cell"></div>';
+      if (v === 'free') return '<div class="day-cell free"></div>';
+      if (v === 'mid') return '<div class="day-cell partial"></div>';
+      return '<div class="day-cell"></div>';
     }).join('')}
   </div>`;
-  
-  heatData.forEach(r => {
-    html += `<div class="ribbon-row">
+
+    heatData.forEach(r => {
+      html += `<div class="ribbon-row">
       <span class="name">${r.name}</span>
       ${r.row.slice(startCol, endCol).map(v => {
         if (v === 'free') return '<div class="day-cell free"></div>';
@@ -558,33 +645,33 @@ function renderHeatmapPage(page) {
         return '<div class="day-cell"></div>';
       }).join('')}
     </div>`;
-  });
-  
-  heatmapEl.innerHTML = html;
-  
-  let labelHtml = '<span></span>';
-  let startD = heatStartDateStr ? new Date(heatStartDateStr) : new Date();
-  startD.setDate(startD.getDate() + startCol);
-  for(let i=0; i<colsToShow; i++) {
-     let d = new Date(startD); d.setDate(d.getDate() + i);
-     labelHtml += `<span>${d.getMonth()+1}/${d.getDate()}</span>`;
-  }
-  dayLabels.innerHTML = labelHtml;
-  
-  heatLegend.style.display = 'flex';
-  dayLabels.style.display = 'grid';
-  dayLabels.style.gridTemplateColumns = `80px repeat(${colsToShow}, 1fr)`;
-  
-  const heatPagination = document.getElementById('heatPagination');
-  if (totalPages > 1) {
+    });
+
+    heatmapEl.innerHTML = html;
+
+    let labelHtml = '<span></span>';
+    let startD = heatStartDateStr ? new Date(heatStartDateStr) : new Date();
+    startD.setDate(startD.getDate() + startCol);
+    for(let i=0; i<colsToShow; i++) {
+      let d = new Date(startD); d.setDate(d.getDate() + i);
+      labelHtml += `<span>${d.getMonth()+1}/${d.getDate()}</span>`;
+    }
+    dayLabels.innerHTML = labelHtml;
+
+    heatLegend.style.display = 'flex';
+    dayLabels.style.display = 'grid';
+    dayLabels.style.gridTemplateColumns = `80px repeat(${colsToShow}, 1fr)`;
+
+    const heatPagination = document.getElementById('heatPagination');
+    if (totalPages > 1) {
       heatPagination.style.display = 'flex';
       document.getElementById('heatPageText').textContent = `${page + 1} / ${totalPages}`;
       document.getElementById('btnHeatPrev').disabled = page === 0;
       document.getElementById('btnHeatNext').disabled = page === totalPages - 1;
-  } else {
+    } else {
       heatPagination.style.display = 'none';
+    }
   }
-}
 
 </script>
 </body>

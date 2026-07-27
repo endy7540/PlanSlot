@@ -2,10 +2,6 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <!-- Flatpickr CSS & JS (for AI Image Schedule Date Range Picker) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PlanSlot - 캘린더</title>
     <style>
@@ -327,6 +323,19 @@
 
 <div class="wrap">
 
+    <!-- 로그인 상태 안내 -->
+    <div class="panel" id="authNotice" style="display:none">
+        <div class="cal-nav" style="margin:0">
+            <h2 style="font-size:18px">로그인이 필요합니다</h2>
+        </div>
+        <p style="color:#748898;font-size:13px;line-height:1.6;margin:0 0 12px">
+            먼저 로그인 페이지에서 로그인한 뒤 다시 이 페이지로 돌아와주세요.
+        </p>
+        <div style="display:flex;gap:8px">
+            <a class="primary" href="/auth/login">로그인 페이지로 이동</a>
+            <button class="ghost" onclick="location.reload()">토큰 다시 확인</button>
+        </div>
+    </div>
 
     <!-- 캘린더 -->
     <div class="panel" id="calendarPanel" style="display:none">
@@ -442,6 +451,7 @@
     function checkAuth() {
         token = localStorage.getItem('jwtToken') || '';
         const badge = document.getElementById('tokenBadge');
+        const notice = document.getElementById('authNotice');
         const calPanel = document.getElementById('calendarPanel');
 
         if (token) {
@@ -449,10 +459,15 @@
                 badge.textContent = '로그인됨 (토큰 보유)';
                 badge.classList.remove('off');
             }
+            notice.style.display = 'none';
             calPanel.style.display = '';
         } else {
-            alert('로그인이 필요한 서비스입니다.');
-            window.location.href = '/auth/login';
+            if (badge) {
+                badge.textContent = '로그인 필요';
+                badge.classList.add('off');
+            }
+            notice.style.display = '';
+            calPanel.style.display = 'none';
         }
         return !!token;
     }
@@ -549,10 +564,10 @@
     async function loadMonthSchedules() {
         const firstOfMonth = new Date(viewYear, viewMonth, 1);
         const startDow = firstOfMonth.getDay(); // 0=일
-        
+
         // 달력 첫 칸에 들어갈 이전 달 꼬리의 시작일 계산
         const startCalendarDate = new Date(viewYear, viewMonth, 1 - startDow, 0, 0, 0);
-        
+
         // 달력 마지막 칸에 들어갈 다음 달 머리의 종료일 계산 (5주 = 35일분량 확보)
         const endCalendarDate = new Date(startCalendarDate.getTime());
         endCalendarDate.setDate(endCalendarDate.getDate() + 34);
@@ -869,7 +884,7 @@
 
         if (hasMultiDay) {
             // 연속 일정이 있다면: 단 한 번만 모달을 띄워 물어봅니다!
-            document.getElementById('deleteConfirmModalMsg').innerHTML = 
+            document.getElementById('deleteConfirmModalMsg').innerHTML =
                 `선택한 날인 <strong>${selectedDateKey}</strong>에 등록된 일정 중 연속 일정이 포함되어 있습니다.<br>` +
                 `이 날의 일정만 지우시겠습니까(기간 단축)?<br>아니면 연결된 전체 일정을 삭제하시겠습니까?`;
             document.getElementById('deleteConfirmModal').style.display = 'flex';
@@ -903,7 +918,7 @@
         showToast('선택하신 일정 삭제 처리 중...');
 
         const daySchedules = schedulesByDate[selectedDateKey] || [];
-        
+
         for (let s of daySchedules) {
             const startDateStr = getDateOnly(s.startDate);
             const endDateStr = s.endDate ? getDateOnly(s.endDate) : startDateStr;
@@ -1289,12 +1304,6 @@
 
     function closeAiImageModal() {
         document.getElementById('aiImageModal').style.display = 'none';
-        if (typeof clearFileSelect === 'function') {
-            clearFileSelect();
-        }
-        if (typeof resetStep === 'function') {
-            resetStep();
-        }
     }
 
     function resetStep() {
@@ -1305,14 +1314,6 @@
         document.getElementById('aiPromptType').value = '예시';
         document.getElementById('aiPromptText').value = '이 이미지를 분석해서 캘린더에 추가해줘';
         onPromptTypeChange();
-
-        // 상태 초기화: 처음으로 돌아가면 이전 작업 상태를 완전히 지웁니다.
-        if (typeof window.clearAiStorage === 'function') {
-            window.clearAiStorage();
-            if (typeof window.closeAiWidget === 'function') {
-                window.closeAiWidget();
-            }
-        }
     }
 
     function onPromptTypeChange() {
@@ -1487,25 +1488,6 @@
 
     let currentExtractedList = [];
 
-    function parseExtractedDateRange(dateRangeStr) {
-        if (!dateRangeStr) {
-            const today = new Date().toISOString().slice(0, 10);
-            return { startD: today, endD: today };
-        }
-        const clean = dateRangeStr.trim();
-        let parts = [];
-        if (clean.includes(' to ')) {
-            parts = clean.split(' to ');
-        } else if (clean.includes(' ~ ')) {
-            parts = clean.split(' ~ ');
-        } else {
-            parts = [clean];
-        }
-        const startD = parts[0] || new Date().toISOString().slice(0, 10);
-        const endD = parts[1] || startD;
-        return { startD, endD };
-    }
-
     function displayAnalysisResult(data) {
         document.getElementById('aiLoadingStep').style.display = 'none';
         document.getElementById('aiResultStep').style.display = 'block';
@@ -1529,10 +1511,8 @@
             card.className = 'ai-schedule-card';
             card.style = 'background: white; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left;';
             
-            const startDVal = item.startDate ? item.startDate.slice(0, 10) : '';
-            const endDVal = item.endDate ? item.endDate.slice(0, 10) : startDVal;
-            const startTVal = item.startDate && item.startDate.includes('T') ? item.startDate.split('T')[1].slice(0, 5) : '09:00';
-            const endTVal = item.endDate && item.endDate.includes('T') ? item.endDate.split('T')[1].slice(0, 5) : '10:00';
+            const startVal = item.startDate ? item.startDate.slice(0, 16) : '';
+            const endVal = item.endDate ? item.endDate.slice(0, 16) : '';
 
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1545,39 +1525,26 @@
                 <div>
                     <input type="text" placeholder="일정 설명 (상세 내용)" class="ai-item-description" value="${escapeHtml(item.description || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; color: #475569; box-sizing: border-box;">
                 </div>
-                
-                <div style="margin-bottom: 4px;">
-                    <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">일정 날짜 범위 *</label>
-                    <input type="text" class="ai-item-date" id="ai-date-${index}" placeholder="날짜를 선택하세요" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;" required>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                     <div>
-                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">시작 시간</label>
-                        <input type="time" class="ai-item-start-time" value="${startTVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;">
+                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">시작일시</label>
+                        <input type="datetime-local" class="ai-item-start" value="${startVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
                     </div>
                     <div>
-                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">종료 시간</label>
-                        <input type="time" class="ai-item-end-time" value="${endTVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;">
+                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">종료일시</label>
+                        <input type="datetime-local" class="ai-item-end" value="${endVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
                     </div>
                 </div>
-
                 <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 8px;">
                     <input type="text" placeholder="장소 (선택)" class="ai-item-location" value="${escapeHtml(item.location)}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
                     <select class="ai-item-type" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
-                        <option value="DAILY">단일 일정</option>
+                        <option value="DAILY">당일 일정</option>
                         <option value="WEEKLY">주간 반복</option>
                         <option value="MONTHLY">월간 반복</option>
                     </select>
                 </div>
             `;
             container.appendChild(card);
-
-            flatpickr(`#ai-date-${index}`, {
-                mode: "range",
-                locale: "ko",
-                dateFormat: "Y-m-d",
-                defaultDate: startDVal ? [startDVal, endDVal] : []
-            });
         });
     }
 
@@ -1596,87 +1563,57 @@
         const cards = container.querySelectorAll('.ai-schedule-card');
         
         currentExtractedList = [];
-        cards.forEach((card, index) => {
+        cards.forEach(card => {
             const title = card.querySelector('.ai-item-title').value.trim();
             const description = card.querySelector('.ai-item-description').value.trim();
-            const dateRange = card.querySelector('.ai-item-date').value;
-            const startTime = card.querySelector('.ai-item-start-time').value;
-            const endTime = card.querySelector('.ai-item-end-time').value;
+            const start = card.querySelector('.ai-item-start').value;
+            const end = card.querySelector('.ai-item-end').value;
             const location = card.querySelector('.ai-item-location').value.trim();
-            
-            const { startD, endD } = parseExtractedDateRange(dateRange);
             
             currentExtractedList.push({
                 title: title,
                 description: description,
-                startDate: `${startD}T${startTime || '00:00'}:00`,
-                endDate: `${endD}T${endTime || '00:00'}:00`,
+                startDate: start ? `${start}:00` : null,
+                endDate: end ? `${end}:00` : null,
                 location: location || null
             });
         });
     }
 
-            async function reAnalyze() {
+    async function reAnalyze() {
         const requestId = document.getElementById('aiRequestId').value;
-        // 재분석 시는 사용자가 입력한 요청사항을 최대한 보존하거나, 디폴트 값을 전달합니다.
-        const promptText = document.getElementById('aiPromptText') ? document.getElementById('aiPromptText').value.trim() : "일정 재분석 요청";
+        const promptText = "일정 재분석 요청";
 
-        // 모달창을 즉시 닫고 처음 분석처럼 하단 백그라운드 진행 바를 띄웁니다.
-        closeAiImageModal();
+        document.getElementById('aiResultStep').style.display = 'none';
+        document.getElementById('aiLoadingStep').style.display = 'block';
+        document.getElementById('aiProgressTitle').innerText = 'AI 일정 재분석 중...';
+        document.getElementById('aiProgressDesc').innerText = '요청하신 정보에 맞춰 일정을 재파싱하고 있습니다.';
 
-        localStorage.setItem('ps_ai_status', 'PROCESSING');
-        localStorage.removeItem('ps_ai_cached_result');
-        localStorage.removeItem('ps_ai_fail_reason');
-        
-        if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
-            checkAndRecoverAiBackgroundProcess();
-        }
+        try {
+            const res = await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
+                method: 'PATCH',
+                headers: {
+                    ...authHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    promptText: promptText,
+                    promptType: '직접'
+                })
+            });
 
-        // 비동기 백그라운드 재분석 기동
-        (async () => {
-            try {
-                // 1) 프롬프트 업데이트 PATCH 호출 (백엔드 PATCH 메소드 내부에서 AI 분석까지 다이렉트 동기 처리 후 완본 리턴함)
-                const patchRes = await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
-                    method: 'PATCH',
-                    headers: {
-                        ...authHeaders(),
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        promptText: promptText || "일정 재분석 요청",
-                        promptType: '직접'
-                    })
-                });
-
-                if (!patchRes.ok) {
-                    throw new Error('재분석 프롬프트 수정 실패');
-                }
-
-                const resultData = await patchRes.json();
-
-                if (resultData.status === 'FAILED') {
-                    throw new Error(resultData.failReason || 'AI 재분석에 실패했습니다.');
-                }
-
-                // 2) 완료 처리 및 캐시 데이터 갱신
-                localStorage.setItem('ps_ai_status', 'COMPLETED');
-                localStorage.setItem('ps_ai_cached_result', JSON.stringify(resultData));
-                aiCachedResultData = resultData;
-
-                // 하단 백그라운드 진행 바 완료 위젯 UI 업데이트
-                if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
-                    checkAndRecoverAiBackgroundProcess();
-                }
-
-            } catch (e) {
-                console.error(e);
-                localStorage.setItem('ps_ai_status', 'FAILED');
-                localStorage.setItem('ps_ai_fail_reason', e.message);
-                if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
-                    checkAndRecoverAiBackgroundProcess();
-                }
+            if (!res.ok) {
+                throw new Error('재분석 요청 실패');
             }
-        })();
+
+            const data = await res.json();
+            displayAnalysisResult(data);
+        } catch (e) {
+            console.error(e);
+            showToast('재분석 오류: ' + e.message, true);
+            document.getElementById('aiLoadingStep').style.display = 'none';
+            document.getElementById('aiResultStep').style.display = 'block';
+        }
     }
 
     async function confirmSchedule() {
@@ -1720,9 +1657,8 @@
 
         cards.forEach((card, index) => {
             const title = card.querySelector('.ai-item-title').value.trim();
-            const dateRange = card.querySelector('.ai-item-date').value;
-            const startTime = card.querySelector('.ai-item-start-time').value;
-            const endTime = card.querySelector('.ai-item-end-time').value;
+            const start = card.querySelector('.ai-item-start').value;
+            const end = card.querySelector('.ai-item-end').value;
             const location = card.querySelector('.ai-item-location').value.trim();
             const type = card.querySelector('.ai-item-type').value;
 
@@ -1731,24 +1667,49 @@
                 hasError = true;
                 return;
             }
-            if (!dateRange) {
-                showToast(`일정 #${index + 1}의 날짜는 필수입니다.`, true);
+            if (!start || !end) {
+                showToast(`일정 #${index + 1}의 시작/종료 일시는 필수입니다.`, true);
                 hasError = true;
                 return;
             }
 
-            const { startD, endD } = parseExtractedDateRange(dateRange);
+            function formatToStrictDateTime(val) {
+                if (!val) return null;
+                let datePart = "";
+                let timePart = "00:00:00";
+                const cleanVal = val.trim();
+                if (cleanVal.includes('T')) {
+                    const parts = cleanVal.split('T');
+                    datePart = parts[0];
+                    timePart = parts[1];
+                } else if (cleanVal.includes(' ')) {
+                    const parts = cleanVal.split(' ');
+                    datePart = parts[0];
+                    timePart = parts[1];
+                } else {
+                    datePart = cleanVal;
+                }
+                const tParts = timePart.split(':');
+                if (tParts.length === 1) {
+                    timePart = `${timePart}:00:00`;
+                } else if (tParts.length === 2) {
+                    timePart = `${timePart}:00`;
+                } else if (tParts.length > 3) {
+                    timePart = tParts.slice(0, 3).join(':');
+                }
+                return `${datePart}T${timePart}`;
+            }
 
-            const description = card.querySelector('.ai-item-description') 
-                ? card.querySelector('.ai-item-description').value.trim() 
+            const description = card.querySelector('.ai-item-description')
+                ? card.querySelector('.ai-item-description').value.trim()
                 : "AI 이미지 분석 등록";
 
             confirmRequests.push({
                 title: title,
-                description: description || "AI 이미지 분석 등록",
+                description: "AI 이미지 분석 등록",
                 scheduleType: type,
-                startDate: `${startD}T${startTime || '00:00'}:00`,
-                endDate: `${endD}T${endTime || '00:00'}:00`,
+                startDate: formatToStrictDateTime(start),
+                endDate: formatToStrictDateTime(end),
                 location: location || null,
                 isPublic: false
             });
@@ -1804,7 +1765,7 @@
 
 <!-- AI 이미지 일정 등록 모달 HTML -->
 <div id="aiImageModal" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;">
-    <div class="panel" style="width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto; border-radius: 16px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.5); padding: 24px; position: relative;">
+    <div class="panel" style="width: 100%; max-width: 550px; border-radius: 16px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.5); padding: 24px; position: relative;">
         <!-- 닫기 버튼 -->
         <button style="position: absolute; top: 16px; right: 16px; background: none; border: 0; font-size: 20px; color: #64748B; cursor: pointer; font-weight: bold;" onclick="closeAiImageModal()">×</button>
         
@@ -1829,7 +1790,7 @@
             
             <!-- 파일 선택 시 프리뷰 -->
             <div id="aiImagePreviewContainer" style="display: none; margin-top: 12px; text-align: center; position: relative;">
-                <img id="aiImagePreview" src="" alt="preview" style="max-width: 100%; max-height: 250px; object-fit: contain; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #E2E8F0;">
+                <img id="aiImagePreview" src="" alt="preview" style="max-height: 150px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #E2E8F0;">
                 <button style="position: absolute; top: -6px; right: 50%; transform: translateX(75px); background: #EF4444; color: white; border: 0; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 12px; font-weight: bold;" onclick="clearFileSelect()">×</button>
             </div>
 
@@ -1849,10 +1810,10 @@
                 
                 <!-- 추천 예시 원클릭 버튼들 -->
                 <div id="aiPromptPresets" style="display: none; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이 이미지를 분석해서 캘린더에 추가해줘')">이 이미지를 분석해서 캘린더에 추가해줘</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이미지 속 날짜와 시간 정보를 토대로 모든 일정을 추출해서 등록해줘')">모든 일정 추출</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이 스케줄표 이미지에 있는 프로젝트 일정을 내 개인 캘린더에 전부 옮겨줘')">프로젝트 스케줄</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이미지 속에 나오는 수업 시간표를 모두 일정으로 추가해줘')">수업 시간표</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이 이미지를 분석해서 캘린더에 추가해줘')">이 이미지를 분석해서 캘린더에 추가해줘</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이미지 속 날짜와 시간 정보를 토대로 모든 일정을 추출해서 등록해줘')">모든 일정 추출</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이 스케줄표 이미지에 있는 프로젝트 일정을 내 개인 캘린더에 전부 옮겨줘')">프로젝트 스케줄</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이미지 속에 나오는 수업 시간표를 모두 일정으로 추가해줘')">수업 시간표</button>
                 </div>
             </div>
 
@@ -1876,7 +1837,7 @@
                     <span style="font-size: 18px;">✅</span>
                     <span style="font-size: 13px; font-weight: 800; color: #065F46;" id="aiResultSummaryText">AI 일정 추출 완료</span>
                 </div>
-                <span id="aiConfidenceBadge" style="display: none;">신뢰도: 95.50%</span>
+                <span id="aiConfidenceBadge" style="background: #10B981; color: white; padding: 2px 8px; font-size: 11px; border-radius: 9999px; font-weight: bold;">신뢰도: 95.50%</span>
             </div>
 
             <!-- 추출된 필드 확인 및 수정 폼 -->

@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PlanSlot - 일정 수정</title>
-    <link rel="stylesheet" th:href="@{/css/notification/notification.css}"
-          href="/css/notification/notification.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
     <style>
         *{box-sizing:border-box}
         body{
@@ -122,6 +123,47 @@
         }
         .toast.show{opacity:1;transform:none}
         .toast.error{background:#B91C1C}
+
+        /* Toggle Switch Styling */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+        }
+        .toggle-switch input {
+            display: none;
+        }
+        .toggle-switch .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1;
+            transition: .3s;
+            border-radius: 26px;
+        }
+        .toggle-switch .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .toggle-switch input:checked + .slider {
+            background-color: #0ea5e9;
+        }
+        .toggle-switch input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+        .toggle-switch input:disabled + .slider {
+            background-color: #f1f5f9;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -160,7 +202,7 @@
             </div>
             <div class="form-row">
                 <div>
-                    <label>일정 유형 *</label>
+                    <label>반복 유형 *</label>
                     <select id="f-scheduleType" onchange="toggleRecurrenceRow(this.value)">
                         <option value="DAILY">당일</option>
                         <option value="WEEKLY">주간</option>
@@ -181,23 +223,22 @@
                 <div>
                 </div>
             </div>
-            <label class="checkbox-row">
-                <input id="f-allDay" type="checkbox" onchange="toggleAllDay(this.checked)">
-                <span>하루종일</span>
-            </label>
-            
-            <div class="form-row">
-                <div>
-                    <label>시작 날짜 *</label>
-                    <input id="f-date" type="date" required onchange="syncEndDate(this.value)">
-                </div>
-                <div>
-                    <label>종료 날짜 *</label>
-                    <input id="f-endDate" type="date" required>
-                </div>
+            <!-- 하루종일 토글 스위치 -->
+            <div style="display: flex; align-items: center; justify-content: space-between; background: #F3FAFF; border: 2px solid #DCEFFC; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; width: fit-content; min-width: 180px;">
+                <span style="font-size: 14px; font-weight: 700; color: #075985;">하루종일</span>
+                <label class="toggle-switch" style="margin: 0;">
+                    <input id="f-allDay" type="checkbox" onchange="toggleAllDay(this.checked)">
+                    <span class="slider"></span>
+                </label>
             </div>
 
-            <div class="form-row">
+            <!-- 일정 날짜 및 시간 입력 영역 -->
+            <div style="margin-bottom: 16px;">
+                <label>일정 기간 선택 *</label>
+                <input id="f-dateRange" type="text" class="chip-input" placeholder="시작일과 종료일을 선택하세요" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff;" required>
+            </div>
+
+            <div class="form-row" id="timeInputRow">
                 <div id="timeInputs" style="grid-column: span 2; display: flex; gap: 8px;">
                     <div style="flex: 1;">
                         <label>시작 시간 *</label>
@@ -220,10 +261,13 @@
                     <input id="f-notifyDaysBefore" type="number" min="0" placeholder="예: 1">
                 </div>
             </div>
-            <label class="checkbox-row" style="margin-top: 12px;">
-                <input id="f-isPublic" type="checkbox">
-                <span>공개 일정으로 등록</span>
-            </label>
+            <div style="display: flex; align-items: center; justify-content: space-between; background: #F3FAFF; border: 2px solid #DCEFFC; border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; margin-top: 12px; width: fit-content; min-width: 200px;">
+                <span style="font-size: 14px; font-weight: 700; color: #075985;">공개 일정으로 등록</span>
+                <label class="toggle-switch" style="margin: 0;">
+                    <input id="f-isPublic" type="checkbox">
+                    <span class="slider"></span>
+                </label>
+            </div>
             <div class="btn-row">
                 <button class="primary" id="submitBtn" onclick="updateSchedule()">수정 완료</button>
                 <button class="ghost" onclick="history.back()">취소</button>
@@ -272,18 +316,40 @@
         };
     }
 
+    let fpInstance = null;
+
+    function initFlatpickr() {
+        fpInstance = flatpickr("#f-dateRange", {
+            mode: "range",
+            locale: "ko",
+            dateFormat: "Y-m-d",
+            onReady: function(selectedDates, dateStr, instance) {
+                instance.calendarContainer.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    if (e.deltaY > 0) instance.changeMonth(1);
+                    else if (e.deltaY < 0) instance.changeMonth(-1);
+                }, { passive: false });
+            },
+            onChange: function() {
+                updateDeadlineMax();
+            }
+        });
+    }
+
     function toggleAllDay(checked) {
         const timeInputs = document.getElementById('timeInputs');
+        const startT = document.getElementById('f-startTime');
+        const endT = document.getElementById('f-endTime');
         if (checked) {
             timeInputs.style.opacity = '0.4';
             timeInputs.style.pointerEvents = 'none';
-            document.getElementById('f-startTime').required = false;
-            document.getElementById('f-endTime').required = false;
+            startT.required = false;
+            endT.required = false;
         } else {
             timeInputs.style.opacity = '1';
             timeInputs.style.pointerEvents = 'auto';
-            document.getElementById('f-startTime').required = true;
-            document.getElementById('f-endTime').required = true;
+            startT.required = true;
+            endT.required = true;
         }
     }
 
@@ -298,16 +364,20 @@
         }
     }
 
-    function syncEndDate(val) {
-        const endDate = document.getElementById('f-endDate');
-        if (val && !endDate.value) {
-            endDate.value = val;
+    function parseSelectedDates() {
+        const dates = fpInstance ? fpInstance.selectedDates : [];
+        if (dates.length === 0) {
+            return { dateVal: null, endDateVal: null };
         }
+        const pad = (n) => String(n).padStart(2, '0');
+        const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+        const dateVal = fmt(dates[0]);
+        const endDateVal = dates[1] ? fmt(dates[1]) : dateVal;
+        return { dateVal, endDateVal };
     }
 
     function buildScheduleBody() {
-        const dateVal = document.getElementById('f-date').value; // YYYY-MM-DD
-        const endDateVal = document.getElementById('f-endDate').value || dateVal; // YYYY-MM-DD
+        const { dateVal, endDateVal } = parseSelectedDates();
         const isAllDay = document.getElementById('f-allDay').checked;
         const startTime = document.getElementById('f-startTime').value || '09:00'; // HH:mm
         const endTime = document.getElementById('f-endTime').value || '10:00'; // HH:mm
@@ -387,24 +457,25 @@
             }
 
             const isAllDay = s.startDate && (s.startDate.includes('T00:00') || s.startDate.includes(' 00:00')) && s.endDate && (s.endDate.includes('T23:59') || s.endDate.includes(' 23:59'));
+            
             document.getElementById('f-allDay').checked = isAllDay;
-
             document.getElementById('f-title').value = s.title || '';
             document.getElementById('f-description').value = s.description || '';
             document.getElementById('f-scheduleType').value = s.scheduleType || 'DAILY';
             document.getElementById('f-location').value = s.location || '';
             
             if (s.startDate) {
-                document.getElementById('f-date').value = s.startDate.slice(0, 10);
+                const startStr = s.startDate.slice(0, 10);
+                const endStr = s.endDate ? s.endDate.slice(0, 10) : startStr;
+                if (fpInstance) {
+                    fpInstance.setDate([startStr, endStr]);
+                }
                 const timePart = s.startDate.includes('T') ? s.startDate.split('T')[1] : s.startDate.split(' ')[1] || '09:00:00';
                 document.getElementById('f-startTime').value = timePart.slice(0, 5);
             }
             if (s.endDate) {
-                document.getElementById('f-endDate').value = s.endDate.slice(0, 10);
                 const timePart = s.endDate.includes('T') ? s.endDate.split('T')[1] : s.endDate.split(' ')[1] || '10:00:00';
                 document.getElementById('f-endTime').value = timePart.slice(0, 5);
-            } else if (s.startDate) {
-                document.getElementById('f-endDate').value = s.startDate.slice(0, 10);
             }
 
             toggleAllDay(isAllDay);
@@ -428,14 +499,13 @@
             return;
         }
         
-        const dateVal = document.getElementById('f-date').value;
-        const endDateVal = document.getElementById('f-endDate').value || dateVal;
+        const { dateVal, endDateVal } = parseSelectedDates();
         const isAllDay = document.getElementById('f-allDay').checked;
         const startTime = document.getElementById('f-startTime').value;
         const endTime = document.getElementById('f-endTime').value;
 
         if (!dateVal) {
-            showToast('일정 날짜는 필수입니다.', true);
+            showToast('일정 기간을 선택해주세요.', true);
             return;
         }
 
@@ -794,7 +864,7 @@
     }
 
     function updateDeadlineMax() {
-        const dateVal = document.getElementById('f-date').value;
+        const { dateVal } = parseSelectedDates();
         if (dateVal) {
             document.getElementById('f-deadlineDate').min = '';
             document.getElementById('f-deadlineDate').max = dateVal;
@@ -813,9 +883,8 @@
         return timePart;
     }
 
-    document.getElementById('f-date').addEventListener('change', updateDeadlineMax);
-
     if (checkAuth()) {
+        initFlatpickr();
         loadScheduleData().then(() => {
             updateDeadlineMax();
         });

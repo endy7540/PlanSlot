@@ -1,9 +1,10 @@
 (function() {
     const STORAGE_KEY = 'planslotChatbotMessages';
+    const CLIENT_ID_KEY = 'planslotChatbotClientId';
     const MAX_QUESTION_LENGTH = 100;
     const HISTORY_ROUNDS = 5;
     const COOLDOWN_MS = 3000;
-    const GREETING = '안녕하세요. 플랜슬롯 이용 방법이 궁금한가요? 일정, 모임, 게시판, 알림 등 사용 방법을 질문해 주세요.';
+    const GREETING = '안녕하세요. 플랜슬롯 이용 방법이 궁금한가요? 로그인하지 않아도 일정, 모임, 게시판, 알림 등 사용 방법을 질문할 수 있어요.';
 
     let messages = [];
     let isRequesting = false;
@@ -12,6 +13,25 @@
 
     function getToken() {
         return localStorage.getItem('jwtToken');
+    }
+
+    function getClientId() {
+        let clientId = sessionStorage.getItem(CLIENT_ID_KEY);
+        if (clientId && /^[A-Za-z0-9_-]{16,80}$/.test(clientId)) return clientId;
+
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            clientId = window.crypto.randomUUID();
+        } else {
+            clientId = `guest-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`;
+        }
+        sessionStorage.setItem(CLIENT_ID_KEY, clientId);
+        return clientId;
+    }
+
+    function clearAuthToken() {
+        localStorage.removeItem('jwtToken');
+        localStorage.removeItem('memberId');
+        document.cookie = 'jwtToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     }
 
     function loadMessages() {
@@ -167,17 +187,24 @@
         }, COOLDOWN_MS);
     }
 
+    function requestChatbot(message, history, token) {
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Chatbot-Client-Id': getClientId()
+        };
+        if (token) headers.Authorization = `Bearer ${token}`;
+
+        return fetch('/api/chatbot/message', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ message, history })
+        });
+    }
+
     async function sendMessage() {
         const input = document.getElementById('chatbotInput');
         if (!input || isRequesting) return;
-
-        const token = getToken();
-        if (!token) {
-            clearStoredMessages();
-            hideChatbotForGuest();
-            window.location.href = '/auth/login';
-            return;
-        }
 
         const text = input.value.trim();
         const length = Array.from(text).length;
@@ -196,15 +223,12 @@
         showTyping();
 
         try {
-            const response = await fetch('/api/chatbot/message', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ message: text, history })
-            });
+            const token = getToken();
+            let response = await requestChatbot(text, history, token);
+            if (response.status === 401 && token) {
+                clearAuthToken();
+                response = await requestChatbot(text, history, null);
+            }
 
             let result = null;
             try {
@@ -214,17 +238,6 @@
             }
 
             hideTyping();
-            if (response.status === 401) {
-                clearStoredMessages();
-                renderMessages();
-                appendTransientError('로그인이 만료되었어요. 다시 로그인해 주세요.');
-                localStorage.removeItem('jwtToken');
-                localStorage.removeItem('memberId');
-                document.cookie = 'jwtToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                setTimeout(() => window.location.href = '/auth/login', 900);
-                return;
-            }
-
             if (!response.ok || !result || !result.success) {
                 updateMessageType(userIndex, 'failed');
                 appendMessage({
@@ -248,12 +261,6 @@
             startCooldown();
             if (input) input.focus();
         }
-    }
-
-    function appendTransientError(content) {
-        const container = document.getElementById('chatbotMessages');
-        if (container) container.appendChild(createMessageRow({ role: 'assistant', type: 'error', content }));
-        scrollToBottom();
     }
 
     function updateInputState() {
@@ -293,11 +300,6 @@
         renderMessages();
     }
 
-    function hideChatbotForGuest() {
-        const shell = document.getElementById('chatbotShell');
-        if (shell) shell.hidden = true;
-    }
-
     function observeExistingAiWidget() {
         const shell = document.getElementById('chatbotShell');
         const aiWidget = document.getElementById('aiFloatingWidget');
@@ -314,10 +316,6 @@
     function initialize() {
         const shell = document.getElementById('chatbotShell');
         if (!shell) return;
-        if (!getToken()) {
-            hideChatbotForGuest();
-            return;
-        }
 
         shell.hidden = false;
         loadMessages();

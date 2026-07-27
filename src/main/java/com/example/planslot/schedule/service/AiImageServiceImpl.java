@@ -168,6 +168,14 @@ public class AiImageServiceImpl implements AiImageService {
 
             String requestBodyJson = objectMapper.writeValueAsString(payload);
 
+            // [중도 취소 감지] 클로드 API 호출 직전 체크
+            if (!aiImageRepository.existsById(requestId)) {
+                log.info("[AI-Cancel-Guard] Request #{} was deleted by user. Aborting before Claude API call.", requestId);
+                throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "요청 정보가 이미 취소/삭제되었습니다."
+                );
+            }
+
             // 3. HTTP Client로 Claude API 호출
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
@@ -243,6 +251,14 @@ public class AiImageServiceImpl implements AiImageService {
             }
 
             if (!list.isEmpty()) {
+                // [중도 취소 감지] DB 반영 직전 최종 체크
+                if (!aiImageRepository.existsById(requestId)) {
+                    log.info("[AI-Cancel-Guard] Request #{} was deleted by user. Discarding Claude response.", requestId);
+                    throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "요청 정보가 이미 취소/삭제되었습니다."
+                    );
+                }
+
                 // 대표값 설정 (첫 번째 일정으로 기존 단일 필드들 덮어쓰기)
                 AiImageDTO.ExtractedSchedule first = list.get(0);
                 aiImage.completeAnalysis(first.getTitle(), first.getStartDate(), first.getEndDate(), first.getLocation(), BigDecimal.valueOf(98.50), listJson);
@@ -628,7 +644,7 @@ public class AiImageServiceImpl implements AiImageService {
         AiImage aiImage = aiImageRepository.findByIdAndMemberId(requestId, memberId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "요청 정보를 찾을 수 없습니다."));
         deletePhysicalImageFile(aiImage.getImageUrl());
-        aiImageRepository.delete(aiImage);
+        aiImageRepository.deleteByIdAndMemberIdDirectly(requestId, memberId);
     }
 
     private void validateImage(MultipartFile image) {

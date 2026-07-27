@@ -15,4 +15,8 @@ public interface AiImageRepository extends JpaRepository<AiImage, Long> {
 
     // 특정 사용자의 특정 요청 내역 조회
     Optional<AiImage> findByIdAndMemberId(Long id, Long memberId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM AiImage a WHERE a.id = :id AND a.member.id = :memberId")
+    void deleteByIdAndMemberIdDirectly(@org.springframework.data.repository.query.Param("id") Long id, @org.springframework.data.repository.query.Param("memberId") Long memberId);
 }

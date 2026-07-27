@@ -1351,7 +1351,7 @@
             presets.style.display = 'flex';
             promptText.readOnly = true;
             promptText.style.background = '#F8FAFC';
-            promptText.style.color = '#64748B';
+            promptText.style.color = '#000000';
         } else {
             presets.style.display = 'none';
             promptText.readOnly = false;
@@ -1897,14 +1897,14 @@
             <!-- 프롬프트 텍스트 -->
             <div style="margin-top: 16px;">
                 <label style="font-size: 13px; font-weight: 800; color: #334155; display: block; margin-bottom: 6px;">분석 프롬프트 (요청사항)</label>
-                <textarea id="aiPromptText" placeholder="분석할 일정에 대한 프롬프트 또는 요청사항을 자유롭게 적어주세요. (예: 다가오는 수요일 오후 3시 공부방 모임 분석해줘)" style="width: 100%; height: 80px; padding: 10px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 13px; font-weight: 700; color: #334155; resize: none;"></textarea>
+                <textarea id="aiPromptText" placeholder="분석할 일정에 대한 프롬프트 또는 요청사항을 자유롭게 적어주세요. (예: 다가오는 수요일 오후 3시 공부방 모임 분석해줘)" style="width: 100%; height: 80px; padding: 10px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 13px; font-weight: 700; color: #334155; resize: none; font-family: \'Malgun Gothic\', \'맑은 고딕\', sans-serif;"></textarea>
                 
                 <!-- 추천 예시 원클릭 버튼들 -->
                 <div id="aiPromptPresets" style="display: none; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이 이미지를 분석해서 캘린더에 추가해줘')">이 이미지를 분석해서 캘린더에 추가해줘</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이미지 속 날짜와 시간 정보를 토대로 모든 일정을 추출해서 등록해줘')">모든 일정 추출</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이 스케줄표 이미지에 있는 프로젝트 일정을 내 개인 캘린더에 전부 옮겨줘')">프로젝트 스케줄</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이미지 속에 나오는 수업 시간표를 모두 일정으로 추가해줘')">수업 시간표</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000000; font-weight: 800; border: 1.5px solid #64748B; background: #fff; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;" onclick="applyPreset('이 이미지를 분석해서 캘린더에 추가해줘')">이 이미지를 분석해서 캘린더에 추가해줘</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000000; font-weight: 800; border: 1.5px solid #64748B; background: #fff; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;" onclick="applyPreset('이미지 속 날짜와 시간 정보를 토대로 모든 일정을 추출해서 등록해줘')">모든 일정 추출</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000000; font-weight: 800; border: 1.5px solid #64748B; background: #fff; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;" onclick="applyPreset('이 스케줄표 이미지에 있는 프로젝트 일정을 내 개인 캘린더에 전부 옮겨줘')">프로젝트 스케줄</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000000; font-weight: 800; border: 1.5px solid #64748B; background: #fff; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;" onclick="applyPreset('이미지 속에 나오는 수업 시간표를 모두 일정으로 추가해줘')">수업 시간표</button>
                 </div>
             </div>
 

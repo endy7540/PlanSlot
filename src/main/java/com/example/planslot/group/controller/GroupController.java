@@ -235,8 +235,9 @@ public class GroupController {
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
         String action = body.get("action"); // "ACCEPT" 또는 "REJECT" 로 전송
+        String color = body.get("color");
         if ("ACCEPT".equalsIgnoreCase(action)) {
-            groupService.acceptInvite(groupId, memberId); // TODO: 추후 invitationId 검증 로직 추가 필요
+            groupService.acceptInvite(groupId, memberId, color); // TODO: 추후 invitationId 검증 로직 추가 필요
         } else if ("REJECT".equalsIgnoreCase(action)) {
             groupService.rejectInvite(groupId, memberId);
         }
@@ -253,6 +254,18 @@ public class GroupController {
         Long memberId = getAuthenticatedMemberId(authentication);
         // groupService.updateMyNickname(groupId, memberId, body.get("nickname"));
         return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
+    }
+
+    // 모임 내 색상 수정
+    @PatchMapping("/{groupId}/color")
+    @ResponseBody
+    public ResponseEntity<Void> updateMyColor(
+            @PathVariable("groupId") Long groupId, 
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.updateMyColor(groupId, memberId, body.get("color"));
+        return ResponseEntity.ok().build();
     }
 
     // 타인 닉네임 수정

@@ -52,6 +52,9 @@ public class GroupMember {
     @Column(name = "is_favorite", nullable = false)
     private boolean isFavorite = false;
 
+    @Column(name = "color", length = 7)
+    private String color;
+
     @Builder
     private GroupMember(Group group, Member member, Member inviter, String nickname, GroupMemberStatus memberStatus) {
         this.group = group;
@@ -62,6 +65,12 @@ public class GroupMember {
         this.joinedAt = LocalDateTime.now();
         this.unreadChatCount = 0;
         this.isFavorite = false;
+        this.color = generateRandomColor();
+    }
+
+    private static String generateRandomColor() {
+        String[] colors = {"#EF4444", "#F97316", "#F59E0B", "#10B981", "#6366F1", "#8B5CF6", "#D946EF", "#F43F5E", "#14B8A6", "#84CC16", "#059669", "#7C3AED"};
+        return colors[(int) (Math.random() * colors.length)];
     }
 
     public static GroupMember createOwner(Group group, Member owner) {
@@ -86,6 +95,10 @@ public class GroupMember {
 
     public void changeNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public void changeColor(String color) {
+        this.color = color;
     }
 
     public void changeStatus(GroupMemberStatus status) {

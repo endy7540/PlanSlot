@@ -1,5 +1,7 @@
 package com.example.planslot.global.security.config;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 import com.example.planslot.global.security.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -72,6 +74,7 @@ public class SecurityConfig {
                                 new RegexRequestMatcher("^/board/\\d+/comments(?:\\?.*)?$", "GET")
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/schedule", "/schedule/*").permitAll()
+                        .requestMatchers("/api/chatbot/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
@@ -84,9 +87,13 @@ public class SecurityConfig {
                         .failureHandler(oAuth2FailureHandler)
                 )
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            response.sendRedirect("/auth/login");
-                        })
+                        .defaultAuthenticationEntryPointFor((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setCharacterEncoding("UTF-8");
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write("{\"success\":false,\"errorCode\":\"CHATBOT_UNAUTHORIZED\",\"message\":\"로그인이 만료되었어요. 다시 로그인해 주세요.\"}");
+                        }, request -> request.getRequestURI().startsWith("/api/chatbot"))
+                        .authenticationEntryPoint((request, response, authException) -> response.sendRedirect("/auth/login"))
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

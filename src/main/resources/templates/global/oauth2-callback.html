@@ -12,6 +12,7 @@
         const isNew = urlParams.get('isNew');
         
         if (token) {
+            sessionStorage.removeItem('planslotChatbotMessages');
             localStorage.setItem('jwtToken', token);
             document.cookie = "jwtToken=" + token + "; path=/;";
             

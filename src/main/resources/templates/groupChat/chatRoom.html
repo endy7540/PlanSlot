@@ -664,7 +664,13 @@
   }
 
   // AI Summary Logic
-  document.getElementById('btnAiSummary').addEventListener('click', function() {
+  window.currentAiOffset = 0;
+  
+  function triggerAiSummary(isRetry = false) {
+    if (!isRetry) {
+        window.currentAiOffset = 0;
+    }
+    
     if (localStorage.getItem('ps_chat_ai_status') === 'PROCESSING') {
       alert("이미 AI 요약이 진행 중입니다.");
       return;
@@ -679,7 +685,7 @@
                         '<div style="color:var(--ink-soft); font-size:13px; text-align:center;">이 창을 닫거나 다른 페이지로 이동하셔도<br>우측 하단의 위젯을 통해 백그라운드에서 요약이 계속 진행됩니다!</div>' +
                         '</div>';
     
-    fetch('/groupChat/' + groupId + '/ai-summary/async', {
+    fetch('/groupChat/' + groupId + '/ai-summary/async?offset=' + window.currentAiOffset, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     })
@@ -698,7 +704,9 @@
     .catch(err => {
       alert("AI 요약 요청 중 오류가 발생했습니다.");
     });
-  });
+  }
+
+  document.getElementById('btnAiSummary').addEventListener('click', () => triggerAiSummary(false));
 
   window.showChatAiModalWithData = function(data) {
     const modal = document.getElementById('aiSummaryModal');
@@ -737,12 +745,28 @@
       });
       html += '</div>';
     }
+    
+    // 이전 대화 요약 재시도 버튼 추가
+    html += `
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid #e2e8f0; text-align:center;">
+        <div style="font-size:12px; color:var(--ink-soft); margin-bottom:8px;">찾으시는 일정이 안보이시나요?</div>
+        <button type="button" onclick="window.retryAiSummary()" style="padding:8px 16px; background:#fff; color:var(--primary); border:1px solid var(--primary); border-radius:6px; cursor:pointer; font-size:13px; font-weight:bold; transition:all 0.2s;" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='#fff'">
+          더 과거 대화에서 찾기
+        </button>
+      </div>
+    `;
+    
     content.innerHTML = html;
     
     // Close the floating widget since we are showing the modal
     if (typeof window.clearChatAiStorage === 'function') {
         window.closeChatAiWidget();
     }
+  };
+
+  window.retryAiSummary = function() {
+      window.currentAiOffset += 100;
+      triggerAiSummary(true);
   };
 
   window.addAiScheduleFromInput = function(index) {

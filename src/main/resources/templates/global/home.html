@@ -6,6 +6,7 @@
   <title>PlanSlot - 홈</title>
 
   <link rel="stylesheet" th:href="@{/css/global/home.css}">
+  <link rel="stylesheet" th:href="@{/css/chatbot/chatbot.css}">
 </head>
 <body>
 
@@ -39,7 +40,43 @@
 
 <div class="notification-toast" id="notificationToast"></div>
 
+<div class="chatbot-shell" id="chatbotShell" hidden>
+  <button class="chatbot-toggle" id="chatbotToggle" type="button" aria-label="플랜슬롯 AI 챗봇 열기" aria-expanded="false">
+    <span class="chatbot-toggle-emoji" aria-hidden="true">🤖</span>
+    <span class="chatbot-toggle-text">
+        <strong>AI 챗봇</strong>
+        <small>PlanSlot 사용법 안내</small>
+    </span>
+  </button>
+
+  <section class="chatbot-window" id="chatbotWindow" aria-label="플랜슬롯 AI 도우미" hidden>
+    <div class="chatbot-header">
+      <div class="chatbot-header-title">
+        <div class="chatbot-header-badge">PS</div>
+        <div class="chatbot-header-text">
+          <strong>플랜슬롯 AI 도우미</strong>
+          <span>서비스 이용 방법 안내</span>
+        </div>
+      </div>
+      <div class="chatbot-header-actions">
+        <button class="chatbot-clear-btn" id="chatbotClear" type="button">기록 지우기</button>
+        <button class="chatbot-icon-btn" id="chatbotClose" type="button" aria-label="챗봇 닫기">×</button>
+      </div>
+    </div>
+
+    <div class="chatbot-messages" id="chatbotMessages" role="log" aria-live="polite"></div>
+
+    <div class="chatbot-compose">
+      <div class="chatbot-input-wrap">
+        <textarea class="chatbot-input" id="chatbotInput" maxlength="100" rows="1" placeholder="플랜슬롯 사용 방법을 질문해 주세요."></textarea>
+        <button class="chatbot-send-btn" id="chatbotSend" type="button" disabled>전송</button>
+      </div>
+    </div>
+  </section>
+</div>
+
 <script th:src="@{/js/global/home.js}"></script>
+<script th:src="@{/js/chatbot/chatbot.js}"></script>
 
 
 </body>

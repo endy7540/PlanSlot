@@ -12,6 +12,8 @@ import com.example.planslot.group.entity.GroupMemberStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
+import com.example.planslot.groupchat.service.GroupChatAiService;
+import com.example.planslot.groupchat.dto.GroupChatAiDTO;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,6 +37,7 @@ public class GroupChatController {
     private final GroupChatService groupChatService;
     private final GroupMemberRepository groupMemberRepository;
     private final SimpMessageSendingOperations messagingTemplate;
+    private final GroupChatAiService groupChatAiService;
 
     private Long getAuthenticatedMemberId(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -105,7 +108,53 @@ public class GroupChatController {
         }
         
         groupChatService.reportMessage(memberId, request);
-        return ResponseEntity.ok("신고가 접수되었습니다.");
+        return ResponseEntity.ok("신고가 정상적으로 접수되었습니다.");
+    }
+
+    // 4. AI 요약 비동기 작업 시작 API
+    @PostMapping("/{groupId}/ai-summary/async")
+    @ResponseBody
+    public ResponseEntity<?> startAiSummary(@PathVariable Long groupId, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        
+        // 권한 확인 (활성 모임원인지)
+        GroupMember myMembership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
+                .orElseThrow(() -> new IllegalArgumentException("모임에 가입되어 있지 않습니다."));
+        if (myMembership.getMemberStatus() != GroupMemberStatus.ACTIVE) {
+            return ResponseEntity.status(403).body("활성 모임원만 이용할 수 있습니다.");
+        }
+        
+        try {
+            String jobId = groupChatAiService.startSummarizeChatJob(groupId);
+            return ResponseEntity.ok(java.util.Map.of("jobId", jobId));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("AI 요약 작업 시작 중 오류 발생: " + e.getMessage());
+        }
+    }
+
+    // 5. AI 요약 상태 확인 API
+    @GetMapping("/{groupId}/ai-summary/status/{jobId}")
+    @ResponseBody
+    public ResponseEntity<?> getAiSummaryStatus(@PathVariable Long groupId, @PathVariable String jobId, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        GroupMember myMembership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
+                .orElseThrow(() -> new IllegalArgumentException("모임에 가입되어 있지 않습니다."));
+        if (myMembership.getMemberStatus() != GroupMemberStatus.ACTIVE) {
+            return ResponseEntity.status(403).body("활성 모임원만 이용할 수 있습니다.");
+        }
+        
+        GroupChatAiService.ChatAiJob job = groupChatAiService.getJobStatus(jobId);
+        if (job == null) {
+            return ResponseEntity.status(404).body(java.util.Map.of("error", "작업을 찾을 수 없습니다."));
+        }
+        
+        if ("PROCESSING".equals(job.status)) {
+            return ResponseEntity.ok(java.util.Map.of("status", "PROCESSING"));
+        } else if ("COMPLETED".equals(job.status)) {
+            return ResponseEntity.ok(java.util.Map.of("status", "COMPLETED", "result", job.result));
+        } else {
+            return ResponseEntity.ok(java.util.Map.of("status", "FAILED", "error", job.error));
+        }
     }
 
     // 4. 채팅 읽음 처리 API (클라이언트에서 채팅방 활성화 시 호출)

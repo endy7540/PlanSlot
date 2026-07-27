@@ -1171,6 +1171,14 @@
         document.getElementById('aiPromptType').value = '예시';
         document.getElementById('aiPromptText').value = '이 이미지를 분석해서 캘린더에 추가해줘';
         onPromptTypeChange();
+
+        // 상태 초기화: 처음으로 돌아가면 이전 작업 상태를 완전히 지웁니다.
+        if (typeof window.clearAiStorage === 'function') {
+            window.clearAiStorage();
+            if (typeof window.closeAiWidget === 'function') {
+                window.closeAiWidget();
+            }
+        }
     }
 
     function onPromptTypeChange() {

@@ -512,11 +512,65 @@ public class AiImageServiceImpl implements AiImageService {
             }
 
             System.out.println("[AI-Confirm] Schedule confirmation completed successfully!");
-            return AiImageDTO.Response.from(aiImage, null);
+            AiImageDTO.Response response = AiImageDTO.Response.from(aiImage, null);
+
+            // 등록이 성공적으로 완료되었으므로, 해당 회원의 모든 AI 이미지 분석 요청 이력 및 디스크 파일을 삭제하여 청소
+            try {
+                List<AiImage> allImages = aiImageRepository.findAllByMemberId(memberId);
+                System.out.println("[AI-Clean] Found " + allImages.size() + " AI images to clean up for memberId: " + memberId);
+                for (AiImage img : allImages) {
+                    deletePhysicalImageFile(img.getImageUrl());
+                }
+                aiImageRepository.deleteAll(allImages);
+                System.out.println("[AI-Clean] Successfully cleaned up all AI images from DB for memberId: " + memberId);
+            } catch (Exception e) {
+                System.err.println("[AI-Clean] Error occurred during AI images cleanup: " + e.getMessage());
+            }
+
+            // 디스크 폴더 상의 고아 정크 파일들까지 일괄 청소
+            clearUploadDirectory();
+
+            return response;
         } catch (Exception ex) {
             System.err.println("[AI-Confirm] Error occurred during confirmAiImageSchedule!");
             ex.printStackTrace();
             throw ex;
+        }
+    }
+
+    private void clearUploadDirectory() {
+        try {
+            Path uploadDirectory = Path.of(aiImageUploadPath).toAbsolutePath().normalize();
+            if (Files.exists(uploadDirectory)) {
+                try (var stream = Files.list(uploadDirectory)) {
+                    stream.forEach(file -> {
+                        try {
+                            Files.deleteIfExists(file);
+                            System.out.println("[AI-Clean] Deleted orphaned physical file: " + file.getFileName());
+                        } catch (IOException e) {
+                            System.err.println("[AI-Clean] Failed to delete file " + file.getFileName() + ": " + e.getMessage());
+                        }
+                    });
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[AI-Clean] Failed to clear upload directory: " + e.getMessage());
+        }
+    }
+
+    private void deletePhysicalImageFile(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) return;
+        try {
+            String fileName = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
+            Path uploadDirectory = Path.of(aiImageUploadPath).toAbsolutePath().normalize();
+            Path filePath = uploadDirectory.resolve(fileName).normalize();
+            
+            if (filePath.startsWith(uploadDirectory)) {
+                boolean deleted = Files.deleteIfExists(filePath);
+                System.out.println("[AI-Clean] Physical file delete result for " + fileName + ": " + deleted);
+            }
+        } catch (Exception e) {
+            System.err.println("[AI-Clean] Failed to delete physical image file: " + imageUrl + " | Error: " + e.getMessage());
         }
     }
 

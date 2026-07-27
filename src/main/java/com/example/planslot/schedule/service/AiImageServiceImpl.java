@@ -247,7 +247,9 @@ public class AiImageServiceImpl implements AiImageService {
                 AiImageDTO.ExtractedSchedule first = list.get(0);
                 aiImage.completeAnalysis(first.getTitle(), first.getStartDate(), first.getEndDate(), first.getLocation(), BigDecimal.valueOf(98.50), listJson);
             } else {
-                aiImage.completeAnalysis("AI 분석 일정", LocalDateTime.now(), LocalDateTime.now().plusHours(1), "회의실", BigDecimal.valueOf(90.00), "[]");
+                aiImage.failAnalysis("이미지에서 추출된 일정 항목이 없습니다. 일정이 포함된 이미지를 업로드해주세요.");
+                aiImageRepository.save(aiImage);
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지에서 추출된 일정 항목이 없습니다. 일정이 포함된 이미지를 업로드해주세요.");
             }
             
             log.info("[AI IMAGE] AI Analysis successfully completed via Claude API integration! Found {} items.", list.size());

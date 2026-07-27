@@ -1765,7 +1765,7 @@
 
 <!-- AI 이미지 일정 등록 모달 HTML -->
 <div id="aiImageModal" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;">
-    <div class="panel" style="width: 100%; max-width: 550px; border-radius: 16px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.5); padding: 24px; position: relative;">
+    <div class="panel" style="width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto; border-radius: 16px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.5); padding: 24px; position: relative;">
         <!-- 닫기 버튼 -->
         <button style="position: absolute; top: 16px; right: 16px; background: none; border: 0; font-size: 20px; color: #64748B; cursor: pointer; font-weight: bold;" onclick="closeAiImageModal()">×</button>
         
@@ -1790,7 +1790,7 @@
             
             <!-- 파일 선택 시 프리뷰 -->
             <div id="aiImagePreviewContainer" style="display: none; margin-top: 12px; text-align: center; position: relative;">
-                <img id="aiImagePreview" src="" alt="preview" style="max-height: 150px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #E2E8F0;">
+                <img id="aiImagePreview" src="" alt="preview" style="max-width: 100%; max-height: 250px; object-fit: contain; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #E2E8F0;">
                 <button style="position: absolute; top: -6px; right: 50%; transform: translateX(75px); background: #EF4444; color: white; border: 0; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 12px; font-weight: bold;" onclick="clearFileSelect()">×</button>
             </div>
 
@@ -1810,10 +1810,10 @@
                 
                 <!-- 추천 예시 원클릭 버튼들 -->
                 <div id="aiPromptPresets" style="display: none; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이 이미지를 분석해서 캘린더에 추가해줘')">이 이미지를 분석해서 캘린더에 추가해줘</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이미지 속 날짜와 시간 정보를 토대로 모든 일정을 추출해서 등록해줘')">모든 일정 추출</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이 스케줄표 이미지에 있는 프로젝트 일정을 내 개인 캘린더에 전부 옮겨줘')">프로젝트 스케줄</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이미지 속에 나오는 수업 시간표를 모두 일정으로 추가해줘')">수업 시간표</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이 이미지를 분석해서 캘린더에 추가해줘')">이 이미지를 분석해서 캘린더에 추가해줘</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이미지 속 날짜와 시간 정보를 토대로 모든 일정을 추출해서 등록해줘')">모든 일정 추출</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이 스케줄표 이미지에 있는 프로젝트 일정을 내 개인 캘린더에 전부 옮겨줘')">프로젝트 스케줄</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이미지 속에 나오는 수업 시간표를 모두 일정으로 추가해줘')">수업 시간표</button>
                 </div>
             </div>
 
@@ -1837,7 +1837,7 @@
                     <span style="font-size: 18px;">✅</span>
                     <span style="font-size: 13px; font-weight: 800; color: #065F46;" id="aiResultSummaryText">AI 일정 추출 완료</span>
                 </div>
-                <span id="aiConfidenceBadge" style="background: #10B981; color: white; padding: 2px 8px; font-size: 11px; border-radius: 9999px; font-weight: bold;">신뢰도: 95.50%</span>
+                <span id="aiConfidenceBadge" style="display: none;">신뢰도: 95.50%</span>
             </div>
 
             <!-- 추출된 필드 확인 및 수정 폼 -->

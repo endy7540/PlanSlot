@@ -2,6 +2,10 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <!-- Flatpickr CSS & JS (for AI Image Schedule Date Range Picker) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PlanSlot - 캘린더</title>
     <style>
@@ -323,6 +327,19 @@
 
 <div class="wrap">
 
+    <!-- 로그인 상태 안내 -->
+    <div class="panel" id="authNotice" style="display:none">
+        <div class="cal-nav" style="margin:0">
+            <h2 style="font-size:18px">로그인이 필요합니다</h2>
+        </div>
+        <p style="color:#748898;font-size:13px;line-height:1.6;margin:0 0 12px">
+            먼저 로그인 페이지에서 로그인한 뒤 다시 이 페이지로 돌아와주세요.
+        </p>
+        <div style="display:flex;gap:8px">
+            <a class="primary" href="/auth/login">로그인 페이지로 이동</a>
+            <button class="ghost" onclick="location.reload()">토큰 다시 확인</button>
+        </div>
+    </div>
 
     <!-- 캘린더 -->
     <div class="panel" id="calendarPanel" style="display:none">
@@ -332,11 +349,11 @@
                 <button class="primary" style="background: linear-gradient(135deg, #6366F1, #3B82F6); border: 0; color: white; padding: 8px 12px; font-size: 13px; border-radius: 8px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);" onclick="openAiImageModal()">
                     <span>✨ AI 일정 자동 등록</span>
                 </button>
-                <!-- [임시 테스트용] 현재 월 일정 전체 삭제 버튼 시작 -->
-                <button class="ghost" style="color: #EF4444; border-color: #FEE2E2; background: #FEF2F2; font-weight: 800;" onclick="deleteCurrentMonthSchedules()">
-                    <span>🗑️ 현재 월 일정 전체 삭제</span>
+                <!-- 선택한 날의 일정 전체 삭제 버튼 시작 -->
+                <button class="ghost" style="color: #EF4444; border-color: #FEE2E2; background: #FEF2F2; font-weight: 800;" onclick="deleteSelectedDateSchedules()">
+                    <span>🗑️ 현재 일정 삭제</span>
                 </button>
-                <!-- [임시 테스트용] 현재 월 일정 전체 삭제 버튼 끝 -->
+                <!-- 선택한 날의 일정 전체 삭제 버튼 끝 -->
             </div>
             <div class="cal-nav-center">
                 <button class="ghost" onclick="moveMonth(-1)">◀</button>
@@ -438,6 +455,7 @@
     function checkAuth() {
         token = localStorage.getItem('jwtToken') || '';
         const badge = document.getElementById('tokenBadge');
+        const notice = document.getElementById('authNotice');
         const calPanel = document.getElementById('calendarPanel');
 
         if (token) {
@@ -445,10 +463,15 @@
                 badge.textContent = '로그인됨 (토큰 보유)';
                 badge.classList.remove('off');
             }
+            notice.style.display = 'none';
             calPanel.style.display = '';
         } else {
-            alert('로그인이 필요한 서비스입니다.');
-            window.location.href = '/auth/login';
+            if (badge) {
+                badge.textContent = '로그인 필요';
+                badge.classList.add('off');
+            }
+            notice.style.display = '';
+            calPanel.style.display = 'none';
         }
         return !!token;
     }
@@ -543,9 +566,18 @@
     };
 
     async function loadMonthSchedules() {
-        const start = new Date(viewYear, viewMonth, 1, 0, 0, 0);
-        const end = new Date(viewYear, viewMonth + 1, 0, 23, 59, 59);
-        const url = `${API_BASE}/schedule?start=${encodeURIComponent(fmtLocalDateTime(start))}&end=${encodeURIComponent(fmtLocalDateTime(end))}&_t=${new Date().getTime()}`;
+        const firstOfMonth = new Date(viewYear, viewMonth, 1);
+        const startDow = firstOfMonth.getDay(); // 0=일
+
+        // 달력 첫 칸에 들어갈 이전 달 꼬리의 시작일 계산
+        const startCalendarDate = new Date(viewYear, viewMonth, 1 - startDow, 0, 0, 0);
+
+        // 달력 마지막 칸에 들어갈 다음 달 머리의 종료일 계산 (5주 = 35일분량 확보)
+        const endCalendarDate = new Date(startCalendarDate.getTime());
+        endCalendarDate.setDate(endCalendarDate.getDate() + 34);
+        endCalendarDate.setHours(23, 59, 59, 999);
+
+        const url = `${API_BASE}/schedule?start=${encodeURIComponent(fmtLocalDateTime(startCalendarDate))}&end=${encodeURIComponent(fmtLocalDateTime(endCalendarDate))}&_t=${new Date().getTime()}`;
 
         schedulesByDate = {};
         try {
@@ -681,13 +713,13 @@
         for (let d = 1; d <= daysInMonth; d++) {
             cells.push({ day: d, otherMonth: false, y: viewYear, m: viewMonth });
         }
-        // 다음달 머리 (6주 채우기)
+        // 다음달 머리 (5주 채우기)
         const targetM = viewMonth === 11 ? 0 : viewMonth + 1;
         const targetY = viewMonth === 11 ? viewYear + 1 : viewYear;
         let nextDay = 1;
-        while (cells.length % 7 !== 0 || cells.length < 42) {
+        while (cells.length % 7 !== 0 || cells.length < 35) {
             cells.push({ day: nextDay++, otherMonth: true, y: targetY, m: targetM });
-            if (cells.length >= 42) break;
+            if (cells.length >= 35) break;
         }
 
         // 1. 달력 범위의 모든 날짜 키 수집 및 슬롯 초기화
@@ -830,44 +862,178 @@
     }
 
     /* ======================================================== */
-    /* [임시 테스트용] 현재 월 일정 전체 삭제 기능 시작             */
+    /* 선택한 날의 일정 전체/부분 삭제 기능 (일괄 처리)           */
     /* ======================================================== */
-    async function deleteCurrentMonthSchedules() {
-        const uniqueScheduleIds = new Set();
-        Object.values(schedulesByDate).forEach(arr => {
-            arr.forEach(s => {
-                if (s.scheduleId) uniqueScheduleIds.add(s.scheduleId);
-            });
+    async function deleteSelectedDateSchedules() {
+        if (!selectedDateKey) {
+            showToast('먼저 삭제할 날짜를 선택해주세요.', true);
+            return;
+        }
+
+        const daySchedules = schedulesByDate[selectedDateKey] || [];
+        if (daySchedules.length === 0) {
+            showToast(`${selectedDateKey}에 지울 일정이 없습니다.`, true);
+            return;
+        }
+
+        // 연속 일정 존재 여부 판별
+        let hasMultiDay = false;
+        daySchedules.forEach(s => {
+            const startDateStr = getDateOnly(s.startDate);
+            const endDateStr = s.endDate ? getDateOnly(s.endDate) : startDateStr;
+            if (startDateStr !== endDateStr) {
+                hasMultiDay = true;
+            }
         });
-        
-        const idsToDelete = Array.from(uniqueScheduleIds);
-        if (idsToDelete.length === 0) {
-            showToast('현재 월에 지울 일정이 없습니다.', true);
-            return;
+
+        if (hasMultiDay) {
+            // 연속 일정이 있다면: 단 한 번만 모달을 띄워 물어봅니다!
+            document.getElementById('deleteConfirmModalMsg').innerHTML =
+                `선택한 날인 <strong>${selectedDateKey}</strong>에 등록된 일정 중 연속 일정이 포함되어 있습니다.<br>` +
+                `이 날의 일정만 지우시겠습니까(기간 단축)?<br>아니면 연결된 전체 일정을 삭제하시겠습니까?`;
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+        } else {
+            // 연속 일정이 없다면: 단일 일정들이므로 컨펌 창 하나만 띄우고 일괄 삭제!
+            if (!confirm(`⚠️ 정말로 ${selectedDateKey}의 모든 일정 (${daySchedules.length}개)을 삭제하시겠습니까?`)) {
+                return;
+            }
+
+            try {
+                showToast('일정들을 삭제하는 중입니다...');
+                for (let s of daySchedules) {
+                    await fetch(`${API_BASE}/schedule/${s.scheduleId}`, {
+                        method: 'DELETE',
+                        headers: authHeaders()
+                    });
+                }
+                showToast(`🗑️ ${selectedDateKey}의 일정이 모두 삭제되었습니다.`);
+                await loadMonthSchedules();
+                renderSelectedDateEvents(selectedDateKey);
+            } catch (e) {
+                console.error("일정 일괄 삭제 에러:", e);
+                showToast("삭제 중 오류 발생: " + e.message, true);
+            }
+        }
+    }
+
+    // 사용자가 모달에서 결정을 내리면, 이 함수가 단 한 번 호출되어 일괄적으로 적용합니다!
+    async function executeDeleteChoice(choice) {
+        closeDeleteConfirmModal();
+        showToast('선택하신 일정 삭제 처리 중...');
+
+        const daySchedules = schedulesByDate[selectedDateKey] || [];
+
+        for (let s of daySchedules) {
+            const startDateStr = getDateOnly(s.startDate);
+            const endDateStr = s.endDate ? getDateOnly(s.endDate) : startDateStr;
+            const isMultiDay = startDateStr !== endDateStr;
+
+            if (choice === 'all' || !isMultiDay) {
+                // 전체 삭제 대상이거나, 단일 일정인 경우 무조건 삭제(DELETE)
+                try {
+                    await fetch(`${API_BASE}/schedule/${s.scheduleId}`, {
+                        method: 'DELETE',
+                        headers: authHeaders()
+                    });
+                } catch (e) {
+                    console.error("일정 삭제 실패:", e);
+                }
+            } else if (choice === 'single' && isMultiDay) {
+                // 연속 일정이면서 부분 삭제 대상인 경우
+                const startD = new Date(startDateStr);
+                const endD = new Date(endDateStr);
+
+                try {
+                    if (selectedDateKey === startDateStr) {
+                        // 시작일 삭제 -> 시작일 1일 뒤로
+                        startD.setDate(startD.getDate() + 1);
+                        const newStartStr = fmtLocalDateTime(startD);
+                        await updateScheduleDates(s, newStartStr, s.endDate);
+                    } else if (selectedDateKey === endDateStr) {
+                        // 종료일 삭제 -> 종료일 1일 앞으로
+                        endD.setDate(endD.getDate() - 1);
+                        const newEndStr = fmtLocalDateTime(endD);
+                        await updateScheduleDates(s, s.startDate, newEndStr);
+                    } else {
+                        // 중간일 삭제 -> 앞부분 단축 & 뒷부분 신규 등록
+                        const frontEndD = new Date(selectedDateKey);
+                        frontEndD.setDate(frontEndD.getDate() - 1);
+                        frontEndD.setHours(23, 59, 59, 0);
+                        const frontEndStr = fmtLocalDateTime(frontEndD);
+                        await updateScheduleDates(s, s.startDate, frontEndStr);
+
+                        const backStartD = new Date(selectedDateKey);
+                        backStartD.setDate(backStartD.getDate() + 1);
+                        backStartD.setHours(0, 0, 0, 0);
+                        const backStartStr = fmtLocalDateTime(backStartD);
+                        await createSplitSchedule(s, backStartStr, s.endDate);
+                    }
+                } catch (e) {
+                    console.error("연속 일정 부분 삭제 실패:", e);
+                }
+            }
         }
 
-        if (!confirm(`⚠️ 정말로 현재 화면에 보이는 모든 일정(${idsToDelete.length}개)을 삭제하시겠습니까?`)) {
-            return;
-        }
+        showToast(`🗑️ 일정 삭제 및 단축 처리가 모두 완료되었습니다.`);
+        await loadMonthSchedules();
+        renderSelectedDateEvents(selectedDateKey);
+    }
 
-        try {
-            showToast('일정들을 삭제하는 중입니다...');
-            const deletePromises = idsToDelete.map(id => 
-                fetch(`${API_BASE}/schedule/${id}`, {
-                    method: 'DELETE',
-                    headers: authHeaders()
-                })
-            );
-            await Promise.all(deletePromises);
-            showToast(`🗑️ 총 ${idsToDelete.length}개의 일정이 모두 삭제되었습니다.`);
-            await loadMonthSchedules();
-        } catch (e) {
-            console.error("일정 전체 삭제 에러:", e);
-            showToast("일정 삭제 중 오류 발생: " + e.message, true);
+    function closeDeleteConfirmModal() {
+        document.getElementById('deleteConfirmModal').style.display = 'none';
+    }
+
+    // 일정 날짜 업데이트 PUT 호출 도우미
+    async function updateScheduleDates(originalSchedule, newStart, newEnd) {
+        const payload = {
+            title: originalSchedule.title,
+            description: originalSchedule.description,
+            scheduleType: originalSchedule.scheduleType,
+            startDate: newStart,
+            endDate: newEnd,
+            isPublic: (originalSchedule.isPublic === 'Y' || originalSchedule.isPublic === true || originalSchedule.public === 'Y' || originalSchedule.public === true),
+            location: originalSchedule.location,
+            recurrenceEndDate: originalSchedule.recurrenceEndDate
+        };
+
+        const res = await fetch(`${API_BASE}/schedule/${originalSchedule.scheduleId}`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || '일정 기간 단축 업데이트 실패');
+        }
+    }
+
+    // 쪼개진 일정 생성 POST 호출 도우미
+    async function createSplitSchedule(originalSchedule, start, end) {
+        const payload = {
+            title: originalSchedule.title,
+            description: originalSchedule.description,
+            scheduleType: originalSchedule.scheduleType,
+            startDate: start,
+            endDate: end,
+            isPublic: (originalSchedule.isPublic === 'Y' || originalSchedule.isPublic === true || originalSchedule.public === 'Y' || originalSchedule.public === true),
+            location: originalSchedule.location,
+            recurrenceEndDate: originalSchedule.recurrenceEndDate
+        };
+
+        const res = await fetch(`${API_BASE}/schedule`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || '쪼개진 일정 생성 실패');
         }
     }
     /* ======================================================== */
-    /* [임시 테스트용] 현재 월 일정 전체 삭제 기능 끝             */
+    /* 선택한 날의 일정 전체/부분 삭제 기능 끝                    */
     /* ======================================================== */
 
     function openNewSchedule(dateKey) {
@@ -1144,6 +1310,40 @@
         document.getElementById('aiImageModal').style.display = 'none';
     }
 
+    async function discardAiImageAnalysis() {
+        let requestId = document.getElementById('aiRequestId') ? document.getElementById('aiRequestId').value : null;
+        if (!requestId) {
+            requestId = localStorage.getItem('ps_ai_request_id');
+        }
+        
+        // 1) 즉시 취소 상태 플래그 할당 (백그라운드 로딩 루프 취소 감지용)
+        localStorage.setItem('ps_ai_status', 'CANCELLED');
+        
+        // 팝업 숨기기 및 기본 상태 초기화 선제 수행
+        closeAiImageModal();
+        if (typeof clearFileSelect === 'function') clearFileSelect();
+        if (typeof resetStep === 'function') resetStep();
+
+        if (!requestId) {
+            if (typeof clearAiStorage === 'function') clearAiStorage();
+            return;
+        }
+
+        if (typeof clearAiStorage === 'function') clearAiStorage();
+
+        try {
+            const res = await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                console.log(`[AI-Clean] Discarded temp request #${requestId} and physical image.`);
+            }
+        } catch (e) {
+            console.error('[AI-Clean] Discard failed:', e);
+        }
+    }
+
     function resetStep() {
         document.getElementById('aiUploadStep').style.display = 'block';
         document.getElementById('aiLoadingStep').style.display = 'none';
@@ -1152,14 +1352,6 @@
         document.getElementById('aiPromptType').value = '예시';
         document.getElementById('aiPromptText').value = '이 이미지를 분석해서 캘린더에 추가해줘';
         onPromptTypeChange();
-
-        // 상태 초기화: 처음으로 돌아가면 이전 작업 상태를 완전히 지웁니다.
-        if (typeof window.clearAiStorage === 'function') {
-            window.clearAiStorage();
-            if (typeof window.closeAiWidget === 'function') {
-                window.closeAiWidget();
-            }
-        }
     }
 
     function onPromptTypeChange() {
@@ -1287,15 +1479,29 @@
                 const uploadData = await uploadRes.json();
                 const requestId = uploadData.id;
 
-                // B. 로컬 스토리지에 requestId 기입
+                if (localStorage.getItem('ps_ai_status') === 'CANCELLED') {
+                    await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
+                        method: 'DELETE',
+                        headers: authHeaders()
+                    });
+                    console.log(`[AI-Cancel-Guard] Cleaned up request #${requestId} on early cancel.`);
+                    return;
+                }
+
                 localStorage.setItem('ps_ai_request_id', requestId);
 
-                // C. 공통 헤더 폴링 복구 호출 (폴링을 즉시 시작하여 위젯 UI를 변경하게 함)
                 if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
                     checkAndRecoverAiBackgroundProcess();
                 }
 
-                // D. 분석 실행 API 호출
+                if (localStorage.getItem('ps_ai_status') === 'CANCELLED') {
+                    await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
+                        method: 'DELETE',
+                        headers: authHeaders()
+                    });
+                    return;
+                }
+
                 const analyzeRes = await fetch(`${API_BASE}/ai-image-schedule/${requestId}/analyze`, {
                     method: 'POST',
                     headers: authHeaders()
@@ -1306,6 +1512,14 @@
                 }
 
                 const resultData = await analyzeRes.json();
+
+                if (localStorage.getItem('ps_ai_status') === 'CANCELLED') {
+                    await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
+                        method: 'DELETE',
+                        headers: authHeaders()
+                    });
+                    return;
+                }
 
                 if (resultData.status === 'FAILED') {
                     throw new Error(resultData.failReason || 'AI 분석이 실패했습니다.');
@@ -1334,6 +1548,25 @@
 
     let currentExtractedList = [];
 
+    function parseExtractedDateRange(dateRangeStr) {
+        if (!dateRangeStr) {
+            const today = new Date().toISOString().slice(0, 10);
+            return { startD: today, endD: today };
+        }
+        const clean = dateRangeStr.trim();
+        let parts = [];
+        if (clean.includes(' to ')) {
+            parts = clean.split(' to ');
+        } else if (clean.includes(' ~ ')) {
+            parts = clean.split(' ~ ');
+        } else {
+            parts = [clean];
+        }
+        const startD = parts[0] || new Date().toISOString().slice(0, 10);
+        const endD = parts[1] || startD;
+        return { startD, endD };
+    }
+
     function displayAnalysisResult(data) {
         document.getElementById('aiLoadingStep').style.display = 'none';
         document.getElementById('aiResultStep').style.display = 'block';
@@ -1357,8 +1590,10 @@
             card.className = 'ai-schedule-card';
             card.style = 'background: white; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left;';
             
-            const startVal = item.startDate ? item.startDate.slice(0, 16) : '';
-            const endVal = item.endDate ? item.endDate.slice(0, 16) : '';
+            const startDVal = item.startDate ? item.startDate.slice(0, 10) : '';
+            const endDVal = item.endDate ? item.endDate.slice(0, 10) : startDVal;
+            const startTVal = item.startDate && item.startDate.includes('T') ? item.startDate.split('T')[1].slice(0, 5) : '09:00';
+            const endTVal = item.endDate && item.endDate.includes('T') ? item.endDate.split('T')[1].slice(0, 5) : '10:00';
 
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1368,26 +1603,42 @@
                 <div>
                     <input type="text" placeholder="일정 제목" class="ai-item-title" value="${escapeHtml(item.title)}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 13px; font-weight: 700; color: #334155; box-sizing: border-box;">
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div>
+                    <input type="text" placeholder="일정 설명 (상세 내용)" class="ai-item-description" value="${escapeHtml(item.description || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; color: #475569; box-sizing: border-box;">
+                </div>
+                
+                <div style="margin-bottom: 4px;">
+                    <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">일정 날짜 범위 *</label>
+                    <input type="text" class="ai-item-date" id="ai-date-${index}" placeholder="날짜를 선택하세요" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;" required>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px;">
                     <div>
-                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">시작일시</label>
-                        <input type="datetime-local" class="ai-item-start" value="${startVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
+                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">시작 시간</label>
+                        <input type="time" class="ai-item-start-time" value="${startTVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;">
                     </div>
                     <div>
-                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">종료일시</label>
-                        <input type="datetime-local" class="ai-item-end" value="${endVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
+                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">종료 시간</label>
+                        <input type="time" class="ai-item-end-time" value="${endTVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;">
                     </div>
                 </div>
+
                 <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 8px;">
                     <input type="text" placeholder="장소 (선택)" class="ai-item-location" value="${escapeHtml(item.location)}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
                     <select class="ai-item-type" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
-                        <option value="DAILY">당일 일정</option>
+                        <option value="DAILY">단일 일정</option>
                         <option value="WEEKLY">주간 반복</option>
                         <option value="MONTHLY">월간 반복</option>
                     </select>
                 </div>
             `;
             container.appendChild(card);
+
+            flatpickr(`#ai-date-${index}`, {
+                mode: "range",
+                locale: "ko",
+                dateFormat: "Y-m-d",
+                defaultDate: startDVal ? [startDVal, endDVal] : []
+            });
         });
     }
 
@@ -1406,55 +1657,87 @@
         const cards = container.querySelectorAll('.ai-schedule-card');
         
         currentExtractedList = [];
-        cards.forEach(card => {
+        cards.forEach((card, index) => {
             const title = card.querySelector('.ai-item-title').value.trim();
-            const start = card.querySelector('.ai-item-start').value;
-            const end = card.querySelector('.ai-item-end').value;
+            const description = card.querySelector('.ai-item-description').value.trim();
+            const dateRange = card.querySelector('.ai-item-date').value;
+            const startTime = card.querySelector('.ai-item-start-time').value;
+            const endTime = card.querySelector('.ai-item-end-time').value;
             const location = card.querySelector('.ai-item-location').value.trim();
+            
+            const { startD, endD } = parseExtractedDateRange(dateRange);
             
             currentExtractedList.push({
                 title: title,
-                startDate: start ? `${start}:00` : null,
-                endDate: end ? `${end}:00` : null,
+                description: description,
+                startDate: `${startD}T${startTime || '00:00'}:00`,
+                endDate: `${endD}T${endTime || '00:00'}:00`,
                 location: location || null
             });
         });
     }
 
-    async function reAnalyze() {
+            async function reAnalyze() {
         const requestId = document.getElementById('aiRequestId').value;
-        const promptText = "일정 재분석 요청";
+        // 재분석 시는 사용자가 입력한 요청사항을 최대한 보존하거나, 디폴트 값을 전달합니다.
+        const promptText = document.getElementById('aiPromptText') ? document.getElementById('aiPromptText').value.trim() : "일정 재분석 요청";
 
-        document.getElementById('aiResultStep').style.display = 'none';
-        document.getElementById('aiLoadingStep').style.display = 'block';
-        document.getElementById('aiProgressTitle').innerText = 'AI 일정 재분석 중...';
-        document.getElementById('aiProgressDesc').innerText = '요청하신 정보에 맞춰 일정을 재파싱하고 있습니다.';
+        // 모달창을 즉시 닫고 처음 분석처럼 하단 백그라운드 진행 바를 띄웁니다.
+        closeAiImageModal();
 
-        try {
-            const res = await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
-                method: 'PATCH',
-                headers: {
-                    ...authHeaders(),
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    promptText: promptText,
-                    promptType: '직접'
-                })
-            });
-
-            if (!res.ok) {
-                throw new Error('재분석 요청 실패');
-            }
-
-            const data = await res.json();
-            displayAnalysisResult(data);
-        } catch (e) {
-            console.error(e);
-            showToast('재분석 오류: ' + e.message, true);
-            document.getElementById('aiLoadingStep').style.display = 'none';
-            document.getElementById('aiResultStep').style.display = 'block';
+        localStorage.setItem('ps_ai_status', 'PROCESSING');
+        localStorage.removeItem('ps_ai_cached_result');
+        localStorage.removeItem('ps_ai_fail_reason');
+        
+        if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
+            checkAndRecoverAiBackgroundProcess();
         }
+
+        // 비동기 백그라운드 재분석 기동
+        (async () => {
+            try {
+                // 1) 프롬프트 업데이트 PATCH 호출 (백엔드 PATCH 메소드 내부에서 AI 분석까지 다이렉트 동기 처리 후 완본 리턴함)
+                const patchRes = await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        ...authHeaders(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        promptText: promptText || "일정 재분석 요청",
+                        promptType: '직접'
+                    })
+                });
+
+                if (!patchRes.ok) {
+                    throw new Error('재분석 프롬프트 수정 실패');
+                }
+
+                const resultData = await patchRes.json();
+
+                if (resultData.status === 'FAILED') {
+                    throw new Error(resultData.failReason || 'AI 재분석에 실패했습니다.');
+                }
+
+                // 2) 완료 처리 및 캐시 데이터 갱신
+                localStorage.setItem('ps_ai_status', 'COMPLETED');
+                localStorage.setItem('ps_ai_cached_result', JSON.stringify(resultData));
+                aiCachedResultData = resultData;
+
+                // 하단 백그라운드 진행 바 완료 위젯 UI 업데이트
+                if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
+                    checkAndRecoverAiBackgroundProcess();
+                }
+
+            } catch (e) {
+                console.error(e);
+                localStorage.setItem('ps_ai_status', 'FAILED');
+                localStorage.setItem('ps_ai_fail_reason', e.message);
+                if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
+                    checkAndRecoverAiBackgroundProcess();
+                }
+            }
+        })();
     }
 
     async function confirmSchedule() {
@@ -1498,8 +1781,9 @@
 
         cards.forEach((card, index) => {
             const title = card.querySelector('.ai-item-title').value.trim();
-            const start = card.querySelector('.ai-item-start').value;
-            const end = card.querySelector('.ai-item-end').value;
+            const dateRange = card.querySelector('.ai-item-date').value;
+            const startTime = card.querySelector('.ai-item-start-time').value;
+            const endTime = card.querySelector('.ai-item-end-time').value;
             const location = card.querySelector('.ai-item-location').value.trim();
             const type = card.querySelector('.ai-item-type').value;
 
@@ -1508,45 +1792,24 @@
                 hasError = true;
                 return;
             }
-            if (!start || !end) {
-                showToast(`일정 #${index + 1}의 시작/종료 일시는 필수입니다.`, true);
+            if (!dateRange) {
+                showToast(`일정 #${index + 1}의 날짜는 필수입니다.`, true);
                 hasError = true;
                 return;
             }
 
-            function formatToStrictDateTime(val) {
-                if (!val) return null;
-                let datePart = "";
-                let timePart = "00:00:00";
-                const cleanVal = val.trim();
-                if (cleanVal.includes('T')) {
-                    const parts = cleanVal.split('T');
-                    datePart = parts[0];
-                    timePart = parts[1];
-                } else if (cleanVal.includes(' ')) {
-                    const parts = cleanVal.split(' ');
-                    datePart = parts[0];
-                    timePart = parts[1];
-                } else {
-                    datePart = cleanVal;
-                }
-                const tParts = timePart.split(':');
-                if (tParts.length === 1) {
-                    timePart = `${timePart}:00:00`;
-                } else if (tParts.length === 2) {
-                    timePart = `${timePart}:00`;
-                } else if (tParts.length > 3) {
-                    timePart = tParts.slice(0, 3).join(':');
-                }
-                return `${datePart}T${timePart}`;
-            }
+            const { startD, endD } = parseExtractedDateRange(dateRange);
+
+            const description = card.querySelector('.ai-item-description')
+                ? card.querySelector('.ai-item-description').value.trim()
+                : "AI 이미지 분석 등록";
 
             confirmRequests.push({
                 title: title,
                 description: "AI 이미지 분석 등록",
                 scheduleType: type,
-                startDate: formatToStrictDateTime(start),
-                endDate: formatToStrictDateTime(end),
+                startDate: `${startD}T${startTime || '00:00'}:00`,
+                endDate: `${endD}T${endTime || '00:00'}:00`,
                 location: location || null,
                 isPublic: false
             });
@@ -1574,6 +1837,8 @@
 
             showToast(`🎉 총 ${confirmRequests.length}개의 일정이 성공적으로 개인 캘린더에 추가되었습니다!`);
             closeAiImageModal();
+            if (typeof clearFileSelect === 'function') clearFileSelect();
+            if (typeof resetStep === 'function') resetStep();
             if (typeof clearAiStorage === 'function') clearAiStorage();
             
             if (typeof loadMonthSchedules === 'function') {
@@ -1602,9 +1867,9 @@
 
 <!-- AI 이미지 일정 등록 모달 HTML -->
 <div id="aiImageModal" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;">
-    <div class="panel" style="width: 100%; max-width: 550px; border-radius: 16px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.5); padding: 24px; position: relative;">
+    <div class="panel" style="width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto; border-radius: 16px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.5); padding: 24px; position: relative;">
         <!-- 닫기 버튼 -->
-        <button style="position: absolute; top: 16px; right: 16px; background: none; border: 0; font-size: 20px; color: #64748B; cursor: pointer; font-weight: bold;" onclick="closeAiImageModal()">×</button>
+        <button style="position: absolute; top: 16px; right: 16px; background: none; border: 0; font-size: 20px; color: #64748B; cursor: pointer; font-weight: bold;" onclick="discardAiImageAnalysis()">×</button>
         
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
             <span style="font-size: 24px;">🔮</span>
@@ -1627,7 +1892,7 @@
             
             <!-- 파일 선택 시 프리뷰 -->
             <div id="aiImagePreviewContainer" style="display: none; margin-top: 12px; text-align: center; position: relative;">
-                <img id="aiImagePreview" src="" alt="preview" style="max-height: 150px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #E2E8F0;">
+                <img id="aiImagePreview" src="" alt="preview" style="max-width: 100%; max-height: 250px; object-fit: contain; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #E2E8F0;">
                 <button style="position: absolute; top: -6px; right: 50%; transform: translateX(75px); background: #EF4444; color: white; border: 0; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 12px; font-weight: bold;" onclick="clearFileSelect()">×</button>
             </div>
 
@@ -1647,15 +1912,15 @@
                 
                 <!-- 추천 예시 원클릭 버튼들 -->
                 <div id="aiPromptPresets" style="display: none; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이 이미지를 분석해서 캘린더에 추가해줘')">이 이미지를 분석해서 캘린더에 추가해줘</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이미지 속 날짜와 시간 정보를 토대로 모든 일정을 추출해서 등록해줘')">모든 일정 추출</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이 스케줄표 이미지에 있는 프로젝트 일정을 내 개인 캘린더에 전부 옮겨줘')">프로젝트 스케줄</button>
-                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer;" onclick="applyPreset('이미지 속에 나오는 수업 시간표를 모두 일정으로 추가해줘')">수업 시간표</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이 이미지를 분석해서 캘린더에 추가해줘')">이 이미지를 분석해서 캘린더에 추가해줘</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이미지 속 날짜와 시간 정보를 토대로 모든 일정을 추출해서 등록해줘')">모든 일정 추출</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이 스케줄표 이미지에 있는 프로젝트 일정을 내 개인 캘린더에 전부 옮겨줘')">프로젝트 스케줄</button>
+                    <button class="ghost" style="padding: 6px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; color: #000; border: 1px solid #CBD5E1; background: #fff;" onclick="applyPreset('이미지 속에 나오는 수업 시간표를 모두 일정으로 추가해줘')">수업 시간표</button>
                 </div>
             </div>
 
             <div style="margin-top: 24px; text-align: right;">
-                <button class="ghost" onclick="closeAiImageModal()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; margin-right: 6px; cursor: pointer;">취소</button>
+                <button class="ghost" onclick="discardAiImageAnalysis()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; margin-right: 6px; cursor: pointer;">취소</button>
                 <button class="primary" onclick="submitAiAnalysis()" style="padding: 10px 20px; font-size: 13px; border-radius: 8px; border: 0; background: linear-gradient(135deg, #6366F1, #3B82F6); color: white; cursor: pointer; font-weight: bold;">🚀 AI 분석 요청</button>
             </div>
         </div>
@@ -1674,7 +1939,7 @@
                     <span style="font-size: 18px;">✅</span>
                     <span style="font-size: 13px; font-weight: 800; color: #065F46;" id="aiResultSummaryText">AI 일정 추출 완료</span>
                 </div>
-                <span id="aiConfidenceBadge" style="background: #10B981; color: white; padding: 2px 8px; font-size: 11px; border-radius: 9999px; font-weight: bold;">신뢰도: 95.50%</span>
+                <span id="aiConfidenceBadge" style="display: none;">신뢰도: 95.50%</span>
             </div>
 
             <!-- 추출된 필드 확인 및 수정 폼 -->
@@ -1688,10 +1953,32 @@
             <div style="margin-top: 24px; text-align: right; display: flex; justify-content: space-between; align-items: center;">
                 <button class="ghost" onclick="reAnalyze()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; color: #4F46E5; border: 2px solid #E2E8F0; font-weight: bold; background: white; cursor: pointer;">🔄 다시 분석</button>
                 <div style="display: flex; gap: 6px;">
-                    <button class="ghost" onclick="resetStep()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; cursor: pointer;">처음으로</button>
+                    <button class="ghost" onclick="discardAiImageAnalysis()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; cursor: pointer;">처음으로</button>
                     <button id="aiConfirmBtn" class="primary" onclick="confirmSchedule()" style="padding: 10px 20px; font-size: 13px; border-radius: 8px; border: 0; background: linear-gradient(135deg, #10B981, #059669); color: white; font-weight: bold; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); cursor: pointer;">📅 캘린더 등록 확정</button>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- 연속 일정 부분/전체 삭제 선택 모달 HTML -->
+<div id="deleteConfirmModal" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="panel" style="width: 100%; max-width: 440px; border-radius: 16px; background: white; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid #E2E8F0; padding: 24px; text-align: center;">
+        <span style="font-size: 32px; display: block; margin-bottom: 12px;">📅</span>
+        <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #1E293B;">연속 일정 삭제 선택</h3>
+        <p id="deleteConfirmModalMsg" style="color: #64748B; font-size: 13.5px; margin: 0 0 20px; line-height: 1.6; word-break: keep-all;">
+            이 일정은 다른 날과 연결된 연속 일정입니다.<br>선택한 날의 일정만 지우시겠습니까? 아니면 전체 일정을 삭제하시겠습니까?
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="primary" onclick="executeDeleteChoice('single')" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #3B82F6; color: white; font-weight: bold; cursor: pointer; transition: 0.15s;">
+                👉 선택한 날의 일정만 삭제 (기간 단축)
+            </button>
+            <button class="primary" onclick="executeDeleteChoice('all')" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer; transition: 0.15s;">
+                🗑️ 연결된 전체 일정 삭제
+            </button>
+            <button class="ghost" onclick="closeDeleteConfirmModal()" style="padding: 10px; font-size: 13px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer; margin-top: 4px;">
+                취소
+            </button>
         </div>
     </div>
 </div>

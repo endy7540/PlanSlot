@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <script>
@@ -94,7 +94,7 @@
 
 <div th:replace="~{global/header :: headerFragment}"></div>
 
-<div class="app">
+<div class="app" style="display:none;">
   <div class="breadcrumb"><a th:href="@{/group/list}" href="group-list.html">← 내 모임</a></div>
 
   <div class="page-head">
@@ -460,7 +460,8 @@ function renderHead(){
     document.querySelector('.tab-btn[data-tab="schedule"]').style.display = 'none';
     document.querySelector('.tab-btn[data-tab="shared"]').style.display = 'none';
     document.querySelector('.tab-btn[data-tab="settings"]').style.display = 'none';
-    document.querySelector('.ai-teaser').style.display = 'none';
+    const teaser = document.querySelector('.ai-teaser');
+    if(teaser) teaser.style.display = 'none';
     
     // 기본 활성 탭을 인원 관리로 변경
     setTab('members');
@@ -479,8 +480,10 @@ function renderHead(){
     document.querySelector('.tab-btn[data-tab="settings"]').style.display = 'inline-block';
     // 티저 로직 제거됨
     
-    // 기본 활성 탭을 일정으로
-    setTab('schedule');
+    // 기본 활성 탭 설정 (이미 선택된 탭이 없다면 일정 탭으로)
+    if (!document.querySelector('.tab-btn.active')) {
+      setTab('schedule');
+    }
   }
 
 
@@ -559,6 +562,17 @@ function renderMembers(){
   const waitingList = document.getElementById('waitingList');
   document.getElementById('memberCountLabel').textContent = group.members.length;
   const owner = isOwner(group);
+  const amIWaiting = group.waiting && group.waiting.some(w => w.isMe);
+  
+  const inviteHeader = document.querySelector('#panel-members .section-row:first-child');
+  const inviteForm = document.querySelector('.invite-form');
+  if (amIWaiting) {
+    if (inviteHeader) inviteHeader.style.display = 'none';
+    if (inviteForm) inviteForm.style.display = 'none';
+  } else {
+    if (inviteHeader) inviteHeader.style.display = 'flex';
+    if (inviteForm) inviteForm.style.display = 'flex';
+  }
 
   memberList.innerHTML = '';
   group.members.forEach(m => {
@@ -625,100 +639,8 @@ function renderMembers(){
     row.innerHTML = `
       <div><b>${w.email}</b><span>${w.inviterName}님이 초대함</span></div>
       <div class="member-actions">
-        ${w.isMe ? `
-          <button class="btn btn-teal btn-sm" data-act="accept">수락</button>
-          <button class="btn btn-ghost btn-sm" data-act="reject">거절</button>
-        ` : `<span class="pill waiting">응답 대기중</span>`}
+        <span class="pill waiting">응답 대기중</span>
       </div>`;
-    if(w.isMe){
-      row.querySelector('[data-act="accept"]').addEventListener('click', ()=>{
-        // Show color picker modal before accepting
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay open';
-        modal.innerHTML = `
-          <div class="modal" style="width:320px;">
-            <h3 style="margin-top:0;">캘린더 색상 선택</h3>
-            <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">참여할 모임에서 사용할 색상을 선택해주세요.</p>
-            <div id="acceptColorContainer" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; justify-content:center;"></div>
-            <input type="hidden" id="acceptColorValue">
-            <div style="display:flex; justify-content:flex-end; gap:8px;">
-              <button class="btn btn-ghost" id="acceptCancel">취소</button>
-              <button class="btn btn-primary" id="acceptConfirm">수락 및 입장</button>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(modal);
-        
-        const acceptColorContainer = modal.querySelector('#acceptColorContainer');
-        const acceptColorValue = modal.querySelector('#acceptColorValue');
-        const colors = ["#EF4444", "#F97316", "#F59E0B", "#10B981", "#6366F1", "#8B5CF6", "#D946EF", "#F43F5E", "#14B8A6", "#84CC16", "#059669", "#7C3AED"];
-        const usedColors = group.members.map(m => m.color);
-        
-        let firstAvailable = null;
-        colors.forEach(c => {
-          const circle = document.createElement('div');
-          circle.style.width = '30px';
-          circle.style.height = '30px';
-          circle.style.borderRadius = '50%';
-          circle.style.backgroundColor = c;
-          
-          if(usedColors.includes(c)) {
-            circle.style.opacity = '0.2';
-            circle.style.cursor = 'not-allowed';
-            circle.title = '다른 모임원이 사용 중입니다';
-          } else {
-            circle.style.cursor = 'pointer';
-            circle.style.border = '2px solid transparent';
-            if(!firstAvailable) {
-              firstAvailable = c;
-              acceptColorValue.value = c;
-              circle.style.border = '3px solid #1E293B';
-            }
-            circle.onclick = () => {
-              acceptColorValue.value = c;
-              Array.from(acceptColorContainer.children).forEach(child => child.style.border = child.style.opacity === '0.2' ? 'none' : '2px solid transparent');
-              circle.style.border = '3px solid #1E293B';
-            };
-          }
-          acceptColorContainer.appendChild(circle);
-        });
-        
-        modal.querySelector('#acceptCancel').onclick = () => modal.remove();
-        modal.querySelector('#acceptConfirm').onclick = async () => {
-          if(!acceptColorValue.value) { showToast('색상을 선택해주세요.'); return; }
-          try {
-            const res = await fetchApi(`/group/${group.id}/invitation/1`, { 
-              method: 'PATCH', 
-              headers: {'Content-Type': 'application/json'}, 
-              body: JSON.stringify({ action: 'ACCEPT', color: acceptColorValue.value }) 
-            });
-            if(res.ok) {
-              modal.remove();
-              showToast('초대를 수락했어요. 모임에 참여했습니다.');
-              fetchGroupDetail();
-            } else {
-              const err = await res.json().catch(()=>({}));
-              showToast(err.message || '수락 중 오류가 발생했습니다.');
-            }
-          } catch(e) { console.error(e); }
-        };
-      });
-      row.querySelector('[data-act="reject"]').addEventListener('click', async ()=>{
-        try {
-          const res = await fetchApi(`/group/${group.id}/invitation/1`, { 
-            method: 'PATCH', 
-            headers: {'Content-Type': 'application/json'}, 
-            body: JSON.stringify({ action: 'REJECT' }) 
-          });
-          if(res.ok) {
-            showToast('초대를 거절했어요.');
-            setTimeout(()=>{ window.location.href = linkToList(); }, 600);
-          } else {
-            showToast('거절 중 오류가 발생했습니다.');
-          }
-        } catch(e) { console.error(e); }
-      });
-    }
     waitingList.appendChild(row);
   });
 }
@@ -758,6 +680,13 @@ inviteNicknameInput.addEventListener('input', async (e) => {
   } catch(e) { console.error(e); }
 });
 
+inviteNicknameInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('btnInvite').click();
+  }
+});
+
 document.addEventListener('click', (e) => {
   if(e.target !== inviteNicknameInput && e.target !== nicknameSuggestions) {
     nicknameSuggestions.style.display = 'none';
@@ -780,7 +709,12 @@ document.getElementById('btnInvite').addEventListener('click', async ()=>{
       showToast(`${nickname}님에게 초대를 보냈어요.`);
       fetchGroupDetail();
     } else {
-      showToast('초대 중 오류가 발생했습니다.');
+      let errMsg = '초대 중 오류가 발생했습니다.';
+      try {
+        const errorData = await res.json();
+        if (errorData && errorData.message) errMsg = errorData.message;
+      } catch (e) {}
+      showToast(errMsg);
     }
   } catch(e) { console.error(e); }
 });
@@ -1030,20 +964,77 @@ document.getElementById('btnLeave').addEventListener('click', ()=>{
   }
 });
 
-document.getElementById('btnAcceptInvite').addEventListener('click', async ()=>{
-  try {
-    const res = await fetchApi(`/group/${group.id}/invitation/1`, { 
-      method: 'PATCH', 
-      headers: {'Content-Type': 'application/json'}, 
-      body: JSON.stringify({ action: 'ACCEPT' }) 
-    });
-    if(res.ok) {
-      showToast('초대를 수락했습니다. 모임에 참여했습니다.');
-      fetchGroupDetail();
+document.getElementById('btnAcceptInvite').addEventListener('click', ()=>{
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay open';
+  modal.innerHTML = `
+    <div class="modal-box" style="width:320px;">
+      <h3 style="margin-top:0;">캘린더 색상 선택</h3>
+      <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">참여할 모임에서 사용할 색상을 선택해주세요.</p>
+      <div id="acceptColorContainer" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; justify-content:center;"></div>
+      <input type="hidden" id="acceptColorValue">
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button class="btn btn-ghost" id="acceptCancel">취소</button>
+        <button class="btn btn-primary" id="acceptConfirm">수락 및 입장</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  const acceptColorContainer = modal.querySelector('#acceptColorContainer');
+  const acceptColorValue = modal.querySelector('#acceptColorValue');
+  const colors = ["#EF4444", "#F97316", "#F59E0B", "#10B981", "#6366F1", "#8B5CF6", "#D946EF", "#F43F5E", "#14B8A6", "#84CC16", "#059669", "#7C3AED"];
+  const usedColors = group.members.map(m => m.color);
+  
+  let firstAvailable = null;
+  colors.forEach(c => {
+    const circle = document.createElement('div');
+    circle.style.width = '30px';
+    circle.style.height = '30px';
+    circle.style.borderRadius = '50%';
+    circle.style.backgroundColor = c;
+    
+    if(usedColors.includes(c)) {
+      circle.style.opacity = '0.2';
+      circle.style.cursor = 'not-allowed';
+      circle.title = '다른 모임원이 사용 중입니다';
     } else {
-      showToast('수락 중 오류가 발생했습니다.');
+      circle.style.cursor = 'pointer';
+      circle.style.border = '2px solid transparent';
+      if(!firstAvailable) {
+        firstAvailable = c;
+        acceptColorValue.value = c;
+        circle.style.border = '3px solid #1E293B';
+      }
+      circle.onclick = () => {
+        acceptColorValue.value = c;
+        Array.from(acceptColorContainer.children).forEach(child => child.style.border = child.style.opacity === '0.2' ? 'none' : '2px solid transparent');
+        circle.style.border = '3px solid #1E293B';
+      };
     }
-  } catch(e) { console.error(e); }
+    acceptColorContainer.appendChild(circle);
+  });
+  
+  modal.querySelector('#acceptCancel').onclick = () => modal.remove();
+  modal.querySelector('#acceptConfirm').onclick = async () => {
+    if(!acceptColorValue.value) { showToast('색상을 선택해주세요.'); return; }
+    try {
+      const res = await fetchApi(`/group/${group.id}/invitation/1`, { 
+        method: 'PATCH', 
+        headers: {'Content-Type': 'application/json'}, 
+        body: JSON.stringify({ action: 'ACCEPT', color: acceptColorValue.value }) 
+      });
+      if(res.ok) {
+        modal.remove();
+        showToast('초대를 수락했습니다. 모임에 참여했습니다.');
+        if (typeof refreshNotificationUI === 'function') refreshNotificationUI();
+        fetchGroupDetail();
+      } else {
+        const err = await res.json().catch(()=>({}));
+        showToast(err.message || '수락 중 오류가 발생했습니다.');
+      }
+    } catch(e) { console.error(e); }
+  };
 });
 
 document.getElementById('btnRejectInvite').addEventListener('click', ()=>{
@@ -1056,6 +1047,7 @@ document.getElementById('btnRejectInvite').addEventListener('click', ()=>{
       });
       if(res.ok) {
         showToast('초대를 거절했습니다.');
+        if (typeof refreshNotificationUI === 'function') refreshNotificationUI();
         setTimeout(()=>{ window.location.href = linkToList(); }, 600);
       } else {
         showToast('거절 중 오류가 발생했습니다.');
@@ -1077,6 +1069,7 @@ async function fetchGroupDetail() {
     const res = await fetchApi('/group/read/' + id);
     if(res.ok) {
       group = await res.json();
+      document.querySelector('.app').style.display = 'block';
       renderHead();
       renderMembers();
       fetchGroupSchedules();

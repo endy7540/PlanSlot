@@ -62,6 +62,9 @@ public interface NotificationService {
     // 특정 타겟(채팅방 등)과 관련된 알림을 모두 읽음 처리
     void readNotificationsByTarget(Long memberId, String targetType, Long targetId);
 
+    // 특정 타겟(모임 초대 등)과 관련된 알림을 모두 삭제 처리
+    void deleteNotificationsByTarget(Long memberId, String targetType, Long targetId);
+
     // 전체 및 기능별 알림 설정 조회
     NotificationSettingDTO getNotificationSetting(Long memberId);
 

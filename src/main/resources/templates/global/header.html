@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <body>
 <div th:fragment="headerFragment">
@@ -146,9 +146,29 @@
           return localStorage.getItem('jwtToken');
       }
 
-      function closeAiWidget() {
+      async function closeAiWidget() {
           const widget = document.getElementById('aiFloatingWidget');
           if (widget) widget.style.display = 'none';
+
+          const requestId = localStorage.getItem('ps_ai_request_id');
+          const status = localStorage.getItem('ps_ai_status');
+
+          if (requestId && (status === 'PROCESSING' || status === 'COMPLETED' || status === 'FAILED')) {
+              try {
+                  const tokenVal = getAuthToken();
+                  if (tokenVal) {
+                      await fetch(`${HEADER_API_BASE}/ai-image-schedule/${requestId}`, {
+                          method: 'DELETE',
+                          headers: {
+                              'Authorization': `Bearer ${tokenVal}`
+                          }
+                      });
+                      console.log(`[AI-Clean-Header] Discarded request #${requestId} on widget close.`);
+                  }
+              } catch (e) {
+                  console.error('[AI-Clean-Header] Discard failed:', e);
+              }
+          }
           clearAiStorage();
       }
 

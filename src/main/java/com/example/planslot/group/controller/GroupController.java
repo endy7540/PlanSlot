@@ -53,7 +53,7 @@ public class GroupController {
     }
 
 
-    // AI 추천 데이터 API
+    // AI 추천 데이터 동기 API (기존 유지)
     @GetMapping("/{groupId}/ai-recommendations")
     @ResponseBody
     public ResponseEntity<GroupDTO.AiResponse> getAiRecommendations(
@@ -64,6 +64,66 @@ public class GroupController {
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
         return ResponseEntity.ok(groupRecommendationService.getRecommendations(groupId, memberId, type, startDate, endDate));
+    }
+
+    // -----------------------------------------------------
+    // Async Job Management for AI Recommendation
+    // -----------------------------------------------------
+    private static final java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.CompletableFuture<GroupDTO.AiResponse>> aiJobs = new java.util.concurrent.ConcurrentHashMap<>();
+
+    @PostMapping("/{groupId}/ai-recommendations/start")
+    @ResponseBody
+    public ResponseEntity<java.util.Map<String, String>> startAiRecommendations(
+            @PathVariable Long groupId,
+            @RequestParam(defaultValue = "SHORT_MEETING") String type,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        String jobId = java.util.UUID.randomUUID().toString();
+        
+        java.util.concurrent.CompletableFuture<GroupDTO.AiResponse> future = java.util.concurrent.CompletableFuture.supplyAsync(() -> 
+            groupRecommendationService.getRecommendations(groupId, memberId, type, startDate, endDate)
+        );
+        aiJobs.put(jobId, future);
+        
+        java.util.Map<String, String> res = new java.util.HashMap<>();
+        res.put("jobId", jobId);
+        return ResponseEntity.ok(res);
+    }
+
+    @GetMapping("/ai-recommendations/status/{jobId}")
+    @ResponseBody
+    public ResponseEntity<java.util.Map<String, Object>> getAiRecommendationStatus(@PathVariable String jobId) {
+        java.util.concurrent.CompletableFuture<GroupDTO.AiResponse> future = aiJobs.get(jobId);
+        java.util.Map<String, Object> res = new java.util.HashMap<>();
+        
+        if (future == null) {
+            res.put("status", "FAILED");
+            java.util.Map<String, String> data = new java.util.HashMap<>();
+            data.put("error", "작업을 찾을 수 없습니다.");
+            res.put("data", data);
+            return ResponseEntity.ok(res);
+        }
+        
+        if (future.isDone()) {
+            try {
+                GroupDTO.AiResponse aiData = future.get();
+                res.put("status", "COMPLETED");
+                res.put("data", aiData);
+            } catch (Exception e) {
+                res.put("status", "FAILED");
+                java.util.Map<String, String> data = new java.util.HashMap<>();
+                data.put("error", "분석 중 오류가 발생했습니다.");
+                res.put("data", data);
+            } finally {
+                aiJobs.remove(jobId);
+            }
+        } else {
+            res.put("status", "PROCESSING");
+        }
+        
+        return ResponseEntity.ok(res);
     }
 
     // 모임 생성 요청 처리

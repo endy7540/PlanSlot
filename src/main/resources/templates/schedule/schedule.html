@@ -1175,8 +1175,8 @@
         // 상태 초기화: 처음으로 돌아가면 이전 작업 상태를 완전히 지웁니다.
         if (typeof window.clearAiStorage === 'function') {
             window.clearAiStorage();
-            if (typeof window.closeWidget === 'function') {
-                window.closeWidget();
+            if (typeof window.closeAiWidget === 'function') {
+                window.closeAiWidget();
             }
         }
     }

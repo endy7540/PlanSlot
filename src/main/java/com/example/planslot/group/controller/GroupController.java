@@ -235,8 +235,9 @@ public class GroupController {
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
         String action = body.get("action"); // "ACCEPT" 또는 "REJECT" 로 전송
+        String color = body.get("color");
         if ("ACCEPT".equalsIgnoreCase(action)) {
-            groupService.acceptInvite(groupId, memberId); // TODO: 추후 invitationId 검증 로직 추가 필요
+            groupService.acceptInvite(groupId, memberId, color); // TODO: 추후 invitationId 검증 로직 추가 필요
         } else if ("REJECT".equalsIgnoreCase(action)) {
             groupService.rejectInvite(groupId, memberId);
         }

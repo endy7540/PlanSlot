@@ -37,7 +37,7 @@ public interface GroupService {
 
     // 모임 초대
     void inviteMember(Long groupId, String email, Long memberId);
-    void acceptInvite(Long groupId, Long memberId);
+    void acceptInvite(Long groupId, Long memberId, String color);
     void rejectInvite(Long groupId, Long memberId);
     void toggleFavorite(Long groupId, Long memberId);
 

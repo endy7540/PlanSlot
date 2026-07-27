@@ -387,6 +387,7 @@ public class AiImageServiceImpl implements AiImageService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public AiImageDTO.Response getAiImageAnalysis(Long memberId, Long requestId) {
         AiImage aiImage = aiImageRepository.findByIdAndMemberId(requestId, memberId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "요청 정보를 찾을 수 없습니다."));
@@ -613,6 +614,7 @@ public class AiImageServiceImpl implements AiImageService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<AiImageDTO.Response> getAiImageList(Long memberId) {
         return aiImageRepository.findAllByMemberId(memberId).stream()
                 .map(entity -> AiImageDTO.Response.from(entity, null))

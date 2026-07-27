@@ -274,6 +274,9 @@
                   });
                   if (!res.ok) {
                       clearInterval(headerPollingTimer);
+                      const widget = document.getElementById('aiFloatingWidget');
+                      if (widget) widget.style.display = 'none';
+                      clearAiStorage();
                       return;
                   }
                   const data = await res.json();

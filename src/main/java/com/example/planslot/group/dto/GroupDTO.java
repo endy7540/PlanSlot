@@ -63,7 +63,7 @@ public class GroupDTO {
         }
     }
 
-    public record MemberInfo(String id, String name, String role, String profileImageUrl) {}
+    public record MemberInfo(String id, String name, String role, String profileImageUrl, String color) {}
     public record WaitingInfo(String id, String email, String inviterName, boolean isMe) {}
     public record ScheduleInfo(String id, String title, String date, String time, String visibility) {}
     public record HeatInfo(String name, List<String> row) {}

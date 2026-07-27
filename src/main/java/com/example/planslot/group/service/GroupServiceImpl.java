@@ -135,7 +135,7 @@ public class GroupServiceImpl implements GroupService {
             } else if (gm.getMemberStatus().name().equals("ACTIVE")) {
                 String role = ownerIdStr.equals(mId) ? "owner" : "member";
                 String profileImageUrl = gm.getMember().getProfileImageUrl();
-                members.add(new GroupDTO.MemberInfo(mId, mName, role, profileImageUrl));
+                members.add(new GroupDTO.MemberInfo(mId, mName, role, profileImageUrl, gm.getColor()));
             }
         }
 
@@ -181,6 +181,14 @@ public class GroupServiceImpl implements GroupService {
         }
 
         group.updateGroupName(newName);
+    }
+
+    @Override
+    @Transactional
+    public void updateMyColor(Long groupId, Long memberId, String color) {
+        GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
+                .orElseThrow(() -> new IllegalArgumentException("참여 중이 아닙니다."));
+        membership.changeColor(color);
     }
 
     @Override

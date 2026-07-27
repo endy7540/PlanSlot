@@ -255,6 +255,18 @@ public class GroupController {
         return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
     }
 
+    // 모임 내 색상 수정
+    @PatchMapping("/{groupId}/color")
+    @ResponseBody
+    public ResponseEntity<Void> updateMyColor(
+            @PathVariable("groupId") Long groupId, 
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.updateMyColor(groupId, memberId, body.get("color"));
+        return ResponseEntity.ok().build();
+    }
+
     // 타인 닉네임 수정
     @PatchMapping("/{groupId}/member/{targetMemberId}/displayName")
     @ResponseBody

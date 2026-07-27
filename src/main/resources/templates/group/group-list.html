@@ -108,7 +108,7 @@ function renderGrid(){
     return;
   }
 
-  filtered.forEach(g => {
+  const createCard = (g) => {
     const isWaiting = g.filter === 'waiting';
     const badge = isWaiting
       ? '<span class="pill waiting">초대 대기중</span>'
@@ -144,10 +144,55 @@ function renderGrid(){
         ${isWaiting ? '' : `<div class="favorite-btn" data-group-id="${g.id}" style="padding:4px; z-index:10; display:flex; align-items:center;" onclick="event.preventDefault(); event.stopPropagation(); toggleFavorite('${g.id}')">${favoriteIcon}</div>`}
       </div>
       ${badge}
-      <div class="go">${isWaiting ? '초대 확인하기 →' : '모임 열기 →'}</div>
+      <div class="card-actions" style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid var(--border); padding-top:12px;">
+        ${isWaiting 
+          ? `<button class="btn btn-ghost" style="padding:6px 12px; font-size:13px;" onclick="event.preventDefault(); event.stopPropagation(); handleInvitation(${g.id}, 'REJECT')">거절</button>
+             <button class="btn btn-primary" style="padding:6px 12px; font-size:13px;" onclick="event.preventDefault(); event.stopPropagation(); handleInvitation(${g.id}, 'ACCEPT')">수락</button>` 
+          : `<button class="btn btn-sky" style="padding:6px 12px; font-size:13px;" onclick="event.preventDefault(); event.stopPropagation(); window.location.href='/groupChat/${g.id}'">채팅방 가기</button>`
+        }
+      </div>
     `;
-    wrap.appendChild(card);
-  });
+    return card;
+  };
+
+  if (activeFilter === 'all') {
+    const waitingGroups = filtered.filter(g => g.filter === 'waiting');
+    const joinedGroups = filtered.filter(g => g.filter !== 'waiting');
+    
+    if (waitingGroups.length > 0) {
+      const waitingTitle = document.createElement('h3');
+      waitingTitle.textContent = `초대받은 모임 (${waitingGroups.length})`;
+      waitingTitle.style.width = '100%';
+      waitingTitle.style.gridColumn = '1 / -1';
+      waitingTitle.style.marginTop = '10px';
+      waitingTitle.style.marginBottom = '10px';
+      waitingTitle.style.color = 'var(--ink-dark)';
+      wrap.appendChild(waitingTitle);
+      
+      waitingGroups.forEach(g => {
+        wrap.appendChild(createCard(g));
+      });
+    }
+
+    if (joinedGroups.length > 0) {
+      const joinedTitle = document.createElement('h3');
+      joinedTitle.textContent = `참여중인 모임 (${joinedGroups.length})`;
+      joinedTitle.style.width = '100%';
+      joinedTitle.style.gridColumn = '1 / -1';
+      joinedTitle.style.marginTop = waitingGroups.length > 0 ? '30px' : '10px';
+      joinedTitle.style.marginBottom = '10px';
+      joinedTitle.style.color = 'var(--ink-dark)';
+      wrap.appendChild(joinedTitle);
+      
+      joinedGroups.forEach(g => {
+        wrap.appendChild(createCard(g));
+      });
+    }
+  } else {
+    filtered.forEach(g => {
+      wrap.appendChild(createCard(g));
+    });
+  }
 }
 
 document.querySelectorAll('.chip').forEach(chip => {
@@ -333,6 +378,23 @@ window.toggleFavorite = function(groupId) {
       }
     })
     .catch(console.error);
+};
+
+window.handleInvitation = function(groupId, action) {
+  fetchApi(`/group/${groupId}/invitation/0`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: action })
+  })
+  .then(res => {
+    if (res.ok) {
+      showToast(action === 'ACCEPT' ? '초대를 수락했습니다.' : '초대를 거절했습니다.');
+      fetchAndRenderGrid();
+    } else {
+      showToast('초대 처리에 실패했습니다.');
+    }
+  })
+  .catch(console.error);
 };
 </script>
 </body>

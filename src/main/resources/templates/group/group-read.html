@@ -119,10 +119,10 @@
         <div class="section-row" style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
           <h3 id="calendarMonthLabel" style="margin:0;">모임 일정</h3>
           <div style="display:flex;gap:8px; align-items:center;">
-            <a class="btn btn-teal btn-sm" id="btnGoAi" href="#" style="font-size:12px; padding:6px 12px; border-radius:6px; margin-right:4px;">✨ AI 시간 추천 보러가기</a>
+            <a class="btn btn-sky btn-sm" id="btnGoChat" href="#" style="font-size:12px; padding:6px 12px; border-radius:6px; margin-right:4px;">💬 모임 채팅방</a>
             <div style="display:flex;gap:4px">
-              <button class="btn btn-ghost btn-sm" onclick="changeCalMonth(-1)">◀</button>
-              <button class="btn btn-ghost btn-sm" onclick="changeCalMonth(1)">▶</button>
+              <button class="btn btn-ghost btn-sm" onclick="changeCalMonth(-1)">이전 달 ◀</button>
+              <button class="btn btn-ghost btn-sm" onclick="changeCalMonth(1)">▶ 다음 달</button>
             </div>
           </div>
         </div>
@@ -130,6 +130,10 @@
         
         <div class="calendar" id="groupCalendarContainer">
           <!-- JS로 달력이 렌더링됩니다 -->
+        </div>
+        
+        <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+          <a class="btn btn-teal btn-sm" id="btnGoAi" href="#" style="font-size:12px; padding:6px 12px; border-radius:6px;">✨ AI 시간 추천 보러가기</a>
         </div>
 
         <div id="dayDetailContainer" style="display:none; margin:16px 0; padding:12px; background:#F8FAFC; border-radius:8px; border:1px solid #E2E8F0;">
@@ -226,6 +230,15 @@
             <input id="settingsGroupName" maxlength="30">
             <button class="btn btn-primary" id="btnSaveName">저장</button>
           </div>
+        </div>
+
+        <div class="settings-block">
+          <h3>나의 캘린더 색상</h3>
+          <div class="field-row" style="flex-wrap:wrap; gap:10px; margin-bottom:12px;" id="colorPaletteContainer">
+            <!-- Color options rendered via JS -->
+          </div>
+          <input type="hidden" id="settingsMyColor">
+          <button class="btn btn-primary" id="btnSaveColor">색상 변경</button>
         </div>
 
         <div class="settings-block" id="blockImageUpdate">
@@ -375,6 +388,32 @@ function renderHead(){
     nameSaveBtn.style.display = owner ? 'block' : 'none';
     document.getElementById('settingsGroupName').disabled = !owner;
   }
+  
+  const myMemberInfo = group.members.find(m => m.id === group.myMemberId);
+  const settingsMyColor = document.getElementById('settingsMyColor');
+  const paletteContainer = document.getElementById('colorPaletteContainer');
+  if(settingsMyColor && myMemberInfo && paletteContainer) {
+    const currentColor = myMemberInfo.color || '#E2E8F0';
+    settingsMyColor.value = currentColor;
+    const colors = ["#EF4444", "#F97316", "#F59E0B", "#10B981", "#6366F1", "#8B5CF6", "#D946EF", "#F43F5E", "#14B8A6", "#84CC16", "#059669", "#7C3AED"];
+    paletteContainer.innerHTML = '';
+    colors.forEach(c => {
+      const circle = document.createElement('div');
+      circle.style.width = '28px';
+      circle.style.height = '28px';
+      circle.style.borderRadius = '50%';
+      circle.style.backgroundColor = c;
+      circle.style.cursor = 'pointer';
+      circle.style.border = (c === currentColor) ? '3px solid #1E293B' : '2px solid transparent';
+      circle.style.transition = 'all 0.2s';
+      circle.onclick = () => {
+        settingsMyColor.value = c;
+        Array.from(paletteContainer.children).forEach(child => child.style.border = '2px solid transparent');
+        circle.style.border = '3px solid #1E293B';
+      };
+      paletteContainer.appendChild(circle);
+    });
+  }
 
   const blockImageUpdate = document.getElementById('blockImageUpdate');
   if(blockImageUpdate) {
@@ -395,6 +434,8 @@ function renderHead(){
 
   document.getElementById('ownerLeaveHint').style.display = owner ? 'block' : 'none';
   document.getElementById('btnGoAi').href = linkToAi(group.id);
+  const btnGoChat = document.getElementById('btnGoChat');
+  if (btnGoChat) btnGoChat.href = '/groupChat/' + group.id;
 
   if (isWaiting) {
     document.getElementById('btnLeave').style.display = 'none';
@@ -450,9 +491,27 @@ function renderTodaySchedules() {
       ? `<span style="font-size:10px; padding:2px 6px; background:#e2e8f0; color:#475569; border-radius:4px; margin-left:6px;">비공개</span>`
       : `<span style="font-size:10px; padding:2px 6px; background:#bae6fd; color:#0369a1; border-radius:4px; margin-left:6px;">공개</span>`;
       
-    const bgColor = isPrivate ? '#F1F5F9' : '#E0F2FE';
-    const borderColor = isPrivate ? '#E2E8F0' : '#bae6fd';
-    const timeColor = isPrivate ? '#64748B' : '#0284C7';
+    let isShared = false;
+    let dispTitle = s.title;
+    const daySchedules = groupSchedules.filter(x => x.startDate === s.startDate && x.time === s.time && x.title === s.title);
+    if(daySchedules.length > 1) isShared = true;
+    
+    let bgColor = '#E0F2FE';
+    let borderColor = '#bae6fd';
+    
+    if (isShared) {
+      bgColor = '#E0F2FE';
+      borderColor = '#bae6fd';
+    } else {
+      const memberColor = group.members.find(m => m.name === s.nickname)?.color || '#E2E8F0';
+      bgColor = memberColor;
+      borderColor = memberColor;
+    }
+    
+    if (isPrivate) {
+      bgColor = '#F1F5F9';
+      borderColor = '#E2E8F0';
+    }
 
     const row = document.createElement('div');
     row.className = 'sched-item';
@@ -461,9 +520,10 @@ function renderTodaySchedules() {
     row.style.alignItems = 'center';
     row.style.padding = '8px 12px';
     row.style.border = `1px solid ${borderColor}`;
+    row.style.borderLeft = `5px solid ${borderColor}`;
     row.style.borderRadius = '6px';
     row.style.marginBottom = '6px';
-    row.style.background = bgColor;
+    row.style.background = '#ffffff';
     
     row.innerHTML = `
       <div>
@@ -824,6 +884,23 @@ document.getElementById('btnSaveName').addEventListener('click', async ()=>{
   }
 })();
 
+document.getElementById('btnSaveColor').addEventListener('click', async ()=>{
+  const color = document.getElementById('settingsMyColor').value;
+  try {
+    const res = await fetchApi(`/group/${group.id}/color`, { 
+      method: 'PATCH', 
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ color }) 
+    });
+    if(res.ok) {
+      showToast('색상을 변경했어요.');
+      fetchGroupDetail();
+    } else {
+      showToast('색상 변경 중 오류가 발생했습니다.');
+    }
+  } catch(e) { console.error(e); }
+});
+
 document.getElementById('btnDeleteGroup').addEventListener('click', ()=>{
   openConfirm('모임을 삭제할까요?', `'${group.name}' 모임과 모든 일정, 채팅, 게시글이 삭제되고 되돌릴 수 없어요.`, async ()=>{
     try {
@@ -973,12 +1050,14 @@ function renderDynamicCalendar() {
   
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const prevMonthDays = new Date(calYear, calMonth, 0).getDate();
   const today = new Date();
   
   let html = `<div class="weekday" style="color:var(--danger)">일</div><div class="weekday">월</div><div class="weekday">화</div><div class="weekday">수</div><div class="weekday">목</div><div class="weekday">금</div><div class="weekday" style="color:var(--sky)">토</div>`;
   
   for(let i = 0; i < firstDay; i++) {
-    html += `<div class="date" style="background:#FAFCFE; opacity:0.5"></div>`;
+    const d = prevMonthDays - firstDay + i + 1;
+    html += `<div class="date" style="background:#FAFCFE; opacity:0.5"><b style="color:#A0AEC0; background:transparent;">${d}</b></div>`;
   }
   
   for(let d = 1; d <= daysInMonth; d++) {
@@ -1042,12 +1121,21 @@ function renderDynamicCalendar() {
     toRender.slice(0, 3).forEach(s => {
       let cls = s.isPublic === 'N' ? 'cal-event private' : 'cal-event public';
       if (s.isTemp) cls += ' blink-slow';
-      // hover시 원래 누구의 일정인지 툴팁으로 표시
       const tooltip = s.nicknames ? `${s.title} (${s.nicknames.join(', ')})` : s.title;
-      // '모임 일정'으로 시작하는 제목은 이미 시간 정보가 있으므로 불필요한 s.time 텍스트 생략
       const displayTime = s.title.startsWith('모임 일정') ? '' : ` ${s.time}`;
-      // 캘린더에는 이름(s.nickname) 대신 제목(s.title)을 표시
-      eventsHtml += `<em class="${cls}" title="${tooltip}">${s.title}${displayTime}</em>`;
+      
+      let bgColor = '';
+      let colorStyle = '';
+      if (s.nicknames && s.nicknames.length > 1) {
+          bgColor = '#E0F2FE';
+          colorStyle = 'color: #0284C7;';
+      } else {
+          const memberColor = group.members.find(m => m.name === s.nickname)?.color || '#E2E8F0';
+          bgColor = memberColor;
+          colorStyle = 'color: white; text-shadow: 0px 1px 2px rgba(0,0,0,0.3);';
+          if (s.isPublic === 'N') colorStyle += ' opacity: 0.5;';
+      }
+      eventsHtml += `<em class="${cls}" title="${tooltip}" style="background-color: ${bgColor}; ${colorStyle}">${s.title}${displayTime}</em>`;
     });
     if (toRender.length > 3) {
       eventsHtml += `<span style="display:block;font-size:10px;color:var(--muted);text-align:center;margin-top:2px">+${toRender.length - 3}개 더보기</span>`;
@@ -1060,7 +1148,7 @@ function renderDynamicCalendar() {
   const remainder = totalCells % 7;
   if(remainder > 0) {
     for(let i = 0; i < 7 - remainder; i++) {
-      html += `<div class="date" style="background:#FAFCFE; opacity:0.5"></div>`;
+      html += `<div class="date" style="background:#FAFCFE; opacity:0.5"><b style="color:#A0AEC0; background:transparent;">${i + 1}</b></div>`;
     }
   }
   

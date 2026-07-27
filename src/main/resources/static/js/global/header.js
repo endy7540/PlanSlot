@@ -51,7 +51,7 @@ window.addEventListener("DOMContentLoaded", function() {
                 throw new Error();
             })
             .then(data => {
-                headerNickname.innerText = data.nickname + '님';
+                headerNickname.innerText = (data.displayName || data.nickname) + '님';
                 const headerProfileImage = document.getElementById("headerProfileImage");
                 if (headerProfileImage) {
                     if (data.profileImageUrl) {

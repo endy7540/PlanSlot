@@ -24,6 +24,19 @@
     </nav>
 
     <div class="header-actions">
+      <div class="profile-dropdown-wrap" id="profileWrap" style="display: none;">
+        <button class="profile-btn" id="profileBtn" type="button" aria-label="프로필 메뉴">
+          <span class="profile-nickname" id="headerNickname">로딩중...</span>
+          <img src="/images/default-avatar.png" onerror="this.src='https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'" alt="" class="profile-img" id="headerProfileImage">
+        </button>
+        <div class="profile-dropdown" id="profileDropdown" style="display: none;">
+          <a id="adminPageLink" th:href="@{/admin/reports}" style="display:none; color:#B91C1C; font-weight:bold;">관리자 페이지</a>
+          <a th:href="@{/mypage}">마이페이지</a>
+          <button id="logoutBtn" type="button">로그아웃</button>
+        </div>
+      </div>
+      <button id="loginBtn" class="btn-logout" style="display: none;" onclick="window.location.href='/auth/login'">로그인</button>
+
       <div class="notification-wrap">
         <button class="notification-bell" id="notificationBell" type="button" aria-label="알림 열기">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -51,19 +64,6 @@
           </a>
         </div>
       </div>
-
-      <div class="profile-dropdown-wrap" id="profileWrap" style="display: none;">
-        <button class="profile-btn" id="profileBtn" type="button" aria-label="프로필 메뉴">
-          <span class="profile-nickname" id="headerNickname">로딩중...</span>
-          <img src="/images/default-avatar.png" onerror="this.src='https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'" alt="" class="profile-img" id="headerProfileImage">
-        </button>
-        <div class="profile-dropdown" id="profileDropdown" style="display: none;">
-          <a id="adminPageLink" th:href="@{/admin/reports}" style="display:none; color:#B91C1C; font-weight:bold;">관리자 페이지</a>
-          <a th:href="@{/mypage}">마이페이지</a>
-          <button id="logoutBtn" type="button">로그아웃</button>
-        </div>
-      </div>
-      <button id="loginBtn" class="btn-logout" style="display: none;" onclick="window.location.href='/auth/login'">로그인</button>
     </div>
   </header>
 

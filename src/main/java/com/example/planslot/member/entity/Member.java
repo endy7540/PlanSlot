@@ -155,4 +155,25 @@ public class Member {
             this.suspendedUntil = null; // 정지가 풀리거나 영구정지/탈퇴 시 초기화
         }
     }
+
+    public String getDisplayName() {
+        if (this.nickname != null) {
+            int hashIndex = this.nickname.lastIndexOf('#');
+            if (hashIndex > 0 && hashIndex < this.nickname.length() - 1) {
+                String tagPart = this.nickname.substring(hashIndex + 1);
+                // 태그 부분이 모두 숫자인지 확인 (길이 무관)
+                boolean isNumeric = true;
+                for (int i = 0; i < tagPart.length(); i++) {
+                    if (!Character.isDigit(tagPart.charAt(i))) {
+                        isNumeric = false;
+                        break;
+                    }
+                }
+                if (isNumeric) {
+                    return this.nickname.substring(0, hashIndex);
+                }
+            }
+        }
+        return this.nickname;
+    }
 }

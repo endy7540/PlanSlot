@@ -10,6 +10,7 @@ public class MemberResponseDTO {
     public static class MyPage {
         private String email;
         private String nickname;
+        private String displayName;
         private String address;
         private String profileImageUrl;
         private boolean allowActivityNoti;

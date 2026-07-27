@@ -2,6 +2,10 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <!-- Flatpickr CSS & JS (for AI Image Schedule Date Range Picker) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PlanSlot - 캘린더</title>
     <style>
@@ -1285,6 +1289,12 @@
 
     function closeAiImageModal() {
         document.getElementById('aiImageModal').style.display = 'none';
+        if (typeof clearFileSelect === 'function') {
+            clearFileSelect();
+        }
+        if (typeof resetStep === 'function') {
+            resetStep();
+        }
     }
 
     function resetStep() {
@@ -1477,6 +1487,25 @@
 
     let currentExtractedList = [];
 
+    function parseExtractedDateRange(dateRangeStr) {
+        if (!dateRangeStr) {
+            const today = new Date().toISOString().slice(0, 10);
+            return { startD: today, endD: today };
+        }
+        const clean = dateRangeStr.trim();
+        let parts = [];
+        if (clean.includes(' to ')) {
+            parts = clean.split(' to ');
+        } else if (clean.includes(' ~ ')) {
+            parts = clean.split(' ~ ');
+        } else {
+            parts = [clean];
+        }
+        const startD = parts[0] || new Date().toISOString().slice(0, 10);
+        const endD = parts[1] || startD;
+        return { startD, endD };
+    }
+
     function displayAnalysisResult(data) {
         document.getElementById('aiLoadingStep').style.display = 'none';
         document.getElementById('aiResultStep').style.display = 'block';
@@ -1500,8 +1529,10 @@
             card.className = 'ai-schedule-card';
             card.style = 'background: white; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left;';
             
-            const startVal = item.startDate ? item.startDate.slice(0, 16) : '';
-            const endVal = item.endDate ? item.endDate.slice(0, 16) : '';
+            const startDVal = item.startDate ? item.startDate.slice(0, 10) : '';
+            const endDVal = item.endDate ? item.endDate.slice(0, 10) : startDVal;
+            const startTVal = item.startDate && item.startDate.includes('T') ? item.startDate.split('T')[1].slice(0, 5) : '09:00';
+            const endTVal = item.endDate && item.endDate.includes('T') ? item.endDate.split('T')[1].slice(0, 5) : '10:00';
 
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1514,26 +1545,39 @@
                 <div>
                     <input type="text" placeholder="일정 설명 (상세 내용)" class="ai-item-description" value="${escapeHtml(item.description || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; color: #475569; box-sizing: border-box;">
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                
+                <div style="margin-bottom: 4px;">
+                    <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">일정 날짜 범위 *</label>
+                    <input type="text" class="ai-item-date" id="ai-date-${index}" placeholder="날짜를 선택하세요" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;" required>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px;">
                     <div>
-                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">시작일시</label>
-                        <input type="datetime-local" class="ai-item-start" value="${startVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
+                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">시작 시간</label>
+                        <input type="time" class="ai-item-start-time" value="${startTVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;">
                     </div>
                     <div>
-                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">종료일시</label>
-                        <input type="datetime-local" class="ai-item-end" value="${endVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
+                        <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">종료 시간</label>
+                        <input type="time" class="ai-item-end-time" value="${endTVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;">
                     </div>
                 </div>
+
                 <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 8px;">
                     <input type="text" placeholder="장소 (선택)" class="ai-item-location" value="${escapeHtml(item.location)}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
                     <select class="ai-item-type" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box;">
-                        <option value="DAILY">당일 일정</option>
+                        <option value="DAILY">단일 일정</option>
                         <option value="WEEKLY">주간 반복</option>
                         <option value="MONTHLY">월간 반복</option>
                     </select>
                 </div>
             `;
             container.appendChild(card);
+
+            flatpickr(`#ai-date-${index}`, {
+                mode: "range",
+                locale: "ko",
+                dateFormat: "Y-m-d",
+                defaultDate: startDVal ? [startDVal, endDVal] : []
+            });
         });
     }
 
@@ -1552,57 +1596,87 @@
         const cards = container.querySelectorAll('.ai-schedule-card');
         
         currentExtractedList = [];
-        cards.forEach(card => {
+        cards.forEach((card, index) => {
             const title = card.querySelector('.ai-item-title').value.trim();
             const description = card.querySelector('.ai-item-description').value.trim();
-            const start = card.querySelector('.ai-item-start').value;
-            const end = card.querySelector('.ai-item-end').value;
+            const dateRange = card.querySelector('.ai-item-date').value;
+            const startTime = card.querySelector('.ai-item-start-time').value;
+            const endTime = card.querySelector('.ai-item-end-time').value;
             const location = card.querySelector('.ai-item-location').value.trim();
+            
+            const { startD, endD } = parseExtractedDateRange(dateRange);
             
             currentExtractedList.push({
                 title: title,
                 description: description,
-                startDate: start ? `${start}:00` : null,
-                endDate: end ? `${end}:00` : null,
+                startDate: `${startD}T${startTime || '00:00'}:00`,
+                endDate: `${endD}T${endTime || '00:00'}:00`,
                 location: location || null
             });
         });
     }
 
-    async function reAnalyze() {
+            async function reAnalyze() {
         const requestId = document.getElementById('aiRequestId').value;
-        const promptText = "일정 재분석 요청";
+        // 재분석 시는 사용자가 입력한 요청사항을 최대한 보존하거나, 디폴트 값을 전달합니다.
+        const promptText = document.getElementById('aiPromptText') ? document.getElementById('aiPromptText').value.trim() : "일정 재분석 요청";
 
-        document.getElementById('aiResultStep').style.display = 'none';
-        document.getElementById('aiLoadingStep').style.display = 'block';
-        document.getElementById('aiProgressTitle').innerText = 'AI 일정 재분석 중...';
-        document.getElementById('aiProgressDesc').innerText = '요청하신 정보에 맞춰 일정을 재파싱하고 있습니다.';
+        // 모달창을 즉시 닫고 처음 분석처럼 하단 백그라운드 진행 바를 띄웁니다.
+        closeAiImageModal();
 
-        try {
-            const res = await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
-                method: 'PATCH',
-                headers: {
-                    ...authHeaders(),
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    promptText: promptText,
-                    promptType: '직접'
-                })
-            });
-
-            if (!res.ok) {
-                throw new Error('재분석 요청 실패');
-            }
-
-            const data = await res.json();
-            displayAnalysisResult(data);
-        } catch (e) {
-            console.error(e);
-            showToast('재분석 오류: ' + e.message, true);
-            document.getElementById('aiLoadingStep').style.display = 'none';
-            document.getElementById('aiResultStep').style.display = 'block';
+        localStorage.setItem('ps_ai_status', 'PROCESSING');
+        localStorage.removeItem('ps_ai_cached_result');
+        localStorage.removeItem('ps_ai_fail_reason');
+        
+        if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
+            checkAndRecoverAiBackgroundProcess();
         }
+
+        // 비동기 백그라운드 재분석 기동
+        (async () => {
+            try {
+                // 1) 프롬프트 업데이트 PATCH 호출 (백엔드 PATCH 메소드 내부에서 AI 분석까지 다이렉트 동기 처리 후 완본 리턴함)
+                const patchRes = await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        ...authHeaders(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        promptText: promptText || "일정 재분석 요청",
+                        promptType: '직접'
+                    })
+                });
+
+                if (!patchRes.ok) {
+                    throw new Error('재분석 프롬프트 수정 실패');
+                }
+
+                const resultData = await patchRes.json();
+
+                if (resultData.status === 'FAILED') {
+                    throw new Error(resultData.failReason || 'AI 재분석에 실패했습니다.');
+                }
+
+                // 2) 완료 처리 및 캐시 데이터 갱신
+                localStorage.setItem('ps_ai_status', 'COMPLETED');
+                localStorage.setItem('ps_ai_cached_result', JSON.stringify(resultData));
+                aiCachedResultData = resultData;
+
+                // 하단 백그라운드 진행 바 완료 위젯 UI 업데이트
+                if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
+                    checkAndRecoverAiBackgroundProcess();
+                }
+
+            } catch (e) {
+                console.error(e);
+                localStorage.setItem('ps_ai_status', 'FAILED');
+                localStorage.setItem('ps_ai_fail_reason', e.message);
+                if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
+                    checkAndRecoverAiBackgroundProcess();
+                }
+            }
+        })();
     }
 
     async function confirmSchedule() {
@@ -1646,8 +1720,9 @@
 
         cards.forEach((card, index) => {
             const title = card.querySelector('.ai-item-title').value.trim();
-            const start = card.querySelector('.ai-item-start').value;
-            const end = card.querySelector('.ai-item-end').value;
+            const dateRange = card.querySelector('.ai-item-date').value;
+            const startTime = card.querySelector('.ai-item-start-time').value;
+            const endTime = card.querySelector('.ai-item-end-time').value;
             const location = card.querySelector('.ai-item-location').value.trim();
             const type = card.querySelector('.ai-item-type').value;
 
@@ -1656,38 +1731,13 @@
                 hasError = true;
                 return;
             }
-            if (!start || !end) {
-                showToast(`일정 #${index + 1}의 시작/종료 일시는 필수입니다.`, true);
+            if (!dateRange) {
+                showToast(`일정 #${index + 1}의 날짜는 필수입니다.`, true);
                 hasError = true;
                 return;
             }
 
-            function formatToStrictDateTime(val) {
-                if (!val) return null;
-                let datePart = "";
-                let timePart = "00:00:00";
-                const cleanVal = val.trim();
-                if (cleanVal.includes('T')) {
-                    const parts = cleanVal.split('T');
-                    datePart = parts[0];
-                    timePart = parts[1];
-                } else if (cleanVal.includes(' ')) {
-                    const parts = cleanVal.split(' ');
-                    datePart = parts[0];
-                    timePart = parts[1];
-                } else {
-                    datePart = cleanVal;
-                }
-                const tParts = timePart.split(':');
-                if (tParts.length === 1) {
-                    timePart = `${timePart}:00:00`;
-                } else if (tParts.length === 2) {
-                    timePart = `${timePart}:00`;
-                } else if (tParts.length > 3) {
-                    timePart = tParts.slice(0, 3).join(':');
-                }
-                return `${datePart}T${timePart}`;
-            }
+            const { startD, endD } = parseExtractedDateRange(dateRange);
 
             const description = card.querySelector('.ai-item-description') 
                 ? card.querySelector('.ai-item-description').value.trim() 
@@ -1697,8 +1747,8 @@
                 title: title,
                 description: description || "AI 이미지 분석 등록",
                 scheduleType: type,
-                startDate: formatToStrictDateTime(start),
-                endDate: formatToStrictDateTime(end),
+                startDate: `${startD}T${startTime || '00:00'}:00`,
+                endDate: `${endD}T${endTime || '00:00'}:00`,
                 location: location || null,
                 isPublic: false
             });

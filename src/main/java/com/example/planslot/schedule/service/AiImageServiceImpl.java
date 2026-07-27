@@ -395,7 +395,9 @@ public class AiImageServiceImpl implements AiImageService {
         if (aiImage.getExtractedSchedulesJson() != null && !aiImage.getExtractedSchedulesJson().isBlank()) {
             try {
                 AiImageDTO.ExtractedSchedule[] arr = objectMapper.readValue(aiImage.getExtractedSchedulesJson(), AiImageDTO.ExtractedSchedule[].class);
-                list = new ArrayList<>(Arrays.asList(arr));
+                if (arr != null) {
+                    list = new ArrayList<>(Arrays.asList(arr));
+                }
             } catch (Exception e) {
                 log.error("Failed to deserialize extracted schedules JSON from DB", e);
             }
@@ -420,10 +422,14 @@ public class AiImageServiceImpl implements AiImageService {
         AiImage aiImage = aiImageRepository.findByIdAndMemberId(requestId, memberId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "요청 정보를 찾을 수 없습니다."));
 
-        if (updateRequest.getPromptText() != null && !updateRequest.getPromptText().equals(aiImage.getPromptText())) {
+        // 프롬프트가 변경되었거나, 혹은 수동 수정 데이터(extractedSchedules)가 없는 경우는 무조건 AI 재분석을 수행하도록 강제합니다.
+        boolean isReAnalyze = (updateRequest.getPromptText() != null && !updateRequest.getPromptText().equals(aiImage.getPromptText()))
+                || (updateRequest.getExtractedSchedules() == null);
+
+        if (isReAnalyze) {
             aiImage = aiImage.toBuilder()
                     .promptType(updateRequest.getPromptType() != null ? updateRequest.getPromptType() : aiImage.getPromptType())
-                    .promptText(updateRequest.getPromptText())
+                    .promptText(updateRequest.getPromptText() != null ? updateRequest.getPromptText() : aiImage.getPromptText())
                     .build();
             aiImageRepository.save(aiImage);
             return analyzeAiImage(memberId, requestId);

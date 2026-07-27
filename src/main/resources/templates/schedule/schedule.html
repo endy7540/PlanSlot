@@ -345,11 +345,11 @@
                 <button class="primary" style="background: linear-gradient(135deg, #6366F1, #3B82F6); border: 0; color: white; padding: 8px 12px; font-size: 13px; border-radius: 8px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);" onclick="openAiImageModal()">
                     <span>✨ AI 일정 자동 등록</span>
                 </button>
-                <!-- [임시 테스트용] 현재 월 일정 전체 삭제 버튼 시작 -->
-                <button class="ghost" style="color: #EF4444; border-color: #FEE2E2; background: #FEF2F2; font-weight: 800;" onclick="deleteCurrentMonthSchedules()">
-                    <span>🗑️ 현재 월 일정 전체 삭제</span>
+                <!-- 선택한 날의 일정 전체 삭제 버튼 시작 -->
+                <button class="ghost" style="color: #EF4444; border-color: #FEE2E2; background: #FEF2F2; font-weight: 800;" onclick="deleteSelectedDateSchedules()">
+                    <span>🗑️ 현재 일정 삭제</span>
                 </button>
-                <!-- [임시 테스트용] 현재 월 일정 전체 삭제 버튼 끝 -->
+                <!-- 선택한 날의 일정 전체 삭제 버튼 끝 -->
             </div>
             <div class="cal-nav-center">
                 <button class="ghost" onclick="moveMonth(-1)">◀</button>
@@ -562,9 +562,18 @@
     };
 
     async function loadMonthSchedules() {
-        const start = new Date(viewYear, viewMonth, 1, 0, 0, 0);
-        const end = new Date(viewYear, viewMonth + 1, 0, 23, 59, 59);
-        const url = `${API_BASE}/schedule?start=${encodeURIComponent(fmtLocalDateTime(start))}&end=${encodeURIComponent(fmtLocalDateTime(end))}&_t=${new Date().getTime()}`;
+        const firstOfMonth = new Date(viewYear, viewMonth, 1);
+        const startDow = firstOfMonth.getDay(); // 0=일
+        
+        // 달력 첫 칸에 들어갈 이전 달 꼬리의 시작일 계산
+        const startCalendarDate = new Date(viewYear, viewMonth, 1 - startDow, 0, 0, 0);
+        
+        // 달력 마지막 칸에 들어갈 다음 달 머리의 종료일 계산 (5주 = 35일분량 확보)
+        const endCalendarDate = new Date(startCalendarDate.getTime());
+        endCalendarDate.setDate(endCalendarDate.getDate() + 34);
+        endCalendarDate.setHours(23, 59, 59, 999);
+
+        const url = `${API_BASE}/schedule?start=${encodeURIComponent(fmtLocalDateTime(startCalendarDate))}&end=${encodeURIComponent(fmtLocalDateTime(endCalendarDate))}&_t=${new Date().getTime()}`;
 
         schedulesByDate = {};
         try {
@@ -700,13 +709,13 @@
         for (let d = 1; d <= daysInMonth; d++) {
             cells.push({ day: d, otherMonth: false, y: viewYear, m: viewMonth });
         }
-        // 다음달 머리 (6주 채우기)
+        // 다음달 머리 (5주 채우기)
         const targetM = viewMonth === 11 ? 0 : viewMonth + 1;
         const targetY = viewMonth === 11 ? viewYear + 1 : viewYear;
         let nextDay = 1;
-        while (cells.length % 7 !== 0 || cells.length < 42) {
+        while (cells.length % 7 !== 0 || cells.length < 35) {
             cells.push({ day: nextDay++, otherMonth: true, y: targetY, m: targetM });
-            if (cells.length >= 42) break;
+            if (cells.length >= 35) break;
         }
 
         // 1. 달력 범위의 모든 날짜 키 수집 및 슬롯 초기화
@@ -849,44 +858,178 @@
     }
 
     /* ======================================================== */
-    /* [임시 테스트용] 현재 월 일정 전체 삭제 기능 시작             */
+    /* 선택한 날의 일정 전체/부분 삭제 기능 (일괄 처리)           */
     /* ======================================================== */
-    async function deleteCurrentMonthSchedules() {
-        const uniqueScheduleIds = new Set();
-        Object.values(schedulesByDate).forEach(arr => {
-            arr.forEach(s => {
-                if (s.scheduleId) uniqueScheduleIds.add(s.scheduleId);
-            });
+    async function deleteSelectedDateSchedules() {
+        if (!selectedDateKey) {
+            showToast('먼저 삭제할 날짜를 선택해주세요.', true);
+            return;
+        }
+
+        const daySchedules = schedulesByDate[selectedDateKey] || [];
+        if (daySchedules.length === 0) {
+            showToast(`${selectedDateKey}에 지울 일정이 없습니다.`, true);
+            return;
+        }
+
+        // 연속 일정 존재 여부 판별
+        let hasMultiDay = false;
+        daySchedules.forEach(s => {
+            const startDateStr = getDateOnly(s.startDate);
+            const endDateStr = s.endDate ? getDateOnly(s.endDate) : startDateStr;
+            if (startDateStr !== endDateStr) {
+                hasMultiDay = true;
+            }
         });
+
+        if (hasMultiDay) {
+            // 연속 일정이 있다면: 단 한 번만 모달을 띄워 물어봅니다!
+            document.getElementById('deleteConfirmModalMsg').innerHTML = 
+                `선택한 날인 <strong>${selectedDateKey}</strong>에 등록된 일정 중 연속 일정이 포함되어 있습니다.<br>` +
+                `이 날의 일정만 지우시겠습니까(기간 단축)?<br>아니면 연결된 전체 일정을 삭제하시겠습니까?`;
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+        } else {
+            // 연속 일정이 없다면: 단일 일정들이므로 컨펌 창 하나만 띄우고 일괄 삭제!
+            if (!confirm(`⚠️ 정말로 ${selectedDateKey}의 모든 일정 (${daySchedules.length}개)을 삭제하시겠습니까?`)) {
+                return;
+            }
+
+            try {
+                showToast('일정들을 삭제하는 중입니다...');
+                for (let s of daySchedules) {
+                    await fetch(`${API_BASE}/schedule/${s.scheduleId}`, {
+                        method: 'DELETE',
+                        headers: authHeaders()
+                    });
+                }
+                showToast(`🗑️ ${selectedDateKey}의 일정이 모두 삭제되었습니다.`);
+                await loadMonthSchedules();
+                renderSelectedDateEvents(selectedDateKey);
+            } catch (e) {
+                console.error("일정 일괄 삭제 에러:", e);
+                showToast("삭제 중 오류 발생: " + e.message, true);
+            }
+        }
+    }
+
+    // 사용자가 모달에서 결정을 내리면, 이 함수가 단 한 번 호출되어 일괄적으로 적용합니다!
+    async function executeDeleteChoice(choice) {
+        closeDeleteConfirmModal();
+        showToast('선택하신 일정 삭제 처리 중...');
+
+        const daySchedules = schedulesByDate[selectedDateKey] || [];
         
-        const idsToDelete = Array.from(uniqueScheduleIds);
-        if (idsToDelete.length === 0) {
-            showToast('현재 월에 지울 일정이 없습니다.', true);
-            return;
+        for (let s of daySchedules) {
+            const startDateStr = getDateOnly(s.startDate);
+            const endDateStr = s.endDate ? getDateOnly(s.endDate) : startDateStr;
+            const isMultiDay = startDateStr !== endDateStr;
+
+            if (choice === 'all' || !isMultiDay) {
+                // 전체 삭제 대상이거나, 단일 일정인 경우 무조건 삭제(DELETE)
+                try {
+                    await fetch(`${API_BASE}/schedule/${s.scheduleId}`, {
+                        method: 'DELETE',
+                        headers: authHeaders()
+                    });
+                } catch (e) {
+                    console.error("일정 삭제 실패:", e);
+                }
+            } else if (choice === 'single' && isMultiDay) {
+                // 연속 일정이면서 부분 삭제 대상인 경우
+                const startD = new Date(startDateStr);
+                const endD = new Date(endDateStr);
+
+                try {
+                    if (selectedDateKey === startDateStr) {
+                        // 시작일 삭제 -> 시작일 1일 뒤로
+                        startD.setDate(startD.getDate() + 1);
+                        const newStartStr = fmtLocalDateTime(startD);
+                        await updateScheduleDates(s, newStartStr, s.endDate);
+                    } else if (selectedDateKey === endDateStr) {
+                        // 종료일 삭제 -> 종료일 1일 앞으로
+                        endD.setDate(endD.getDate() - 1);
+                        const newEndStr = fmtLocalDateTime(endD);
+                        await updateScheduleDates(s, s.startDate, newEndStr);
+                    } else {
+                        // 중간일 삭제 -> 앞부분 단축 & 뒷부분 신규 등록
+                        const frontEndD = new Date(selectedDateKey);
+                        frontEndD.setDate(frontEndD.getDate() - 1);
+                        frontEndD.setHours(23, 59, 59, 0);
+                        const frontEndStr = fmtLocalDateTime(frontEndD);
+                        await updateScheduleDates(s, s.startDate, frontEndStr);
+
+                        const backStartD = new Date(selectedDateKey);
+                        backStartD.setDate(backStartD.getDate() + 1);
+                        backStartD.setHours(0, 0, 0, 0);
+                        const backStartStr = fmtLocalDateTime(backStartD);
+                        await createSplitSchedule(s, backStartStr, s.endDate);
+                    }
+                } catch (e) {
+                    console.error("연속 일정 부분 삭제 실패:", e);
+                }
+            }
         }
 
-        if (!confirm(`⚠️ 정말로 현재 화면에 보이는 모든 일정(${idsToDelete.length}개)을 삭제하시겠습니까?`)) {
-            return;
-        }
+        showToast(`🗑️ 일정 삭제 및 단축 처리가 모두 완료되었습니다.`);
+        await loadMonthSchedules();
+        renderSelectedDateEvents(selectedDateKey);
+    }
 
-        try {
-            showToast('일정들을 삭제하는 중입니다...');
-            const deletePromises = idsToDelete.map(id => 
-                fetch(`${API_BASE}/schedule/${id}`, {
-                    method: 'DELETE',
-                    headers: authHeaders()
-                })
-            );
-            await Promise.all(deletePromises);
-            showToast(`🗑️ 총 ${idsToDelete.length}개의 일정이 모두 삭제되었습니다.`);
-            await loadMonthSchedules();
-        } catch (e) {
-            console.error("일정 전체 삭제 에러:", e);
-            showToast("일정 삭제 중 오류 발생: " + e.message, true);
+    function closeDeleteConfirmModal() {
+        document.getElementById('deleteConfirmModal').style.display = 'none';
+    }
+
+    // 일정 날짜 업데이트 PUT 호출 도우미
+    async function updateScheduleDates(originalSchedule, newStart, newEnd) {
+        const payload = {
+            title: originalSchedule.title,
+            description: originalSchedule.description,
+            scheduleType: originalSchedule.scheduleType,
+            startDate: newStart,
+            endDate: newEnd,
+            isPublic: (originalSchedule.isPublic === 'Y' || originalSchedule.isPublic === true || originalSchedule.public === 'Y' || originalSchedule.public === true),
+            location: originalSchedule.location,
+            recurrenceEndDate: originalSchedule.recurrenceEndDate
+        };
+
+        const res = await fetch(`${API_BASE}/schedule/${originalSchedule.scheduleId}`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || '일정 기간 단축 업데이트 실패');
+        }
+    }
+
+    // 쪼개진 일정 생성 POST 호출 도우미
+    async function createSplitSchedule(originalSchedule, start, end) {
+        const payload = {
+            title: originalSchedule.title,
+            description: originalSchedule.description,
+            scheduleType: originalSchedule.scheduleType,
+            startDate: start,
+            endDate: end,
+            isPublic: (originalSchedule.isPublic === 'Y' || originalSchedule.isPublic === true || originalSchedule.public === 'Y' || originalSchedule.public === true),
+            location: originalSchedule.location,
+            recurrenceEndDate: originalSchedule.recurrenceEndDate
+        };
+
+        const res = await fetch(`${API_BASE}/schedule`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || '쪼개진 일정 생성 실패');
         }
     }
     /* ======================================================== */
-    /* [임시 테스트용] 현재 월 일정 전체 삭제 기능 끝             */
+    /* 선택한 날의 일정 전체/부분 삭제 기능 끝                    */
     /* ======================================================== */
 
     function openNewSchedule(dateKey) {
@@ -1379,6 +1522,9 @@
                 <div>
                     <input type="text" placeholder="일정 제목" class="ai-item-title" value="${escapeHtml(item.title)}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 13px; font-weight: 700; color: #334155; box-sizing: border-box;">
                 </div>
+                <div>
+                    <input type="text" placeholder="일정 설명 (상세 내용)" class="ai-item-description" value="${escapeHtml(item.description || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; color: #475569; box-sizing: border-box;">
+                </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                     <div>
                         <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">시작일시</label>
@@ -1419,12 +1565,14 @@
         currentExtractedList = [];
         cards.forEach(card => {
             const title = card.querySelector('.ai-item-title').value.trim();
+            const description = card.querySelector('.ai-item-description').value.trim();
             const start = card.querySelector('.ai-item-start').value;
             const end = card.querySelector('.ai-item-end').value;
             const location = card.querySelector('.ai-item-location').value.trim();
             
             currentExtractedList.push({
                 title: title,
+                description: description,
                 startDate: start ? `${start}:00` : null,
                 endDate: end ? `${end}:00` : null,
                 location: location || null
@@ -1552,9 +1700,13 @@
                 return `${datePart}T${timePart}`;
             }
 
+            const description = card.querySelector('.ai-item-description') 
+                ? card.querySelector('.ai-item-description').value.trim() 
+                : "AI 이미지 분석 등록";
+
             confirmRequests.push({
                 title: title,
-                description: "AI 이미지 분석 등록",
+                description: description || "AI 이미지 분석 등록",
                 scheduleType: type,
                 startDate: formatToStrictDateTime(start),
                 endDate: formatToStrictDateTime(end),
@@ -1703,6 +1855,28 @@
                     <button id="aiConfirmBtn" class="primary" onclick="confirmSchedule()" style="padding: 10px 20px; font-size: 13px; border-radius: 8px; border: 0; background: linear-gradient(135deg, #10B981, #059669); color: white; font-weight: bold; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); cursor: pointer;">📅 캘린더 등록 확정</button>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- 연속 일정 부분/전체 삭제 선택 모달 HTML -->
+<div id="deleteConfirmModal" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="panel" style="width: 100%; max-width: 440px; border-radius: 16px; background: white; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid #E2E8F0; padding: 24px; text-align: center;">
+        <span style="font-size: 32px; display: block; margin-bottom: 12px;">📅</span>
+        <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #1E293B;">연속 일정 삭제 선택</h3>
+        <p id="deleteConfirmModalMsg" style="color: #64748B; font-size: 13.5px; margin: 0 0 20px; line-height: 1.6; word-break: keep-all;">
+            이 일정은 다른 날과 연결된 연속 일정입니다.<br>선택한 날의 일정만 지우시겠습니까? 아니면 전체 일정을 삭제하시겠습니까?
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="primary" onclick="executeDeleteChoice('single')" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #3B82F6; color: white; font-weight: bold; cursor: pointer; transition: 0.15s;">
+                👉 선택한 날의 일정만 삭제 (기간 단축)
+            </button>
+            <button class="primary" onclick="executeDeleteChoice('all')" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer; transition: 0.15s;">
+                🗑️ 연결된 전체 일정 삭제
+            </button>
+            <button class="ghost" onclick="closeDeleteConfirmModal()" style="padding: 10px; font-size: 13px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer; margin-top: 4px;">
+                취소
+            </button>
         </div>
     </div>
 </div>

@@ -134,7 +134,8 @@ public class AiImageServiceImpl implements AiImageService {
             String systemInstruction = "You are a professional assistant specialized in schedule extraction. " +
                     "Analyze the attached calendar/schedule image and extract ALL event items. " +
                     "You MUST reply ONLY with a single JSON Array containing objects with the exact schema below: " +
-                    "[ { \"title\": \"event title\", \"startDate\": \"YYYY-MM-DDTHH:mm:ss\", \"endDate\": \"YYYY-MM-DDTHH:mm:ss\", \"location\": \"location or null\" } ]. " +
+                    "[ { \"title\": \"event title\", \"description\": \"detailed details, notes or description of the event\", \"startDate\": \"YYYY-MM-DDTHH:mm:ss\", \"endDate\": \"YYYY-MM-DDTHH:mm:ss\", \"location\": \"location or null\" } ]. " +
+                    "Ensure that the 'title' is very concise and brief (e.g., 'Study Group', 'Lunch Meeting', 'Family Dinner'), and put all lengthy descriptions, extra details, or additional notes into the 'description' field. " +
                     "Do NOT wrap the JSON in markdown formatting (like ```json), do NOT include any introductory or concluding text, and do NOT use backticks. " +
                     "If NO schedule items can be found in the image, you MUST return an empty JSON Array: []. " +
                     "Ensure correct dates, times, and years. If the year is not explicitly written in the image, you MUST assume the year is 2026. If a time is missing, assume 1 hour duration.";
@@ -214,6 +215,7 @@ public class AiImageServiceImpl implements AiImageService {
             if (arrayNode.isArray()) {
                 for (JsonNode node : arrayNode) {
                     String t = node.path("title").asText("AI 분석 일정").trim();
+                    String desc = node.path("description").asText("").trim();
                     String startS = node.path("startDate").asText();
                     String endS = node.path("endDate").asText();
                     String loc = node.has("location") && !node.path("location").isNull() 
@@ -225,6 +227,7 @@ public class AiImageServiceImpl implements AiImageService {
 
                     list.add(AiImageDTO.ExtractedSchedule.builder()
                             .title(t)
+                            .description(desc)
                             .startDate(parsedS)
                             .endDate(parsedE)
                             .location(loc)
@@ -350,6 +353,7 @@ public class AiImageServiceImpl implements AiImageService {
         List<AiImageDTO.ExtractedSchedule> list = new ArrayList<>();
         list.add(AiImageDTO.ExtractedSchedule.builder()
                 .title(title)
+                .description("시뮬레이션으로 자동 구성된 분석 일정 세부 내용입니다.")
                 .startDate(extractedStart)
                 .endDate(extractedEnd)
                 .location(location)
@@ -357,6 +361,7 @@ public class AiImageServiceImpl implements AiImageService {
 
         list.add(AiImageDTO.ExtractedSchedule.builder()
                 .title(title + " 2차 모임")
+                .description("시뮬레이션으로 자동 구성된 분석 일정 세부 내용입니다.")
                 .startDate(extractedStart.plusDays(3))
                 .endDate(extractedEnd.plusDays(3))
                 .location(location)
@@ -364,6 +369,7 @@ public class AiImageServiceImpl implements AiImageService {
 
         list.add(AiImageDTO.ExtractedSchedule.builder()
                 .title(title + " 최종 리허설")
+                .description("최종 리허설 및 준비 사항 체크 일정 설명입니다.")
                 .startDate(extractedStart.plusDays(7))
                 .endDate(extractedEnd.plusDays(7))
                 .location("본부 대회의실")
@@ -397,6 +403,7 @@ public class AiImageServiceImpl implements AiImageService {
         if (list.isEmpty() && aiImage.getExtractedTitle() != null) {
             list.add(AiImageDTO.ExtractedSchedule.builder()
                     .title(aiImage.getExtractedTitle())
+                    .description("AI 이미지 분석 등록")
                     .startDate(aiImage.getExtractedStartDate())
                     .endDate(aiImage.getExtractedEndDate())
                     .location(aiImage.getExtractedLocation())
@@ -439,6 +446,7 @@ public class AiImageServiceImpl implements AiImageService {
             list = new ArrayList<>();
             list.add(AiImageDTO.ExtractedSchedule.builder()
                     .title(aiImage.getExtractedTitle())
+                    .description("AI 이미지 분석 등록")
                     .startDate(aiImage.getExtractedStartDate())
                     .endDate(aiImage.getExtractedEndDate())
                     .location(aiImage.getExtractedLocation())

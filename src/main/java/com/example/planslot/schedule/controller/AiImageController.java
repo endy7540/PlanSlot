@@ -98,4 +98,15 @@ public class AiImageController {
         List<AiImageDTO.Response> list = aiImageService.getAiImageList(memberId);
         return ResponseEntity.ok(list);
     }
+
+    // 7. AI 분석 요청 데이터 및 실물 이미지 일괄 삭제 (RESTful Delete)
+    @DeleteMapping("/{requestId}")
+    public ResponseEntity<Void> deleteAiImageAnalysis(
+            @PathVariable Long requestId,
+            Authentication authentication
+    ) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        aiImageService.deleteAiImageAnalysis(memberId, requestId);
+        return ResponseEntity.noContent().build();
+    }
 }

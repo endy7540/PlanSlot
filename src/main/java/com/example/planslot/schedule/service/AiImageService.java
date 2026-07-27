@@ -24,4 +24,7 @@ public interface AiImageService {
 
     // 로그인 회원의 AI 일정 이미지 리스트 전체 조회
     List<AiImageDTO.Response> getAiImageList(Long memberId);
+
+    // AI 일정 이미지 분석 요청 데이터 및 서버 물리 파일 일괄 삭제
+    void deleteAiImageAnalysis(Long memberId, Long requestId);
 }

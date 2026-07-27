@@ -102,41 +102,84 @@
         .cal-grid{
             display:grid;
             grid-template-columns:repeat(7,minmax(0,1fr));
-            gap:6px;
+            gap:0px;
+        }
+        #dowRow {
+            border-top: 2px solid #DCEFFC;
+            border-left: 2px solid #DCEFFC;
+            border-right: 2px solid #DCEFFC;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            overflow: hidden;
+        }
+        #calGrid {
+            border-bottom: 2px solid #DCEFFC;
+            border-left: 2px solid #DCEFFC;
+            border-right: 2px solid #DCEFFC;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            overflow: hidden;
+            margin-top: 0px !important;
         }
         .cal-dow{
             text-align:center;
             font-size:12px;
             font-weight:900;
             color:#748898;
-            padding:6px 0;
+            background: #F3FAFF;
+            padding:10px 0;
+            border-bottom: 1px solid #DCEFFC;
+            border-right: 1px solid #DCEFFC;
+        }
+        .cal-dow:last-child {
+            border-right: 0;
         }
         .cal-day{
             min-height:110px;
             max-height:160px;
             min-width:0;
             overflow:hidden;
-            border:2px solid #DCEFFC;
-            border-radius:10px;
-            padding:6px;
+            border-bottom: 1px solid #DCEFFC;
+            border-right: 1px solid #DCEFFC;
+            padding:8px 6px;
             display:flex;
             flex-direction:column;
             gap:4px;
             background:#fff;
             cursor:pointer;
             transition:.15s;
+            border-radius: 0px !important;
         }
-        .cal-day:hover{background:#F0F9FF;border-color:#38BDF8}
+        .cal-day:hover{background:#F0F9FF;}
+        .cal-day:nth-child(7n) {
+            border-right: 0;
+        }
+        .cal-day:nth-last-child(-n+7) {
+            border-bottom: 0;
+        }
         .cal-day.other-month{background:#FAFCFE;opacity:.45}
-        .cal-day.today{border-color:#38BDF8;box-shadow:0 0 0 2px rgba(56,189,248,.15) inset}
-        .cal-day .date-num{font-size:12px;font-weight:900;color:#475569}
-        .cal-day.today .date-num{color:#075985}
+        .cal-day.today{background:#F8FAFC}
+        .cal-day .date-num{
+            display: inline-flex;
+            width: 22px;
+            height: 22px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 900;
+            color: #475569;
+        }
+        .cal-day.today .date-num{
+            background: #0F172A;
+            color: #fff !important;
+        }
         .cal-day .date-num.red-day{color:#ef4444}
         .cal-day.other-month .date-num.red-day{color:#fca5a5}
         .cal-day.just-added{animation:pulse-highlight 2.5s ease}
         @keyframes pulse-highlight{
-            0%{background:#FEF9C3;border-color:#FACC15}
-            100%{background:#fff;border-color:#DCEFFC}
+            0%{background:#FEF9C3;}
+            100%{background:#fff;}
         }
 
         .event-chip{
@@ -200,7 +243,6 @@
             overflow:auto;
         }
         .cal-day.selected-day {
-            border-color: #075985;
             background: #F0F9FF;
             box-shadow: 0 0 0 2px rgba(7, 89, 133, 0.15) inset;
         }
@@ -784,7 +826,11 @@
                     console.error("연속 일정 판정 오류:", e);
                 }
 
-                return `<div class="event-chip${isPub ? ' public' : ''}${searchClass}${durationClass}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${escapeHtml(s.title)}</div>`;
+                const displayTitle = (durationClass === ' event-middle' || durationClass === ' event-end')
+                    ? '&nbsp;'
+                    : escapeHtml(s.title);
+
+                return `<div class="event-chip${isPub ? ' public' : ''}${searchClass}${durationClass}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${displayTitle}</div>`;
             }).join('');
 
             // 더보기 개수 계산

@@ -483,24 +483,25 @@ public class AiImageServiceImpl implements AiImageService {
                 schedule = scheduleRepository.save(schedule);
 
                 // 구글 캘린더 Push (CompletableFuture로 비동기 스레드에서 처리하여 지연 방지)
+                // 트랜잭션이 실제로 DB에 커밋된 직후에 비동기 스레드를 실행하도록 조율합니다.
                 if (member.isGoogleSyncEnabled() && member.getGoogleAccessToken() != null) {
                     final Long scheduleId = schedule.getScheduleId();
-                    java.util.concurrent.CompletableFuture.runAsync(() -> {
-                        try {
-                            Member currentMember = memberRepository.findById(memberId).orElse(null);
-                            Schedule currentSchedule = scheduleRepository.findById(scheduleId).orElse(null);
-                            if (currentMember != null && currentSchedule != null) {
-                                String googleEventId = googleCalendarService.insertEvent(currentMember, currentSchedule);
-                                if (googleEventId != null) {
-                                    currentSchedule.syncGoogleCalendar(googleEventId);
-                                    scheduleRepository.save(currentSchedule);
-                                    System.out.println("[AI-Confirm] Asynchronously synced schedule ID: " + scheduleId + " with Google Calendar. Event ID: " + googleEventId);
+                    if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
+                        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                            new org.springframework.transaction.support.TransactionSynchronization() {
+                                @Override
+                                public void afterCommit() {
+                                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                                        triggerGoogleSync(memberId, scheduleId);
+                                    });
                                 }
                             }
-                        } catch (Exception e) {
-                            System.err.println("[AI-Confirm] Failed to async sync schedule with Google Calendar: " + e.getMessage());
-                        }
-                    });
+                        );
+                    } else {
+                        java.util.concurrent.CompletableFuture.runAsync(() -> {
+                            triggerGoogleSync(memberId, scheduleId);
+                        });
+                    }
                 }
 
                 lastSaved = schedule;
@@ -535,6 +536,27 @@ public class AiImageServiceImpl implements AiImageService {
             System.err.println("[AI-Confirm] Error occurred during confirmAiImageSchedule!");
             ex.printStackTrace();
             throw ex;
+        }
+    }
+
+    private void triggerGoogleSync(Long memberId, Long scheduleId) {
+        try {
+            Member currentMember = memberRepository.findById(memberId).orElse(null);
+            Schedule currentSchedule = scheduleRepository.findById(scheduleId).orElse(null);
+            if (currentMember != null && currentSchedule != null) {
+                String googleEventId = googleCalendarService.insertEvent(currentMember, currentSchedule);
+                if (googleEventId != null) {
+                    currentSchedule.syncGoogleCalendar(googleEventId);
+                    scheduleRepository.save(currentSchedule);
+                    System.out.println("[AI-Confirm] Asynchronously synced schedule ID: " + scheduleId + " with Google Calendar. Event ID: " + googleEventId);
+                } else {
+                    System.err.println("[AI-Confirm] Failed to sync schedule ID: " + scheduleId + " (insertEvent returned null)");
+                }
+            } else {
+                System.err.println("[AI-Confirm] Sync skipped. Member or Schedule not found for memberId: " + memberId + ", scheduleId: " + scheduleId);
+            }
+        } catch (Exception e) {
+            System.err.println("[AI-Confirm] Failed to async sync schedule with Google Calendar: " + e.getMessage());
         }
     }
 

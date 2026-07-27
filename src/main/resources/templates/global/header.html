@@ -2,282 +2,262 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <body>
 <div th:fragment="headerFragment">
-    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
-    <link rel="stylesheet" th:href="@{/css/notification/notification.css}">
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="stylesheet" th:href="@{/css/notification/notification.css}">
 
-    <link rel="stylesheet" th:href="@{/css/global/header.css}">
+  <link rel="stylesheet" th:href="@{/css/global/header.css}">
 
-    <header class="header-nav">
-        <div class="header-brand" onclick="location.href='/planslot'">
-            <div class="logo">PlanSlot</div>
-            <div class="tagline">
-                AI가 함께하는 일정 플랫폼
-            </div>
-        </div>
-
-        <!-- 4가지 카테고리 -->
-        <nav class="header-menu">
-            <a th:href="@{/schedule}">개인 캘린더</a>
-            <a th:href="@{/group}">모임 캘린더</a>
-            <a th:href="@{/groupChat}">모임 채팅방</a>
-            <a th:href="@{/board}">모임 게시판</a>
-        </nav>
-
-        <div class="header-actions">
-            <div class="notification-wrap">
-                <button class="notification-bell" id="notificationBell" type="button" aria-label="알림 열기">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
-                        <path d="M10 21h4"></path>
-                    </svg>
-                    <span class="notification-badge" id="notificationBadge">0</span>
-                </button>
-
-                <div class="notification-dropdown" id="notificationDropdown">
-                    <div class="notification-dropdown-head">
-                        <div>
-                            <b>알림</b>
-                            <span id="dropdownUnreadText">읽지 않은 알림 0개</span>
-                        </div>
-                        <button class="notification-text-button" id="dropdownReadAll" type="button">전체 읽음</button>
-                    </div>
-
-                    <div class="notification-dropdown-list" id="notificationDropdownList">
-                        <div class="notification-loading">알림을 불러오는 중...</div>
-                    </div>
-
-                    <a class="notification-view-all" th:href="@{/notification/list}" href="/notification/list">
-                        알림 전체 보기 →
-                    </a>
-                </div>
-            </div>
-
-            <div class="profile-dropdown-wrap" id="profileWrap" style="display: none;">
-                <button class="profile-btn" id="profileBtn" type="button" aria-label="프로필 메뉴">
-                    <span class="profile-nickname" id="headerNickname">로딩중...</span>
-                    <img src="/images/default-avatar.png" onerror="this.src='https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'" alt="" class="profile-img" id="headerProfileImage">
-                </button>
-                <div class="profile-dropdown" id="profileDropdown" style="display: none;">
-                    <a id="adminPageLink" th:href="@{/admin/reports}" style="display:none; color:#B91C1C; font-weight:bold;">관리자 페이지</a>
-                    <a th:href="@{/mypage}">마이페이지</a>
-                    <button id="logoutBtn" type="button">로그아웃</button>
-                </div>
-            </div>
-            <button id="loginBtn" class="btn-logout" style="display: none;" onclick="window.location.href='/auth/login'">로그인</button>
-        </div>
-    </header>
-
-    <!-- [공통 백그라운드 AI 분석 진행용 플로팅 위젯] -->
-    <div id="aiFloatingWidget" style="display: none; position: fixed; bottom: 24px; right: 24px; width: 340px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid rgba(226, 232, 240, 0.8); border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05); padding: 18px; z-index: 10001; font-family: inherit; transition: all 0.3s ease;">
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-            <div id="aiWidgetIcon" style="font-size: 24px; animation: pulse 2s infinite;">🔮</div>
-            <div style="flex: 1;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                    <span id="aiWidgetTitle" style="font-size: 14px; font-weight: 800; color: #1E293B;">AI 이미지 일정 분석 중</span>
-                    <button style="background: none; border: 0; font-size: 16px; color: #94A3B8; cursor: pointer; font-weight: bold; line-height: 1;" onclick="closeAiWidget()">×</button>
-                </div>
-                <p id="aiWidgetDesc" style="color: #64748B; font-size: 12px; margin: 0 0 10px; line-height: 1.4;">이미지 파일을 서버로 업로드하여 분석 요청을 보내는 중입니다...</p>
-                <div id="aiWidgetLoadingBar" style="width: 100%; height: 4px; background: #F1F5F9; border-radius: 2px; overflow: hidden; margin-bottom: 10px;">
-                    <div id="aiWidgetProgressBar" style="width: 15%; height: 100%; background: linear-gradient(90deg, #6366F1, #3B82F6); border-radius: 2px; transition: width 0.3s ease;"></div>
-                </div>
-                <div id="aiWidgetActionContainer" style="display: none; text-align: right;">
-                    <button id="aiWidgetActionBtn" style="padding: 6px 12px; font-size: 11px; border-radius: 6px; border: 0; background: linear-gradient(135deg, #6366F1, #3B82F6); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 2px 6px rgba(99, 102, 241, 0.25);" onclick="openWidgetResult()">📋 분석 결과 확인</button>
-                </div>
-            </div>
-        </div>
+  <header class="header-nav">
+    <div class="header-brand" onclick="location.href='/planslot'">
+      <div class="logo">PlanSlot</div>
+      <div class="tagline">
+        AI가 함께하는 일정 플랫폼
+      </div>
     </div>
 
-    <!-- [모임 AI 시간 추천 진행용 플로팅 위젯] -->
-    <div id="groupAiFloatingWidget" style="display: none; position: fixed; bottom: 320px; right: 24px; width: 340px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid rgba(226, 232, 240, 0.8); border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05); padding: 18px; z-index: 10001; font-family: inherit; transition: all 0.3s ease;">
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-            <div id="groupAiWidgetIcon" style="font-size: 24px; animation: pulse 2s infinite;">✨</div>
-            <div style="flex: 1;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                    <span id="groupAiWidgetTitle" style="font-size: 14px; font-weight: 800; color: #1E293B;">AI 시간 추천 분석 중</span>
-                    <button style="background: none; border: 0; font-size: 16px; color: #94A3B8; cursor: pointer; font-weight: bold; line-height: 1;" onclick="closeGroupAiWidget()">×</button>
-                </div>
-                <p id="groupAiWidgetDesc" style="color: #64748B; font-size: 12px; margin: 0 0 10px; line-height: 1.4;">모임원들의 일정을 분석해서 추천 시간을 찾는 중입니다...</p>
-                <div id="groupAiWidgetLoadingBar" style="width: 100%; height: 4px; background: #F1F5F9; border-radius: 2px; overflow: hidden; margin-bottom: 10px;">
-                    <div id="groupAiWidgetProgressBar" style="width: 15%; height: 100%; background: linear-gradient(90deg, #0D9488, #38BDF8); border-radius: 2px; transition: width 0.3s ease;"></div>
-                </div>
-                <div id="groupAiWidgetActionContainer" style="display: none; text-align: right;">
-                    <button id="groupAiWidgetActionBtn" style="padding: 6px 12px; font-size: 11px; border-radius: 6px; border: 0; background: linear-gradient(135deg, #0D9488, #38BDF8); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25);" onclick="openGroupAiWidgetResult()">📋 추천 결과 보러가기</button>
-                </div>
-            </div>
+    <!-- 4가지 카테고리 -->
+    <nav class="header-menu">
+      <a th:href="@{/schedule}">개인 캘린더</a>
+      <a th:href="@{/group}">모임 캘린더</a>
+      <a th:href="@{/groupChat}">모임 채팅방</a>
+      <a th:href="@{/board}">모임 게시판</a>
+    </nav>
+
+    <div class="header-actions">
+      <div class="profile-dropdown-wrap" id="profileWrap" style="display: none;">
+        <button class="profile-btn" id="profileBtn" type="button" aria-label="프로필 메뉴">
+          <span class="profile-nickname" id="headerNickname">로딩중...</span>
+          <img src="/images/default-avatar.png" onerror="this.src='https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'" alt="" class="profile-img" id="headerProfileImage">
+        </button>
+        <div class="profile-dropdown" id="profileDropdown" style="display: none;">
+          <a id="adminPageLink" th:href="@{/admin/reports}" style="display:none; color:#B91C1C; font-weight:bold;">관리자 페이지</a>
+          <a th:href="@{/mypage}">마이페이지</a>
+          <button id="logoutBtn" type="button">로그아웃</button>
         </div>
+      </div>
+      <button id="loginBtn" class="btn-logout" style="display: none;" onclick="window.location.href='/auth/login'">로그인</button>
+
+      <div class="notification-wrap">
+        <button class="notification-bell" id="notificationBell" type="button" aria-label="알림 열기">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+            <path d="M10 21h4"></path>
+          </svg>
+          <span class="notification-badge" id="notificationBadge">0</span>
+        </button>
+
+        <div class="notification-dropdown" id="notificationDropdown">
+          <div class="notification-dropdown-head">
+            <div>
+              <b>알림</b>
+              <span id="dropdownUnreadText">읽지 않은 알림 0개</span>
+            </div>
+            <button class="notification-text-button" id="dropdownReadAll" type="button">전체 읽음</button>
+          </div>
+
+          <div class="notification-dropdown-list" id="notificationDropdownList">
+            <div class="notification-loading">알림을 불러오는 중...</div>
+          </div>
+
+          <a class="notification-view-all" th:href="@{/notification/list}" href="/notification/list">
+            알림 전체 보기 →
+          </a>
+        </div>
+      </div>
     </div>
+  </header>
 
-    <style>
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
-    </style>
+  <!-- [공통 백그라운드 AI 분석 진행용 플로팅 위젯] -->
+  <div id="aiFloatingWidget" style="display: none; position: fixed; bottom: 24px; right: 24px; width: 340px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid rgba(226, 232, 240, 0.8); border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05); padding: 18px; z-index: 10001; font-family: inherit; transition: all 0.3s ease;">
+      <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <div id="aiWidgetIcon" style="font-size: 24px; animation: pulse 2s infinite;">🔮</div>
+          <div style="flex: 1;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                  <span id="aiWidgetTitle" style="font-size: 14px; font-weight: 800; color: #1E293B;">AI 이미지 일정 분석 중</span>
+                  <button style="background: none; border: 0; font-size: 16px; color: #94A3B8; cursor: pointer; font-weight: bold; line-height: 1;" onclick="closeAiWidget()">×</button>
+              </div>
+              <p id="aiWidgetDesc" style="color: #64748B; font-size: 12px; margin: 0 0 10px; line-height: 1.4;">이미지 파일을 서버로 업로드하여 분석 요청을 보내는 중입니다...</p>
+              <div id="aiWidgetLoadingBar" style="width: 100%; height: 4px; background: #F1F5F9; border-radius: 2px; overflow: hidden; margin-bottom: 10px;">
+                  <div id="aiWidgetProgressBar" style="width: 15%; height: 100%; background: linear-gradient(90deg, #6366F1, #3B82F6); border-radius: 2px; transition: width 0.3s ease;"></div>
+              </div>
+              <div id="aiWidgetActionContainer" style="display: none; text-align: right;">
+                  <button id="aiWidgetActionBtn" style="padding: 6px 12px; font-size: 11px; border-radius: 6px; border: 0; background: linear-gradient(135deg, #6366F1, #3B82F6); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 2px 6px rgba(99, 102, 241, 0.25);" onclick="openWidgetResult()">📋 분석 결과 확인</button>
+              </div>
+          </div>
+      </div>
+  </div>
 
-    <script>
-        const HEADER_API_BASE = window.location.origin;
-        let headerPollingTimer = null;
+  <style>
+  @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+  }
+  </style>
 
-        function getAuthToken() {
-            return localStorage.getItem('jwtToken');
-        }
+  <script>
+      const HEADER_API_BASE = window.location.origin;
+      let headerPollingTimer = null;
 
-        function closeAiWidget() {
-            const widget = document.getElementById('aiFloatingWidget');
-            if (widget) widget.style.display = 'none';
-            clearAiStorage();
-        }
+      function getAuthToken() {
+          return localStorage.getItem('jwtToken');
+      }
 
-        function clearAiStorage() {
-            localStorage.removeItem('ps_ai_request_id');
-            localStorage.removeItem('ps_ai_status');
-            localStorage.removeItem('ps_ai_cached_result');
-            localStorage.removeItem('ps_ai_fail_reason');
-        }
+      function closeAiWidget() {
+          const widget = document.getElementById('aiFloatingWidget');
+          if (widget) widget.style.display = 'none';
+          clearAiStorage();
+      }
 
-        function openWidgetResult() {
-            const resultDataStr = localStorage.getItem('ps_ai_cached_result');
-            if (!resultDataStr) return;
+      function clearAiStorage() {
+          localStorage.removeItem('ps_ai_request_id');
+          localStorage.removeItem('ps_ai_status');
+          localStorage.removeItem('ps_ai_cached_result');
+          localStorage.removeItem('ps_ai_fail_reason');
+      }
 
-            if (window.location.pathname.startsWith('/schedule')) {
-                const widget = document.getElementById('aiFloatingWidget');
-                if (widget) widget.style.display = 'none';
+      function openWidgetResult() {
+          const resultDataStr = localStorage.getItem('ps_ai_cached_result');
+          if (!resultDataStr) return;
 
-                const aiImageModal = document.getElementById('aiImageModal');
-                if (aiImageModal) {
-                    aiImageModal.style.display = 'flex';
-                    document.getElementById('aiUploadStep').style.display = 'none';
-                    document.getElementById('aiLoadingStep').style.display = 'none';
+          if (window.location.pathname.startsWith('/schedule')) {
+              const widget = document.getElementById('aiFloatingWidget');
+              if (widget) widget.style.display = 'none';
+              
+              const aiImageModal = document.getElementById('aiImageModal');
+              if (aiImageModal) {
+                  aiImageModal.style.display = 'flex';
+                  document.getElementById('aiUploadStep').style.display = 'none';
+                  document.getElementById('aiLoadingStep').style.display = 'none';
+                  
+                  aiCachedResultData = JSON.parse(resultDataStr);
+                  displayAnalysisResult(aiCachedResultData);
+              }
+          } else {
+              window.location.href = '/schedule?showAiResult=true';
+          }
+      }
 
-                    aiCachedResultData = JSON.parse(resultDataStr);
-                    displayAnalysisResult(aiCachedResultData);
-                }
-            } else {
-                window.location.href = '/schedule?showAiResult=true';
-            }
-        }
+      function checkAndRecoverAiBackgroundProcess() {
+          const requestId = localStorage.getItem('ps_ai_request_id');
+          const status = localStorage.getItem('ps_ai_status');
 
-        function checkAndRecoverAiBackgroundProcess() {
-            const requestId = localStorage.getItem('ps_ai_request_id');
-            const status = localStorage.getItem('ps_ai_status');
+          if (!requestId || !status) return;
 
-            if (!requestId || !status) return;
+          const widget = document.getElementById('aiFloatingWidget');
+          if (!widget) return;
 
-            const widget = document.getElementById('aiFloatingWidget');
-            if (!widget) return;
+          const widgetTitle = document.getElementById('aiWidgetTitle');
+          const widgetDesc = document.getElementById('aiWidgetDesc');
+          const widgetBar = document.getElementById('aiWidgetProgressBar');
+          const widgetAction = document.getElementById('aiWidgetActionContainer');
 
-            const widgetTitle = document.getElementById('aiWidgetTitle');
-            const widgetDesc = document.getElementById('aiWidgetDesc');
-            const widgetBar = document.getElementById('aiWidgetProgressBar');
-            const widgetAction = document.getElementById('aiWidgetActionContainer');
+          if (status === 'PROCESSING') {
+              widget.style.display = 'block';
+              widgetTitle.innerText = 'AI 일정 분석 중';
+              widgetDesc.innerText = '이전 페이지에서 시작된 AI 분석 작업을 계속 수행 중입니다...';
+              widgetBar.style.width = '65%';
+              widgetBar.style.background = 'linear-gradient(90deg, #6366F1, #3B82F6)';
+              widgetAction.style.display = 'none';
 
-            if (status === 'PROCESSING') {
-                widget.style.display = 'block';
-                widgetTitle.innerText = 'AI 일정 분석 중';
-                widgetDesc.innerText = '이전 페이지에서 시작된 AI 분석 작업을 계속 수행 중입니다...';
-                widgetBar.style.width = '65%';
-                widgetBar.style.background = 'linear-gradient(90deg, #6366F1, #3B82F6)';
-                widgetAction.style.display = 'none';
+              startHeaderAiPolling(requestId);
+          } else if (status === 'COMPLETED') {
+              const cachedDataStr = localStorage.getItem('ps_ai_cached_result');
+              if (cachedDataStr) {
+                  try {
+                      const resultData = JSON.parse(cachedDataStr);
+                      const count = (resultData.extractedSchedules || []).length;
 
-                startHeaderAiPolling(requestId);
-            } else if (status === 'COMPLETED') {
-                const cachedDataStr = localStorage.getItem('ps_ai_cached_result');
-                if (cachedDataStr) {
-                    try {
-                        const resultData = JSON.parse(cachedDataStr);
-                        const count = (resultData.extractedSchedules || []).length;
+                      widget.style.display = 'block';
+                      widgetTitle.innerText = 'AI 분석 완료!';
+                      widgetDesc.innerText = `총 ${count}개의 일정이 발견되었습니다. 결과를 확인하세요.`;
+                      widgetBar.style.width = '100%';
+                      widgetBar.style.background = '#10B981';
+                      widgetAction.style.display = 'block';
+                  } catch (e) {
+                      clearAiStorage();
+                  }
+              } else {
+                  widget.style.display = 'block';
+                  startHeaderAiPolling(requestId);
+              }
+          } else if (status === 'FAILED') {
+              const failReason = localStorage.getItem('ps_ai_fail_reason') || 'AI 분석이 실패했습니다.';
+              widget.style.display = 'block';
+              widgetTitle.innerText = 'AI 분석 실패';
+              widgetDesc.innerText = failReason;
+              widgetBar.style.width = '100%';
+              widgetBar.style.background = '#EF4444';
+              widgetAction.style.display = 'none';
+          }
+      }
 
-                        widget.style.display = 'block';
-                        widgetTitle.innerText = 'AI 분석 완료!';
-                        widgetDesc.innerText = `총 ${count}개의 일정이 발견되었습니다. 결과를 확인하세요.`;
-                        widgetBar.style.width = '100%';
-                        widgetBar.style.background = '#10B981';
-                        widgetAction.style.display = 'block';
-                    } catch (e) {
-                        clearAiStorage();
-                    }
-                } else {
-                    widget.style.display = 'block';
-                    startHeaderAiPolling(requestId);
-                }
-            } else if (status === 'FAILED') {
-                const failReason = localStorage.getItem('ps_ai_fail_reason') || 'AI 분석이 실패했습니다.';
-                widget.style.display = 'block';
-                widgetTitle.innerText = 'AI 분석 실패';
-                widgetDesc.innerText = failReason;
-                widgetBar.style.width = '100%';
-                widgetBar.style.background = '#EF4444';
-                widgetAction.style.display = 'none';
-            }
-        }
+      function startHeaderAiPolling(requestId) {
+          if (headerPollingTimer) clearInterval(headerPollingTimer);
 
-        function startHeaderAiPolling(requestId) {
-            if (headerPollingTimer) clearInterval(headerPollingTimer);
+          headerPollingTimer = setInterval(async () => {
+              const tokenVal = getAuthToken();
+              if (!tokenVal) {
+                  clearInterval(headerPollingTimer);
+                  return;
+              }
 
-            headerPollingTimer = setInterval(async () => {
-                const tokenVal = getAuthToken();
-                if (!tokenVal) {
-                    clearInterval(headerPollingTimer);
-                    return;
-                }
+              try {
+                  const res = await fetch(`${HEADER_API_BASE}/ai-image-schedule/${requestId}`, {
+                      headers: {
+                          'Authorization': `Bearer ${tokenVal}`,
+                          'Accept': 'application/json'
+                      }
+                  });
+                  if (!res.ok) {
+                      clearInterval(headerPollingTimer);
+                      return;
+                  }
+                  const data = await res.json();
+                  
+                  const widget = document.getElementById('aiFloatingWidget');
+                  const widgetTitle = document.getElementById('aiWidgetTitle');
+                  const widgetDesc = document.getElementById('aiWidgetDesc');
+                  const widgetBar = document.getElementById('aiWidgetProgressBar');
+                  const widgetAction = document.getElementById('aiWidgetActionContainer');
 
-                try {
-                    const res = await fetch(`${HEADER_API_BASE}/ai-image-schedule/${requestId}`, {
-                        headers: {
-                            'Authorization': `Bearer ${tokenVal}`,
-                            'Accept': 'application/json'
-                        }
-                    });
-                    if (!res.ok) {
-                        clearInterval(headerPollingTimer);
-                        return;
-                    }
-                    const data = await res.json();
+                  if (!widget) {
+                      clearInterval(headerPollingTimer);
+                      return;
+                  }
 
-                    const widget = document.getElementById('aiFloatingWidget');
-                    const widgetTitle = document.getElementById('aiWidgetTitle');
-                    const widgetDesc = document.getElementById('aiWidgetDesc');
-                    const widgetBar = document.getElementById('aiWidgetProgressBar');
-                    const widgetAction = document.getElementById('aiWidgetActionContainer');
-
-                    if (!widget) {
-                        clearInterval(headerPollingTimer);
-                        return;
-                    }
-
-                    if (data.status === 'COMPLETED') {
-                        clearInterval(headerPollingTimer);
-
-                        localStorage.setItem('ps_ai_status', 'COMPLETED');
-                        localStorage.setItem('ps_ai_cached_result', JSON.stringify(data));
-
-                        const count = (data.extractedSchedules || []).length;
-                        widgetTitle.innerText = 'AI 분석 완료!';
-                        widgetDesc.innerText = `총 ${count}개의 일정이 발견되었습니다. 결과를 확인하세요.`;
-                        widgetBar.style.width = '100%';
-                        widgetBar.style.background = '#10B981';
-                        widgetAction.style.display = 'block';
-
-                        if (typeof showToast === 'function') {
-                            showToast('✨ AI 일정 분석이 완료되었습니다. 우측 하단의 알림을 확인하세요!');
-                        }
-                    } else if (data.status === 'FAILED') {
-                        clearInterval(headerPollingTimer);
-                        const failReason = data.failReason || 'AI 분석 실패';
-
-                        localStorage.setItem('ps_ai_status', 'FAILED');
-                        localStorage.setItem('ps_ai_fail_reason', failReason);
-
-                        widgetTitle.innerText = 'AI 분석 실패';
-                        widgetDesc.innerText = failReason;
-                        widgetBar.style.width = '100%';
-                        widgetBar.style.background = '#EF4444';
-                    }
-                } catch (e) {
-                    console.error("공통 AI 폴링 에러:", e);
-                }
-            }, 3000);
-        }
+                  if (data.status === 'COMPLETED') {
+                      clearInterval(headerPollingTimer);
+                      
+                      localStorage.setItem('ps_ai_status', 'COMPLETED');
+                      localStorage.setItem('ps_ai_cached_result', JSON.stringify(data));
+                      
+                      const count = (data.extractedSchedules || []).length;
+                      widgetTitle.innerText = 'AI 분석 완료!';
+                      widgetDesc.innerText = `총 ${count}개의 일정이 발견되었습니다. 결과를 확인하세요.`;
+                      widgetBar.style.width = '100%';
+                      widgetBar.style.background = '#10B981';
+                      widgetAction.style.display = 'block';
+                      
+                      if (typeof showToast === 'function') {
+                          showToast('✨ AI 일정 분석이 완료되었습니다. 우측 하단의 알림을 확인하세요!');
+                      }
+                  } else if (data.status === 'FAILED') {
+                      clearInterval(headerPollingTimer);
+                      const failReason = data.failReason || 'AI 분석 실패';
+                      
+                      localStorage.setItem('ps_ai_status', 'FAILED');
+                      localStorage.setItem('ps_ai_fail_reason', failReason);
+                      
+                      widgetTitle.innerText = 'AI 분석 실패';
+                      widgetDesc.innerText = failReason;
+                      widgetBar.style.width = '100%';
+                      widgetBar.style.background = '#EF4444';
+                  }
+              } catch (e) {
+                  console.error("공통 AI 폴링 에러:", e);
+              }
+          }, 3000);
+      }
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', checkAndRecoverAiBackgroundProcess);
@@ -475,8 +455,8 @@
         }
     </script>
 
-    <script th:src="@{/js/global/header.js}"></script>
-    <script th:src="@{/js/notification/notification.js}"></script>
+  <script th:src="@{/js/global/header.js}"></script>
+  <script th:src="@{/js/notification/notification.js}"></script>
 </div>
 </body>
 </html>

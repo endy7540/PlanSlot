@@ -206,9 +206,9 @@
       <div class="tab-panel" id="panel-members">
         <div class="section-row"><h3>초대하기</h3></div>
         <div class="invite-form" style="position: relative;">
-          <input id="inviteEmail" type="email" placeholder="초대할 회원의 이메일 주소" autocomplete="off">
+          <input id="inviteNickname" type="text" placeholder="초대할 회원의 닉네임#태그" autocomplete="off">
           <button class="btn btn-primary" id="btnInvite">초대 보내기</button>
-          <div id="emailSuggestions" class="suggestions-box" style="display:none; position:absolute; top:45px; left:0; width:calc(100% - 110px); background:#fff; border:1px solid #DCEFFC; z-index:100; max-height:150px; overflow-y:auto; border-radius:8px; box-shadow:0 4px 12px rgba(8,32,51,.1);"></div>
+          <div id="nicknameSuggestions" class="suggestions-box" style="display:none; position:absolute; top:45px; left:0; width:calc(100% - 110px); background:#fff; border:1px solid #DCEFFC; z-index:100; max-height:150px; overflow-y:auto; border-radius:8px; box-shadow:0 4px 12px rgba(8,32,51,.1);"></div>
         </div>
 
         <div class="section-row"><h3>수락 대기중</h3></div>
@@ -597,55 +597,55 @@ function setTab(tab){
   document.getElementById('panel-' + tab).classList.add('active');
 }
 
-const inviteEmailInput = document.getElementById('inviteEmail');
-const emailSuggestions = document.getElementById('emailSuggestions');
+const inviteNicknameInput = document.getElementById('inviteNickname');
+const nicknameSuggestions = document.getElementById('nicknameSuggestions');
 
-inviteEmailInput.addEventListener('input', async (e) => {
+inviteNicknameInput.addEventListener('input', async (e) => {
   const val = e.target.value.trim();
   if(val.length === 0) {
-    emailSuggestions.style.display = 'none';
+    nicknameSuggestions.style.display = 'none';
     return;
   }
   
   try {
-    const res = await fetchApi(`/group/search-email?prefix=${encodeURIComponent(val)}`);
+    const res = await fetchApi(`/group/search-nickname?prefix=${encodeURIComponent(val)}`);
     if(res.ok) {
-      const emails = await res.json();
-      if(emails.length > 0) {
-        emailSuggestions.innerHTML = emails.map(email => 
+      const nicknames = await res.json();
+      if(nicknames.length > 0) {
+        nicknameSuggestions.innerHTML = nicknames.map(nickname => 
           `<div class="suggestion-item" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:14px; color:#182B3A;" 
             onmouseover="this.style.background='#F3FAFF'" 
             onmouseout="this.style.background=''"
-            onclick="document.getElementById('inviteEmail').value='${email}'; document.getElementById('emailSuggestions').style.display='none';">${email}</div>`
+            onclick="document.getElementById('inviteNickname').value='${nickname}'; document.getElementById('nicknameSuggestions').style.display='none';">${nickname}</div>`
         ).join('');
-        emailSuggestions.style.display = 'block';
+        nicknameSuggestions.style.display = 'block';
       } else {
-        emailSuggestions.style.display = 'none';
+        nicknameSuggestions.style.display = 'none';
       }
     }
   } catch(e) { console.error(e); }
 });
 
 document.addEventListener('click', (e) => {
-  if(e.target !== inviteEmailInput && e.target !== emailSuggestions) {
-    emailSuggestions.style.display = 'none';
+  if(e.target !== inviteNicknameInput && e.target !== nicknameSuggestions) {
+    nicknameSuggestions.style.display = 'none';
   }
 });
 
 document.getElementById('btnInvite').addEventListener('click', async ()=>{
-  const input = document.getElementById('inviteEmail');
-  const email = input.value.trim();
-  if(!email || !email.includes('@')){ showToast('올바른 이메일 주소를 입력해주세요.'); return; }
+  const input = document.getElementById('inviteNickname');
+  const nickname = input.value.trim();
+  if(!nickname || !nickname.includes('#')){ showToast('정확한 닉네임과 태그(예: 홍길동#1234)를 입력해주세요.'); return; }
   
   try {
     const res = await fetchApi(`/group/${group.id}/invitation`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ nickname })
     });
     if(res.ok) {
       input.value = '';
-      showToast(`${email}님에게 초대를 보냈어요.`);
+      showToast(`${nickname}님에게 초대를 보냈어요.`);
       fetchGroupDetail();
     } else {
       showToast('초대 중 오류가 발생했습니다.');

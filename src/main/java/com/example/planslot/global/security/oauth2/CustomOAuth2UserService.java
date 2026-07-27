@@ -61,12 +61,24 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         if (member == null) {
             String loginId = registrationId + "_" + providerId;
             
-            String nickname = name;
-            int count = 1;
-            while (memberRepository.existsByNickname(nickname)) {
-                nickname = name + count;
-                count++;
-            }
+            String nickname;
+            java.util.Random random = new java.util.Random();
+            int attempts = 0;
+            int tagMax = 10000;
+            String format = "#%04d";
+            
+            do {
+                int tag = random.nextInt(tagMax);
+                nickname = name + String.format(format, tag);
+                attempts++;
+                
+                // 50번 실패할 때마다 자릿수를 늘림 (4자리 -> 5자리 -> 6자리...)
+                if (attempts % 50 == 0) {
+                    tagMax *= 10;
+                    format = "#%0" + (String.valueOf(tagMax - 1).length()) + "d";
+                }
+            } while (memberRepository.existsByNickname(nickname));
+
             member = Member.builder()
                     .loginId(loginId)
                     .password("") // 소셜 로그인은 비밀번호 없음

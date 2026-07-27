@@ -241,10 +241,10 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public void inviteMember(Long groupId, String email, Long memberId) {
+    public void inviteMember(Long groupId, String nickname, Long memberId) {
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
         if (!group.getOwner().getId().equals(memberId)) throw new IllegalArgumentException("권한이 없습니다.");
-        Member targetMember = memberRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+        Member targetMember = memberRepository.findByNickname(nickname).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
         if (groupMemberRepository.existsByGroup_IdAndMember_Id(groupId, targetMember.getId())) {
             throw new IllegalArgumentException("이미 초대되었거나 참여 중인 사용자입니다.");
         }

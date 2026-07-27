@@ -16,6 +16,8 @@ public class AuthServiceImpl implements AuthService{
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final EmailService emailService;
+    private final org.springframework.mail.javamail.JavaMailSender javaMailSender;
 
     @Override
     @Transactional
@@ -30,7 +32,6 @@ public class AuthServiceImpl implements AuthService{
             throw new IllegalArgumentException("탈퇴 처리된 계정입니다.");
         }
 
-        // 로그인 시 정지 기간이 지났는지 체크하여 자동 해제 (로그인은 항상 허용)
         if (member.getStatus() == Member.Status.SUSPENDED) {
             if (member.getSuspendedUntil() != null && java.time.LocalDateTime.now().isAfter(member.getSuspendedUntil())) {
                 member.updateStatus(Member.Status.ACTIVE, null);
@@ -38,5 +39,34 @@ public class AuthServiceImpl implements AuthService{
         }
 
         return jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().name(), request.isKeepLogin());
+    }
+
+    @Override
+    @Transactional
+    public String findIdByEmail(String email, String authCode) {
+        emailService.verifyAuthCode(email, authCode);
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("가입된 이메일이 아닙니다."));
+        return member.getLoginId();
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String loginId, String email, String authCode) {
+        emailService.verifyAuthCode(email, authCode);
+        Member member = memberRepository.findByLoginId(loginId)
+                .orElseThrow(() -> new IllegalArgumentException("일치하는 회원 정보가 없습니다."));
+        if (!member.getEmail().equals(email)) {
+            throw new IllegalArgumentException("일치하는 회원 정보가 없습니다.");
+        }
+        
+        String tempPw = java.util.UUID.randomUUID().toString().substring(0, 8);
+        member.updateInfo(null, passwordEncoder.encode(tempPw), null);
+        
+        org.springframework.mail.SimpleMailMessage message = new org.springframework.mail.SimpleMailMessage();
+        message.setTo(email);
+        message.setSubject("[PlanSlot] 임시 비밀번호 발급 안내");
+        message.setText("임시 비밀번호: " + tempPw + "\n\n로그인 후 비밀번호를 반드시 변경해주세요.");
+        javaMailSender.send(message);
     }
 }

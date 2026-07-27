@@ -88,7 +88,7 @@ public class ChatbotServiceImpl implements ChatbotService {
     @Override
     public ChatbotResponseDTO ask(String memberKey, ChatbotRequestDTO request) {
         if (memberKey == null || memberKey.isBlank()) {
-            throw new ChatbotException(HttpStatus.UNAUTHORIZED, "CHATBOT_UNAUTHORIZED", "로그인이 만료되었어요. 다시 로그인해 주세요.");
+            throw new ChatbotException(HttpStatus.INTERNAL_SERVER_ERROR, "CHATBOT_REQUESTER_ERROR", GENERAL_ERROR_MESSAGE);
         }
 
         String message = validateAndNormalizeRequest(request);

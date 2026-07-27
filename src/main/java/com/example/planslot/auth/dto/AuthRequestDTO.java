@@ -16,11 +16,27 @@ public class AuthRequestDTO {
     @NoArgsConstructor
     public static class EmailSend {
         private String email;
+        private String type; // "signup" or "find"
     }
 
     @Getter
     @NoArgsConstructor
     public static class EmailVerify {
+        private String email;
+        private String authCode;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    public static class FindId {
+        private String email;
+        private String authCode;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    public static class FindPw {
+        private String loginId;
         private String email;
         private String authCode;
     }

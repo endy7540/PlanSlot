@@ -141,16 +141,24 @@
 <div class="auth-container">
 
     <div class="panel auth-page active" id="page-login">
-        <div class="logo">PlanSlot</div>
-        <div class="tagline">AI가 함께하는<br>일정 플랫폼</div>
+        <div class="logo" style="cursor:pointer;" onclick="location.href='/planslot'" title="메인 홈으로 이동">PlanSlot</div>
+        <div class="tagline">AI가 함께하는 일정 플랫폼</div>
 
         <div class="form">
             <input type="text" id="loginId" placeholder="아이디">
             <input type="password" id="loginPw" placeholder="비밀번호" onpaste="return false;" oncopy="return false;">
             <div id="loginPwMsg" class="field-msg"></div>
-            <div style="display:flex; align-items:center; gap:6px; font-size:13px; color:#182B3A;">
-                <input type="checkbox" id="keepLogin" style="width:16px; height:16px; margin:0; padding:0;">
-                <label for="keepLogin" style="cursor:pointer; user-select:none;">로그인 상태 유지</label>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; color:#182B3A; margin-bottom:16px;">
+                <div style="display:flex; gap:8px;">
+                    <a href="javascript:void(0);" onclick="togglePage('find-id', false)" style="color:#64748b; text-decoration:none; font-weight:500;">아이디 찾기</a>
+                    <span style="color:#cbd5e1;">|</span>
+                    <a href="javascript:void(0);" onclick="togglePage('find-pw', false)" style="color:#64748b; text-decoration:none; font-weight:500;">비밀번호 찾기</a>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <input type="checkbox" id="keepLogin" style="width:16px; height:16px; margin:0; padding:0;">
+                    <label for="keepLogin" style="cursor:pointer; user-select:none; margin:0;">로그인 상태 유지</label>
+                </div>
             </div>
             <button class="primary" onclick="doLogin()">로그인</button>
         </div>
@@ -225,6 +233,51 @@
                 <button class="primary" onclick="doSignUp()">가입 완료</button>
                 <button class="ghost" onclick="togglePage('login')">뒤로 가기</button>
             </div>
+        </div>
+    </div>
+
+    <div class="panel auth-page" id="page-find-id">
+        <div class="logo" style="font-size:28px;">아이디 찾기</div>
+        <div class="tagline" style="margin-bottom:20px;">가입 시 사용한 이메일로 아이디를 찾습니다.</div>
+        <div class="form">
+            <div style="display:flex; gap:8px;">
+                <input type="email" id="findIdEmail" placeholder="이메일 입력" style="flex:1; margin:0;">
+                <button type="button" class="ghost" style="padding:0 16px; margin:0; white-space:nowrap;" onclick="sendFindAuthCodeBtn('find-id')" id="findIdSendBtn">인증 발송</button>
+            </div>
+            <div id="findIdEmailMsg" class="field-msg"></div>
+            
+            <div id="findIdAuthCodeContainer" style="display:none; gap:8px; margin-top:8px;">
+                <div style="flex:1; display:flex; align-items:center; position:relative;">
+                    <input type="text" id="findIdAuthCode" placeholder="인증번호 6자리" style="width:100%; margin:0; padding-right:50px;">
+                    <span id="findIdAuthTimer" style="position:absolute; right:12px; color:#B91C1C; font-weight:bold; font-size:13px; display:none;">05:00</span>
+                </div>
+                <button type="button" class="ghost" style="padding:0 16px; margin:0; white-space:nowrap;" onclick="doFindId()">인증 확인</button>
+            </div>
+            <div id="findIdAuthCodeMsg" class="field-msg"></div>
+            <button class="ghost" style="margin-top:20px; width:100%;" onclick="togglePage('login')">로그인 화면으로 돌아가기</button>
+        </div>
+    </div>
+
+    <div class="panel auth-page" id="page-find-pw">
+        <div class="logo" style="font-size:28px;">비밀번호 찾기</div>
+        <div class="tagline" style="margin-bottom:20px;">아이디와 이메일 인증으로 임시 비밀번호를 발급받습니다.</div>
+        <div class="form">
+            <input type="text" id="findPwId" placeholder="아이디 입력" style="margin-bottom:8px;">
+            <div style="display:flex; gap:8px;">
+                <input type="email" id="findPwEmail" placeholder="이메일 입력" style="flex:1; margin:0;">
+                <button type="button" class="ghost" style="padding:0 16px; margin:0; white-space:nowrap;" onclick="sendFindAuthCodeBtn('find-pw')" id="findPwSendBtn">인증 발송</button>
+            </div>
+            <div id="findPwEmailMsg" class="field-msg"></div>
+            
+            <div id="findPwAuthCodeContainer" style="display:none; gap:8px; margin-top:8px;">
+                <div style="flex:1; display:flex; align-items:center; position:relative;">
+                    <input type="text" id="findPwAuthCode" placeholder="인증번호 6자리" style="width:100%; margin:0; padding-right:50px;">
+                    <span id="findPwAuthTimer" style="position:absolute; right:12px; color:#B91C1C; font-weight:bold; font-size:13px; display:none;">05:00</span>
+                </div>
+                <button type="button" class="ghost" style="padding:0 16px; margin:0; white-space:nowrap;" onclick="doFindPw()">인증 확인</button>
+            </div>
+            <div id="findPwAuthCodeMsg" class="field-msg"></div>
+            <button class="ghost" style="margin-top:20px; width:100%;" onclick="togglePage('login')">로그인 화면으로 돌아가기</button>
         </div>
     </div>
 
@@ -558,6 +611,138 @@
         };
         sessionStorage.setItem('signupData', JSON.stringify(signupData));
         window.location.href = '/auth/terms?social=false';
+    }
+
+    let findIdInterval;
+    let findPwInterval;
+    
+    function startFindTimer(type) {
+        const timerSpan = type === 'find-id' ? document.getElementById('findIdAuthTimer') : document.getElementById('findPwAuthTimer');
+        let timeLeft = 300; // 5분
+        timerSpan.style.display = 'block';
+
+        const updateText = () => {
+            const m = Math.floor(timeLeft / 60);
+            const s = timeLeft % 60;
+            timerSpan.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        };
+        updateText();
+        
+        let interval = setInterval(() => {
+            timeLeft--;
+            updateText();
+            if (timeLeft <= 0) {
+                clearInterval(interval);
+                timerSpan.textContent = "시간 초과";
+            }
+        }, 1000);
+        
+        if(type === 'find-id') findIdInterval = interval;
+        else findPwInterval = interval;
+    }
+
+    async function sendFindAuthCodeBtn(type) {
+        const emailInput = type === 'find-id' ? document.getElementById('findIdEmail') : document.getElementById('findPwEmail');
+        const msg = type === 'find-id' ? 'findIdEmailMsg' : 'findPwEmailMsg';
+        const container = type === 'find-id' ? document.getElementById('findIdAuthCodeContainer') : document.getElementById('findPwAuthCodeContainer');
+        const btn = type === 'find-id' ? document.getElementById('findIdSendBtn') : document.getElementById('findPwSendBtn');
+
+        const email = emailInput.value.trim();
+        if (!email) {
+            showFieldMsg(msg, '이메일을 입력해주세요.', false);
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.textContent = '발송 중...';
+
+        try {
+            const res = await fetch('/auth/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, type: 'find' })
+            });
+
+            if (res.ok) {
+                showFieldMsg(msg, '인증번호가 발송되었습니다.', true);
+                container.style.display = 'flex';
+                btn.textContent = '재발송';
+                btn.disabled = false;
+                startFindTimer(type);
+            } else {
+                const text = await res.text();
+                showFieldMsg(msg, text || '이메일 발송에 실패했습니다.', false);
+                btn.textContent = '인증 발송';
+                btn.disabled = false;
+            }
+        } catch (error) {
+            showFieldMsg(msg, '서버 통신 오류가 발생했습니다.', false);
+            btn.textContent = '인증 발송';
+            btn.disabled = false;
+        }
+    }
+    
+    async function doFindId() {
+        const email = document.getElementById('findIdEmail').value.trim();
+        const authCode = document.getElementById('findIdAuthCode').value.trim();
+        const msg = 'findIdAuthCodeMsg';
+        
+        if(!authCode) {
+            showFieldMsg(msg, '인증번호를 입력해주세요.', false);
+            return;
+        }
+        
+        try {
+            const res = await fetch('/auth/find-id', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, authCode })
+            });
+            const text = await res.text();
+            if(res.ok) {
+                if(findIdInterval) clearInterval(findIdInterval);
+                document.getElementById('findIdAuthTimer').style.display = 'none';
+                showFieldMsg(msg, `가입하신 아이디는 '${text}' 입니다.`, true);
+            } else {
+                showFieldMsg(msg, text || '인증에 실패했습니다.', false);
+            }
+        } catch(e) {
+            showFieldMsg(msg, '서버 통신 오류가 발생했습니다.', false);
+        }
+    }
+    
+    async function doFindPw() {
+        const loginId = document.getElementById('findPwId').value.trim();
+        const email = document.getElementById('findPwEmail').value.trim();
+        const authCode = document.getElementById('findPwAuthCode').value.trim();
+        const msg = 'findPwAuthCodeMsg';
+        
+        if(!loginId) {
+            showFieldMsg(msg, '아이디를 입력해주세요.', false);
+            return;
+        }
+        if(!authCode) {
+            showFieldMsg(msg, '인증번호를 입력해주세요.', false);
+            return;
+        }
+        
+        try {
+            const res = await fetch('/auth/find-pw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ loginId, email, authCode })
+            });
+            const text = await res.text();
+            if(res.ok) {
+                if(findPwInterval) clearInterval(findPwInterval);
+                document.getElementById('findPwAuthTimer').style.display = 'none';
+                showFieldMsg(msg, text, true);
+            } else {
+                showFieldMsg(msg, text || '인증에 실패했습니다.', false);
+            }
+        } catch(e) {
+            showFieldMsg(msg, '서버 통신 오류가 발생했습니다.', false);
+        }
     }
 </script>
 <script src="/js/global/region.js"></script>

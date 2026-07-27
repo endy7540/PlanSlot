@@ -9,6 +9,20 @@ window.addEventListener("DOMContentLoaded", function() {
     if (!token) {
         if (loginBtn) loginBtn.style.display = "block";
         if (profileWrap) profileWrap.style.display = "none";
+        
+        // 비로그인 사용자 메뉴 비활성화 처리
+        const allLinks = Array.from(document.querySelectorAll('.header-menu a'));
+        const protectedLinks = allLinks.filter(a => ['개인 캘린더', '모임 캘린더', '모임 채팅방'].includes(a.textContent.trim()));
+        protectedLinks.forEach(link => {
+            link.style.color = '#94A3B8';
+            link.style.opacity = '0.5';
+            link.style.cursor = 'pointer';
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                alert('로그인이 필요한 서비스입니다.');
+                window.location.href = '/auth/login';
+            });
+        });
     } else {
         if (loginBtn) loginBtn.style.display = "none";
         if (profileWrap) profileWrap.style.display = "block";
@@ -88,3 +102,5 @@ window.addEventListener("DOMContentLoaded", function() {
         }
     }
 });
+
+

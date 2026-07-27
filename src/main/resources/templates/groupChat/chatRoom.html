@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
+    <script>
+        if (!localStorage.getItem('jwtToken')) {
+            alert('로그인이 필요한 서비스입니다.');
+            window.location.href = '/auth/login';
+        }
+    </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PlanSlot - 모임 채팅방</title>
@@ -501,6 +507,13 @@
 </div>
 
 <script th:inline="javascript">
+  (function checkChatAuth() {
+    const token = localStorage.getItem('jwtToken');
+    if (!token) {
+      alert('로그인이 필요한 서비스입니다.');
+      window.location.href = '/auth/login';
+    }
+  })();
   const groupId = [[${groupId}]];
   const myMemberId = [[${myMemberId}]];
   const msgInput = document.getElementById('msgInput');
@@ -917,4 +930,5 @@
 
 </body>
 </html>
+
 

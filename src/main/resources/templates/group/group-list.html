@@ -1,6 +1,12 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
+    <script>
+        if (!localStorage.getItem('jwtToken')) {
+            alert('로그인이 필요한 서비스입니다.');
+            window.location.href = '/auth/login';
+        }
+    </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PlanSlot - 내 모임</title>
@@ -477,3 +483,4 @@ window.handleInvitation = async function(groupId, action) {
 </script>
 </body>
 </html>
+

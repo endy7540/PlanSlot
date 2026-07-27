@@ -370,3 +370,7 @@ body {
   .home-content-card { padding: 24px; }
   .home-feature-detail-card { padding: 18px; }
 }
+
+.home-hero-actions[hidden] {
+  display: none !important;
+}

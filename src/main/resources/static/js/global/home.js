@@ -1,4 +1,21 @@
 (function() {
   'use strict';
-  // 홈은 로그인 여부와 관계없이 동일한 서비스 소개 화면을 사용한다.
+
+  function syncGuestActions() {
+    const guestActions = document.getElementById('homeGuestActions');
+    if (!guestActions) return;
+
+    const isLoggedIn = Boolean(localStorage.getItem('jwtToken'));
+    guestActions.hidden = isLoggedIn;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncGuestActions);
+  } else {
+    syncGuestActions();
+  }
+
+  window.addEventListener('storage', function(event) {
+    if (event.key === 'jwtToken') syncGuestActions();
+  });
 })();

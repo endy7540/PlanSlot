@@ -83,7 +83,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
                 notificationService.sendBoardMessage(
                         parentWriterId,
                         "새로운 대댓글",
-                        writer.getNickname() + "님이 회원님의 댓글에 대댓글을 작성했습니다.",
+                        writer.getDisplayName() + "님이 회원님의 댓글에 대댓글을 작성했습니다.",
                         "BOARD",
                         boardId
                 );
@@ -105,7 +105,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
         notificationService.sendBoardMessage(
                 board.getWriter().getId(),
                 "새로운 댓글",
-                writer.getNickname() + "님이 '" + board.getTitle() + "' 게시글에 댓글을 작성했습니다.",
+                writer.getDisplayName() + "님이 '" + board.getTitle() + "' 게시글에 댓글을 작성했습니다.",
                 "BOARD",
                 boardId
         );
@@ -347,7 +347,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
                 .boardId(comment.getBoard().getBoardId())
                 .parentCommentId(parentCommentId)
                 .writerId(comment.getWriter().getId())
-                .writerNickname(comment.getWriter().getNickname())
+                .writerNickname(comment.getWriter().getDisplayName())
                 .writerProfileImageUrl(comment.getWriter().getProfileImageUrl())
                 .content(comment.getContent())
                 .commentStatus(comment.getCommentStatus())

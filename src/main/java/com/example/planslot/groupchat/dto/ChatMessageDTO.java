@@ -35,7 +35,7 @@ public class ChatMessageDTO {
                 .type(MessageType.TALK)
                 .groupId(message.getGroupChatRoom().getGroup().getId())
                 .senderId(message.getSender().getId())
-                .senderName(message.getSender().getNickname())
+                .senderName(message.getSender().getDisplayName())
                 .content(message.getContent())
                 .createdAt(message.getCreatedAt())
                 .build();

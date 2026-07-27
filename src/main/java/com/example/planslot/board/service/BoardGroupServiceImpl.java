@@ -64,7 +64,7 @@ public class BoardGroupServiceImpl implements BoardGroupService {
         notificationService.sendApplicationNotification(
                 board.getWriter().getId(),
                 "새로운 모임 참가 신청",
-                applicant.getNickname() + "님이 '" + board.getTitle() + "' 게시글에 참가 신청했습니다.",
+                applicant.getDisplayName() + "님이 '" + board.getTitle() + "' 게시글에 참가 신청했습니다.",
                 "BOARD",
                 boardId
         );
@@ -106,12 +106,12 @@ public class BoardGroupServiceImpl implements BoardGroupService {
 
         List<BoardGroupDTO.Candidate> applicants = applications.stream()
                 .map(application -> new BoardGroupDTO.Candidate(
-                        application.getApplicant().getId(), application.getApplicant().getNickname()
+                        application.getApplicant().getId(), application.getApplicant().getDisplayName()
                 ))
                 .toList();
 
         List<BoardGroupDTO.Candidate> inviteCandidates = getInviteCandidateMembers(board, applicationMemberIds).stream()
-                .map(member -> new BoardGroupDTO.Candidate(member.getId(), member.getNickname()))
+                .map(member -> new BoardGroupDTO.Candidate(member.getId(), member.getDisplayName()))
                 .toList();
 
         return new BoardGroupDTO.CandidatesResponse(board.getTitle(), applicants, inviteCandidates);
@@ -173,7 +173,7 @@ public class BoardGroupServiceImpl implements BoardGroupService {
                         .group(group)
                         .member(applicant)
                         .inviter(writer)
-                        .nickname(applicant.getNickname())
+                        .nickname(applicant.getDisplayName())
                         .memberStatus(GroupMemberStatus.ACTIVE)
                         .build();
                 groupMemberRepository.save(activeMember);

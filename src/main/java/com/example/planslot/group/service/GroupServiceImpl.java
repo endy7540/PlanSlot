@@ -128,10 +128,10 @@ public class GroupServiceImpl implements GroupService {
 
         for (GroupMember gm : allMembers) {
             String mId = gm.getMember().getId().toString();
-            String mName = gm.getMember().getNickname();
+            String mName = gm.getMember().getDisplayName();
             if (gm.getMemberStatus().name().equals("WAITING")) {
                 boolean isMe = mId.equals(memberId.toString());
-                waiting.add(new GroupDTO.WaitingInfo(mId, gm.getMember().getEmail(), group.getOwner().getNickname(), isMe));
+                waiting.add(new GroupDTO.WaitingInfo(mId, gm.getMember().getEmail(), group.getOwner().getDisplayName(), isMe));
             } else if (gm.getMemberStatus().name().equals("ACTIVE")) {
                 String role = ownerIdStr.equals(mId) ? "owner" : "member";
                 String profileImageUrl = gm.getMember().getProfileImageUrl();
@@ -297,7 +297,7 @@ public class GroupServiceImpl implements GroupService {
         for (GroupMember gm : groupMembers) {
             if (gm.getMemberStatus() == GroupMemberStatus.ACTIVE) {
                 Long targetMemberId = gm.getMember().getId();
-                String nickname = gm.getMember().getNickname();
+                String nickname = gm.getMember().getDisplayName();
                 List<Schedule> schedules;
                 if (start != null && end != null) {
                     schedules = scheduleRepository.findAllByMemberIdAndPeriodCandidate(targetMemberId, start, end);
@@ -488,7 +488,7 @@ public class GroupServiceImpl implements GroupService {
                     schedule.getTitle(),
                     dateStr,
                     timeStr,
-                    share.getSharer().getNickname(),
+                    share.getSharer().getDisplayName(),
                     schedule.getIsPublic(),
                     schedule.getScheduleType() != null ? schedule.getScheduleType().name() : "DAILY"
             );
@@ -508,7 +508,7 @@ public class GroupServiceImpl implements GroupService {
                     schedule.getTitle(),
                     dateStr,
                     timeStr,
-                    share.getTargetMember().getNickname(), // For this method, sharerName field is repurposed to hold the target member's name
+                    share.getTargetMember().getDisplayName(), // For this method, sharerName field is repurposed to hold the target member's name
                     schedule.getIsPublic(),
                     schedule.getScheduleType() != null ? schedule.getScheduleType().name() : "DAILY"
             );

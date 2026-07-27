@@ -31,7 +31,7 @@ public class GroupDTO {
                     group.getId(),
                     group.getGroupName(),
                     group.getOwner().getId(),
-                    group.getOwner().getNickname(),
+                    group.getOwner().getDisplayName(),
                     group.getPersonCount(),
                     group.getCreatedAt()
             );

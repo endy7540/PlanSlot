@@ -171,7 +171,7 @@ public class BoardServiceImpl implements BoardService {
 
         return BoardMemberDTO.builder()
                 .memberId(member.getId())
-                .nickname(member.getNickname())
+                .nickname(member.getDisplayName())
                 .role(member.getRole())
                 .build();
     }
@@ -577,7 +577,7 @@ public class BoardServiceImpl implements BoardService {
         return BoardDTO.builder()
                 .boardId(board.getBoardId())
                 .writerId(board.getWriter().getId())
-                .writerNickname(board.getWriter().getNickname())
+                .writerNickname(board.getWriter().getDisplayName())
                 .title(board.getTitle())
                 .viewCount(board.getViewCount())
                 .boardType(board.getBoardType())
@@ -619,7 +619,7 @@ public class BoardServiceImpl implements BoardService {
         return BoardDTO.builder()
                 .boardId(board.getBoardId())
                 .writerId(board.getWriter().getId())
-                .writerNickname(board.getWriter().getNickname())
+                .writerNickname(board.getWriter().getDisplayName())
                 .writerProfileImageUrl(board.getWriter().getProfileImageUrl())
                 .title(board.getTitle())
                 .content(board.getContent())

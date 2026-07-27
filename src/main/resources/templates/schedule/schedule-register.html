@@ -124,35 +124,6 @@
         .toast.show{opacity:1;transform:none}
         .toast.error{background:#B91C1C}
 
-        .period-btn-group button {
-            background: transparent;
-            color: #64748B;
-            border: 0;
-            outline: none;
-        }
-        .period-btn-group button.active {
-            background: #075985;
-            color: #fff;
-        }
-        .time-select-item {
-            padding: 8px 12px;
-            font-size: 13px;
-            font-weight: 700;
-            color: #334155;
-            text-align: center;
-            cursor: pointer;
-            border-bottom: 1px solid #F1F5F9;
-            transition: all 0.15s;
-        }
-        .time-select-item:hover {
-            background: #F0F9FF;
-            color: #0284C7;
-        }
-        .time-select-item.active {
-            background: #0ea5e9;
-            color: #fff;
-        }
-
         /* Toggle Switch Styling */
         .toggle-switch {
             position: relative;
@@ -252,55 +223,30 @@
                 <div>
                 </div>
             </div>
-            <!-- 기간 선택 버튼 그룹 / 하루종일 토글 스위치 행 -->
-            <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
-                <!-- 기간 선택 버튼 그룹 -->
-                <div class="period-btn-group" style="flex: 1.2; min-width: 180px; display: flex; background: #EEF2F6; padding: 4px; border-radius: 10px;">
-                    <button id="btn-single-day" type="button" class="active" style="flex: 1; padding: 10px; border-radius: 8px; font-size: 13.5px; font-weight: 800; cursor: pointer; transition: all 0.2s;" onclick="setPeriodMode(false)">하루 일정</button>
-                    <button id="btn-range-day" type="button" style="flex: 1; padding: 10px; border-radius: 8px; font-size: 13.5px; font-weight: 800; cursor: pointer; transition: all 0.2s;" onclick="setPeriodMode(true)">기간 일정</button>
-                </div>
-                <!-- 하루종일 토글 -->
-                <div style="flex: 0.8; min-width: 130px; display: flex; align-items: center; justify-content: space-between; background: #F3FAFF; border: 2px solid #DCEFFC; border-radius: 10px; padding: 8px 14px; height: 46px; box-sizing: border-box;">
-                    <span style="font-size: 13.5px; font-weight: 700; color: #075985;">하루종일</span>
-                    <label class="toggle-switch" style="margin: 0;">
-                        <input id="f-allDay" type="checkbox" onchange="toggleAllDay(this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
+            <!-- 하루종일 토글 스위치 -->
+            <div style="display: flex; align-items: center; justify-content: space-between; background: #F3FAFF; border: 2px solid #DCEFFC; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; width: fit-content; min-width: 180px;">
+                <span style="font-size: 14px; font-weight: 700; color: #075985;">하루종일</span>
+                <label class="toggle-switch" style="margin: 0;">
+                    <input id="f-allDay" type="checkbox" onchange="toggleAllDay(this.checked)">
+                    <span class="slider"></span>
+                </label>
             </div>
 
-            <!-- 일정 날짜 입력 영역 -->
+            <!-- 일정 날짜 및 시간 입력 영역 -->
             <div style="margin-bottom: 16px;">
-                <label id="dateRangeLabel">일정 날짜 선택 *</label>
-                <input id="f-dateRange" type="text" class="chip-input" placeholder="날짜를 선택하세요" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff;" required>
+                <label>일정 기간 선택 *</label>
+                <input id="f-dateRange" type="text" class="chip-input" placeholder="시작일과 종료일을 선택하세요" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff;" required>
             </div>
 
-            <!-- 커스텀 시간 범위 선택 영역 -->
             <div class="form-row" id="timeInputRow">
-                <div id="timeInputs" style="grid-column: span 2; width: 100%; position: relative;">
-                    <label>일정 시간 범위 선택 *</label>
-                    <input id="f-timeRange" type="text" readonly class="chip-input" placeholder="시간을 선택하세요 (예: 09:00 ~ 10:00)" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff; cursor: pointer;" required onclick="toggleTimeDropdown()">
-                    
-                    <!-- 시간 범위 드롭다운 레이어 -->
-                    <div id="timeRangeDropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 2px solid #DCEFFC; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 100; padding: 16px; margin-top: 6px;">
-                        <div style="display: flex; gap: 12px;">
-                            <div style="flex: 1;">
-                                <div style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 6px; text-align: center;">시작 시간</div>
-                                <div id="startTimeList" style="max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 6px; background:#fff;">
-                                    <!-- 옵션 렌더링 -->
-                                </div>
-                            </div>
-                            <div style="flex: 1;">
-                                <div style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 6px; text-align: center;">종료 시간</div>
-                                <div id="endTimeList" style="max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 6px; background:#fff;">
-                                    <!-- 옵션 렌더링 -->
-                                </div>
-                            </div>
-                        </div>
-                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; border-top: 1px solid #F1F5F9; padding-top: 10px;">
-                            <button type="button" class="ghost" style="padding: 6px 12px; font-size: 12px; border-radius:6px;" onclick="toggleTimeDropdown(false)">닫기</button>
-                            <button type="button" class="primary" style="padding: 6px 12px; font-size: 12px; border-radius:6px;" onclick="confirmTimeRange()">선택 완료</button>
-                        </div>
+                <div id="timeInputs" style="grid-column: span 2; display: flex; gap: 8px;">
+                    <div style="flex: 1;">
+                        <label>시작 시간 *</label>
+                        <input id="f-startTime" type="time" value="09:00" required>
+                    </div>
+                    <div style="flex: 1;">
+                        <label>종료 시간 *</label>
+                        <input id="f-endTime" type="time" value="10:00" required>
                     </div>
                 </div>
             </div>
@@ -368,24 +314,10 @@
     }
 
     let fpInstance = null;
-    let selectedStartHour = "09";
-    let selectedStartMin = "00";
-    let selectedEndHour = "10";
-    let selectedEndMin = "00";
 
-    function initFlatpickr(isRange = false) {
-        if (fpInstance) {
-            fpInstance.destroy();
-        }
-        
-        const placeholderText = isRange ? "시작일과 종료일을 선택하세요" : "날짜를 선택하세요";
-        const labelText = isRange ? "일정 기간 선택 *" : "일정 날짜 선택 *";
-        
-        document.getElementById('f-dateRange').placeholder = placeholderText;
-        document.getElementById('dateRangeLabel').textContent = labelText;
-
+    function initFlatpickr() {
         fpInstance = flatpickr("#f-dateRange", {
-            mode: isRange ? "range" : "single",
+            mode: "range",
             locale: "ko",
             dateFormat: "Y-m-d",
             onReady: function(selectedDates, dateStr, instance) {
@@ -401,104 +333,20 @@
         });
     }
 
-    // 커스텀 시간 범위 관련 구현
-    function renderTimeOptions() {
-        const startList = document.getElementById('startTimeList');
-        const endList = document.getElementById('endTimeList');
-        if (!startList || !endList) return;
-
-        startList.innerHTML = '';
-        endList.innerHTML = '';
-
-        for (let h = 0; h < 24; h++) {
-            const hh = String(h).padStart(2, '0');
-            ["00", "30"].forEach(mm => {
-                const timeStr = `${hh}:${mm}`;
-                
-                // 시작 시간 항목
-                const startItem = document.createElement('div');
-                startItem.className = 'time-select-item' + (selectedStartHour === hh && selectedStartMin === mm ? ' active' : '');
-                startItem.textContent = timeStr;
-                startItem.onclick = () => selectTimeVal('start', hh, mm);
-                startList.appendChild(startItem);
-
-                // 종료 시간 항목
-                const endItem = document.createElement('div');
-                endItem.className = 'time-select-item' + (selectedEndHour === hh && selectedEndMin === mm ? ' active' : '');
-                endItem.textContent = timeStr;
-                endItem.onclick = () => selectTimeVal('end', hh, mm);
-                endList.appendChild(endItem);
-            });
-        }
-    }
-
-    function selectTimeVal(type, hh, mm) {
-        if (type === 'start') {
-            selectedStartHour = hh;
-            selectedStartMin = mm;
-        } else {
-            selectedEndHour = hh;
-            selectedEndMin = mm;
-        }
-        renderTimeOptions();
-    }
-
-    function toggleTimeDropdown(show) {
-        const dropdown = document.getElementById('timeRangeDropdown');
-        if (show === undefined) {
-            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-        } else {
-            dropdown.style.display = show ? 'block' : 'none';
-        }
-        if (dropdown.style.display === 'block') {
-            renderTimeOptions();
-        }
-    }
-
-    function confirmTimeRange() {
-        const input = document.getElementById('f-timeRange');
-        input.value = `${selectedStartHour}:${selectedStartMin} ~ ${selectedEndHour}:${selectedEndMin}`;
-        toggleTimeDropdown(false);
-    }
-
-    // 외부 클릭 시 드롭다운 닫기
-    document.addEventListener('click', (e) => {
-        const dropdown = document.getElementById('timeRangeDropdown');
-        const input = document.getElementById('f-timeRange');
-        if (dropdown && input && !dropdown.contains(e.target) && e.target !== input) {
-            dropdown.style.display = 'none';
-        }
-    });
-
-    function setPeriodMode(isRange) {
-        document.getElementById('btn-single-day').classList.toggle('active', !isRange);
-        document.getElementById('btn-range-day').classList.toggle('active', isRange);
-        handlePeriodToggle(isRange);
-    }
-
-    function handlePeriodToggle(checked) {
-        const currentDates = fpInstance ? fpInstance.selectedDates : [];
-        initFlatpickr(checked);
-        if (currentDates.length > 0) {
-            if (!checked) {
-                fpInstance.setDate(currentDates[0]);
-            } else {
-                fpInstance.setDate(currentDates);
-            }
-        }
-    }
-
     function toggleAllDay(checked) {
         const timeInputs = document.getElementById('timeInputs');
-        const timeInputEl = document.getElementById('f-timeRange');
+        const startT = document.getElementById('f-startTime');
+        const endT = document.getElementById('f-endTime');
         if (checked) {
             timeInputs.style.opacity = '0.4';
             timeInputs.style.pointerEvents = 'none';
-            timeInputEl.required = false;
+            startT.required = false;
+            endT.required = false;
         } else {
             timeInputs.style.opacity = '1';
             timeInputs.style.pointerEvents = 'auto';
-            timeInputEl.required = true;
+            startT.required = true;
+            endT.required = true;
         }
     }
 
@@ -525,21 +373,11 @@
         return { dateVal, endDateVal };
     }
 
-    function parseSelectedTimes() {
-        const isAllDay = document.getElementById('f-allDay').checked;
-        if (isAllDay) {
-            return { startTime: '00:00', endTime: '23:59' };
-        }
-        return { 
-            startTime: `${selectedStartHour}:${selectedStartMin}`, 
-            endTime: `${selectedEndHour}:${selectedEndMin}` 
-        };
-    }
-
     function buildScheduleBody() {
         const { dateVal, endDateVal } = parseSelectedDates();
         const isAllDay = document.getElementById('f-allDay').checked;
-        const { startTime, endTime } = parseSelectedTimes();
+        const startTime = document.getElementById('f-startTime').value || '09:00'; // HH:mm
+        const endTime = document.getElementById('f-endTime').value || '10:00'; // HH:mm
         const recurrenceEndDate = document.getElementById('f-recurrenceEndDate').value;
 
         let startDate = null;
@@ -574,11 +412,7 @@
         return body;
     }
 
-    let isSubmitting = false;
-
     async function submitSchedule() {
-        if (isSubmitting) return;
-
         if (!token) {
             showToast('먼저 로그인해주세요.', true);
             return;
@@ -587,19 +421,20 @@
         const titleVal = document.getElementById('f-title').value.trim();
         const { dateVal, endDateVal } = parseSelectedDates();
         const isAllDay = document.getElementById('f-allDay').checked;
-        const { startTime, endTime } = parseSelectedTimes();
+        const startTime = document.getElementById('f-startTime').value;
+        const endTime = document.getElementById('f-endTime').value;
 
         if (!titleVal) {
             showToast('제목은 필수입니다.', true);
             return;
         }
         if (!dateVal) {
-            showToast('일정 날짜를 선택해주세요.', true);
+            showToast('일정 기간을 선택해주세요.', true);
             return;
         }
 
-        const startDtStr = isAllDay ? `${dateVal}T00:00:00` : `${dateVal}T${startTime}:00`;
-        const endDtStr = isAllDay ? `${endDateVal}T23:59:59` : `${endDateVal}T${endTime}:00`;
+        const startDtStr = isAllDay ? `${dateVal}T00:00:00` : `${dateVal}T${startTime || '00:00'}:00`;
+        const endDtStr = isAllDay ? `${endDateVal}T23:59:59` : `${endDateVal}T${endTime || '23:59'}:00`;
 
         const startDt = new Date(startDtStr);
         const endDt = new Date(endDtStr);
@@ -608,25 +443,6 @@
             showToast('종료일시는 시작일시보다 빠를 수 없습니다.', true);
             return;
         }
-
-        isSubmitting = true;
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerText = '등록 중...';
-            submitBtn.style.opacity = '0.6';
-            submitBtn.style.pointerEvents = 'none';
-        }
-
-        const resetBtnState = () => {
-            isSubmitting = false;
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerText = '등록 완료';
-                submitBtn.style.opacity = '1';
-                submitBtn.style.pointerEvents = 'auto';
-            }
-        };
 
         const body = buildScheduleBody();
         const url = `${API_BASE}/schedule`;
@@ -639,7 +455,6 @@
             });
             if (!res.ok) {
                 showToast('등록 실패: ' + res.status, true);
-                resetBtnState();
                 return;
             }
             showToast('일정이 등록되었습니다. 캘린더로 이동합니다...');
@@ -649,7 +464,6 @@
         } catch (e) {
             console.error(e);
             showToast('요청 중 오류가 발생했습니다.', true);
-            resetBtnState();
         }
     }
 
@@ -674,8 +488,7 @@
     }
 
     if (checkAuth()) {
-        initFlatpickr(false);
-        confirmTimeRange(); // 기본값 주입
+        initFlatpickr();
         applyUrlParams();
         updateDeadlineMax();
     }

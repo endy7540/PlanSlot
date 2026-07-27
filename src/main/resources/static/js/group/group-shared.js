@@ -1,4 +1,11 @@
-// GROUPS 배열은 이제 백엔드 API에서 동적으로 가져옵니다.
+﻿/* ===== 전역 상태 ===== */
+(function checkGroupAuth() {
+  const token = localStorage.getItem('jwtToken');
+  if (!token) {
+    alert('로그인이 필요한 서비스입니다.');
+    window.location.href = '/auth/login';
+  }
+})();
 let GROUPS = [];
 
 function initials(name){ return name.slice(0,1); }
@@ -85,3 +92,5 @@ function fetchApi(url, options = {}) {
   }
   return fetch(url, options);
 }
+
+

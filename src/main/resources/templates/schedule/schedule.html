@@ -323,19 +323,6 @@
 
 <div class="wrap">
 
-    <!-- 로그인 상태 안내 -->
-    <div class="panel" id="authNotice" style="display:none">
-        <div class="cal-nav" style="margin:0">
-            <h2 style="font-size:18px">로그인이 필요합니다</h2>
-        </div>
-        <p style="color:#748898;font-size:13px;line-height:1.6;margin:0 0 12px">
-            먼저 로그인 페이지에서 로그인한 뒤 다시 이 페이지로 돌아와주세요.
-        </p>
-        <div style="display:flex;gap:8px">
-            <a class="primary" href="/auth/login">로그인 페이지로 이동</a>
-            <button class="ghost" onclick="location.reload()">토큰 다시 확인</button>
-        </div>
-    </div>
 
     <!-- 캘린더 -->
     <div class="panel" id="calendarPanel" style="display:none">
@@ -451,7 +438,6 @@
     function checkAuth() {
         token = localStorage.getItem('jwtToken') || '';
         const badge = document.getElementById('tokenBadge');
-        const notice = document.getElementById('authNotice');
         const calPanel = document.getElementById('calendarPanel');
 
         if (token) {
@@ -459,15 +445,10 @@
                 badge.textContent = '로그인됨 (토큰 보유)';
                 badge.classList.remove('off');
             }
-            notice.style.display = 'none';
             calPanel.style.display = '';
         } else {
-            if (badge) {
-                badge.textContent = '로그인 필요';
-                badge.classList.add('off');
-            }
-            notice.style.display = '';
-            calPanel.style.display = 'none';
+            alert('로그인이 필요한 서비스입니다.');
+            window.location.href = '/auth/login';
         }
         return !!token;
     }

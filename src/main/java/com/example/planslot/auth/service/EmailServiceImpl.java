@@ -21,9 +21,15 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     @Transactional
-    public void sendAuthCode(String email) {
-        if (memberRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("이미 가입된 이메일입니다. (소셜 로그인 계정 포함)");
+    public void sendAuthCode(String email, String type) {
+        if ("signup".equals(type)) {
+            if (memberRepository.existsByEmail(email)) {
+                throw new IllegalArgumentException("이미 가입된 이메일입니다. (소셜 로그인 계정 포함)");
+            }
+        } else if ("find".equals(type)) {
+            if (!memberRepository.existsByEmail(email)) {
+                throw new IllegalArgumentException("가입된 이메일이 아닙니다.");
+            }
         }
 
         // 6자리 랜덤 코드 생성
@@ -78,3 +84,4 @@ public class EmailServiceImpl implements EmailService {
         return key.toString();
     }
 }
+

@@ -38,7 +38,9 @@ public class AuthController {
     @PostMapping("/email/send")
     public ResponseEntity<?> sendEmailCode(@RequestBody AuthRequestDTO.EmailSend request) {
         try {
-            emailService.sendAuthCode(request.getEmail());
+            String type = request.getType();
+            if (type == null || type.isEmpty()) type = "signup";
+            emailService.sendAuthCode(request.getEmail(), type);
             return ResponseEntity.ok("인증 번호 발송 완료");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -50,6 +52,26 @@ public class AuthController {
         try {
             emailService.verifyAuthCode(request.getEmail(), request.getAuthCode());
             return ResponseEntity.ok("인증 성공");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/find-id")
+    public ResponseEntity<?> findId(@RequestBody AuthRequestDTO.FindId request) {
+        try {
+            String loginId = authService.findIdByEmail(request.getEmail(), request.getAuthCode());
+            return ResponseEntity.ok(loginId);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/find-pw")
+    public ResponseEntity<?> findPw(@RequestBody AuthRequestDTO.FindPw request) {
+        try {
+            authService.resetPassword(request.getLoginId(), request.getEmail(), request.getAuthCode());
+            return ResponseEntity.ok("임시 비밀번호가 이메일로 발송되었습니다.");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

@@ -1297,13 +1297,20 @@
             requestId = localStorage.getItem('ps_ai_request_id');
         }
         
+        // 1) 즉시 취소 상태 플래그 할당 (백그라운드 로딩 루프 취소 감지용)
+        localStorage.setItem('ps_ai_status', 'CANCELLED');
+        
         // 팝업 숨기기 및 기본 상태 초기화 선제 수행
         closeAiImageModal();
         if (typeof clearFileSelect === 'function') clearFileSelect();
         if (typeof resetStep === 'function') resetStep();
-        if (typeof clearAiStorage === 'function') clearAiStorage();
 
-        if (!requestId) return;
+        if (!requestId) {
+            if (typeof clearAiStorage === 'function') clearAiStorage();
+            return;
+        }
+
+        if (typeof clearAiStorage === 'function') clearAiStorage();
 
         try {
             const res = await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
@@ -1461,15 +1468,29 @@
                 const uploadData = await uploadRes.json();
                 const requestId = uploadData.id;
 
-                // B. 로컬 스토리지에 requestId 기입
+                if (localStorage.getItem('ps_ai_status') === 'CANCELLED') {
+                    await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
+                        method: 'DELETE',
+                        headers: authHeaders()
+                    });
+                    console.log(`[AI-Cancel-Guard] Cleaned up request #${requestId} on early cancel.`);
+                    return;
+                }
+
                 localStorage.setItem('ps_ai_request_id', requestId);
 
-                // C. 공통 헤더 폴링 복구 호출 (폴링을 즉시 시작하여 위젯 UI를 변경하게 함)
                 if (typeof checkAndRecoverAiBackgroundProcess === 'function') {
                     checkAndRecoverAiBackgroundProcess();
                 }
 
-                // D. 분석 실행 API 호출
+                if (localStorage.getItem('ps_ai_status') === 'CANCELLED') {
+                    await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
+                        method: 'DELETE',
+                        headers: authHeaders()
+                    });
+                    return;
+                }
+
                 const analyzeRes = await fetch(`${API_BASE}/ai-image-schedule/${requestId}/analyze`, {
                     method: 'POST',
                     headers: authHeaders()
@@ -1480,6 +1501,14 @@
                 }
 
                 const resultData = await analyzeRes.json();
+
+                if (localStorage.getItem('ps_ai_status') === 'CANCELLED') {
+                    await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
+                        method: 'DELETE',
+                        headers: authHeaders()
+                    });
+                    return;
+                }
 
                 if (resultData.status === 'FAILED') {
                     throw new Error(resultData.failReason || 'AI 분석이 실패했습니다.');

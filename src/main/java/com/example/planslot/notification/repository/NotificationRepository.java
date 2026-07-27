@@ -21,6 +21,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     
     List<Notification> findAllByReceiver_IdAndTargetTypeAndTargetIdAndIsReadFalse(Long receiverId, String targetType, Long targetId);
 
+    List<Notification> findAllByReceiver_IdAndTargetTypeAndTargetIdAndNotificationType(Long receiverId, String targetType, Long targetId, com.example.planslot.notification.entity.NotificationType notificationType);
+
     Page<Notification> findAllByReceiver_Id(Long receiverId, Pageable pageable);
 
     Page<Notification> findAllByReceiver_IdAndIsReadFalse(Long receiverId, Pageable pageable);

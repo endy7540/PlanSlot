@@ -131,7 +131,8 @@ public class GroupServiceImpl implements GroupService {
             String mName = gm.getMember().getDisplayName();
             if (gm.getMemberStatus().name().equals("WAITING")) {
                 boolean isMe = mId.equals(memberId.toString());
-                waiting.add(new GroupDTO.WaitingInfo(mId, gm.getMember().getEmail(), group.getOwner().getDisplayName(), isMe));
+                String inviterName = gm.getInviter() != null ? gm.getInviter().getDisplayName() : group.getOwner().getDisplayName();
+                waiting.add(new GroupDTO.WaitingInfo(mId, gm.getMember().getEmail(), inviterName, isMe));
             } else if (gm.getMemberStatus().name().equals("ACTIVE")) {
                 String role = ownerIdStr.equals(mId) ? "owner" : "member";
                 String profileImageUrl = gm.getMember().getProfileImageUrl();
@@ -292,13 +293,34 @@ public class GroupServiceImpl implements GroupService {
         GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId).orElseThrow(() -> new IllegalArgumentException("초대 내역이 없습니다."));
         if (membership.getMemberStatus() != GroupMemberStatus.WAITING) throw new IllegalArgumentException("대기 중인 초대가 아닙니다.");
         
-        boolean isTaken = groupMemberRepository.findByGroup_Id(groupId).stream()
+        List<GroupMember> groupMembers = groupMemberRepository.findByGroup_Id(groupId);
+        boolean isTaken = groupMembers.stream()
                 .anyMatch(m -> m.getMemberStatus() == GroupMemberStatus.ACTIVE && color.equals(m.getColor()));
         if (isTaken) throw new IllegalArgumentException("이미 사용중인 색상입니다.");
         
         membership.changeColor(color);
         membership.changeStatus(GroupMemberStatus.ACTIVE);
         membership.getGroup().increasePersonCount();
+
+        // 기존 모임원들에게 새로운 멤버 입장 알림 전송
+        String groupName = membership.getGroup().getGroupName();
+        String newMemberName = membership.getMember().getDisplayName();
+        
+        groupMembers.stream()
+                .filter(m -> m.getMemberStatus() == GroupMemberStatus.ACTIVE && !m.getMember().getId().equals(memberId))
+                .forEach(existingMember -> {
+                    notificationService.sendGroupMessage(
+                            existingMember.getMember().getId(),
+                            groupId,
+                            "새로운 모임원 입장",
+                            newMemberName + "님이 [" + groupName + "] 모임에 입장했습니다.",
+                            "GROUP",
+                            groupId
+                    );
+                });
+                
+        // 모임 초대 알림 삭제 처리 (수락 후 알림에서 바로 사라지도록)
+        notificationService.deleteNotificationsByTarget(memberId, "GROUP", groupId);
     }
 
     @Override
@@ -419,6 +441,9 @@ public class GroupServiceImpl implements GroupService {
         GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId).orElseThrow(() -> new IllegalArgumentException("초대 내역이 없습니다."));
         if (membership.getMemberStatus() != GroupMemberStatus.WAITING) throw new IllegalArgumentException("대기 중인 초대가 아닙니다.");
         groupMemberRepository.delete(membership);
+        
+        // 모임 초대 알림 삭제 처리 (거절 후 알림에서 바로 사라지도록)
+        notificationService.deleteNotificationsByTarget(memberId, "GROUP", groupId);
     }
 
     @Override

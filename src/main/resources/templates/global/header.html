@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <body>
 <div th:fragment="headerFragment">
@@ -67,24 +67,68 @@
     </div>
   </header>
 
-  <!-- [공통 백그라운드 AI 분석 진행용 플로팅 위젯] -->
-  <div id="aiFloatingWidget" style="display: none; position: fixed; bottom: 24px; right: 24px; width: 340px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid rgba(226, 232, 240, 0.8); border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05); padding: 18px; z-index: 10001; font-family: inherit; transition: all 0.3s ease;">
-      <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div id="aiWidgetIcon" style="font-size: 24px; animation: pulse 2s infinite;">🔮</div>
-          <div style="flex: 1;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                  <span id="aiWidgetTitle" style="font-size: 14px; font-weight: 800; color: #1E293B;">AI 이미지 일정 분석 중</span>
-                  <button style="background: none; border: 0; font-size: 16px; color: #94A3B8; cursor: pointer; font-weight: bold; line-height: 1;" onclick="closeAiWidget()">×</button>
-              </div>
-              <p id="aiWidgetDesc" style="color: #64748B; font-size: 12px; margin: 0 0 10px; line-height: 1.4;">이미지 파일을 서버로 업로드하여 분석 요청을 보내는 중입니다...</p>
-              <div id="aiWidgetLoadingBar" style="width: 100%; height: 4px; background: #F1F5F9; border-radius: 2px; overflow: hidden; margin-bottom: 10px;">
-                  <div id="aiWidgetProgressBar" style="width: 15%; height: 100%; background: linear-gradient(90deg, #6366F1, #3B82F6); border-radius: 2px; transition: width 0.3s ease;"></div>
-              </div>
-              <div id="aiWidgetActionContainer" style="display: none; text-align: right;">
-                  <button id="aiWidgetActionBtn" style="padding: 6px 12px; font-size: 11px; border-radius: 6px; border: 0; background: linear-gradient(135deg, #6366F1, #3B82F6); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 2px 6px rgba(99, 102, 241, 0.25);" onclick="openWidgetResult()">📋 분석 결과 확인</button>
-              </div>
-          </div>
-      </div>
+  <!-- [공통 백그라운드 AI 분석 진행용 플로팅 위젯 컨테이너] -->
+  <div id="aiWidgetContainer" style="position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 16px; z-index: 10001; align-items: flex-end; pointer-events: none;">
+  
+    <!-- [공통 백그라운드 AI 분석 진행용 플로팅 위젯 (이미지 일정)] -->
+    <div id="aiFloatingWidget" style="display: none; position: relative; width: 340px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid rgba(226, 232, 240, 0.8); border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05); padding: 18px; font-family: inherit; transition: all 0.3s ease; pointer-events: auto;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <div id="aiWidgetIcon" style="font-size: 24px; animation: pulse 2s infinite;">🔮</div>
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                    <span id="aiWidgetTitle" style="font-size: 14px; font-weight: 800; color: #1E293B;">AI 이미지 일정 분석 중</span>
+                    <button style="background: none; border: 0; font-size: 16px; color: #94A3B8; cursor: pointer; font-weight: bold; line-height: 1;" onclick="closeAiWidget()">×</button>
+                </div>
+                <p id="aiWidgetDesc" style="color: #64748B; font-size: 12px; margin: 0 0 10px; line-height: 1.4;">이미지 파일을 서버로 업로드하여 분석 요청을 보내는 중입니다...</p>
+                <div id="aiWidgetLoadingBar" style="width: 100%; height: 4px; background: #F1F5F9; border-radius: 2px; overflow: hidden; margin-bottom: 10px;">
+                    <div id="aiWidgetProgressBar" style="width: 15%; height: 100%; background: linear-gradient(90deg, #6366F1, #3B82F6); border-radius: 2px; transition: width 0.3s ease;"></div>
+                </div>
+                <div id="aiWidgetActionContainer" style="display: none; text-align: right;">
+                    <button id="aiWidgetActionBtn" style="box-sizing: border-box; padding: 6px 12px; font-size: 11px; border-radius: 6px; border: 0; background: linear-gradient(135deg, #6366F1, #3B82F6); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 2px 6px rgba(99, 102, 241, 0.25); height: 28px; display: inline-flex; align-items: center; justify-content: center;" onclick="openWidgetResult()">📋 분석 결과 확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- [공통 백그라운드 AI 분석 진행용 플로팅 위젯 (채팅 요약)] -->
+    <div id="chatAiFloatingWidget" style="display: none; position: relative; width: 340px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid rgba(226, 232, 240, 0.8); border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05); padding: 18px; font-family: inherit; transition: all 0.3s ease; pointer-events: auto;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <div id="chatAiWidgetIcon" style="font-size: 24px; animation: pulse 2s infinite;">✨</div>
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                    <span id="chatAiWidgetTitle" style="font-size: 14px; font-weight: 800; color: #1E293B;">AI 채팅 요약 분석 중</span>
+                    <button style="background: none; border: 0; font-size: 16px; color: #94A3B8; cursor: pointer; font-weight: bold; line-height: 1;" onclick="closeChatAiWidget()">×</button>
+                </div>
+                <p id="chatAiWidgetDesc" style="color: #64748B; font-size: 12px; margin: 0 0 10px; line-height: 1.4;">대화 내용을 요약하고 일정을 찾는 중입니다...</p>
+                <div id="chatAiWidgetLoadingBar" style="width: 100%; height: 4px; background: #F1F5F9; border-radius: 2px; overflow: hidden; margin-bottom: 10px;">
+                    <div id="chatAiWidgetProgressBar" style="width: 15%; height: 100%; background: linear-gradient(90deg, #F59E0B, #EF4444); border-radius: 2px; transition: width 0.3s ease;"></div>
+                </div>
+                <div id="chatAiWidgetActionContainer" style="display: none; text-align: right;">
+                    <button id="chatAiWidgetActionBtn" style="box-sizing: border-box; padding: 6px 12px; font-size: 11px; border-radius: 6px; border: 0; background: linear-gradient(135deg, #F59E0B, #EF4444); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25); height: 28px; display: inline-flex; align-items: center; justify-content: center;" onclick="openChatAiWidgetResult()">📋 분석 결과 확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- [공통 백그라운드 AI 분석 진행용 플로팅 위젯 (모임 일정 추천)] -->
+    <div id="groupAiFloatingWidget" style="display: none; position: relative; width: 340px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid rgba(226, 232, 240, 0.8); border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05); padding: 18px; font-family: inherit; transition: all 0.3s ease; pointer-events: auto;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <div id="groupAiWidgetIcon" style="font-size: 24px; animation: pulse 2s infinite;">🗓️</div>
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                    <span id="groupAiWidgetTitle" style="font-size: 14px; font-weight: 800; color: #1E293B;">AI 시간 추천 분석 중</span>
+                    <button style="background: none; border: 0; font-size: 16px; color: #94A3B8; cursor: pointer; font-weight: bold; line-height: 1;" onclick="closeGroupAiWidget()">×</button>
+                </div>
+                <p id="groupAiWidgetDesc" style="color: #64748B; font-size: 12px; margin: 0 0 10px; line-height: 1.4;">모임원들의 일정을 분석해서 추천 시간을 찾는 중입니다...</p>
+                <div id="groupAiWidgetLoadingBar" style="width: 100%; height: 4px; background: #F1F5F9; border-radius: 2px; overflow: hidden; margin-bottom: 10px;">
+                    <div id="groupAiWidgetProgressBar" style="width: 15%; height: 100%; background: linear-gradient(90deg, #0D9488, #38BDF8); border-radius: 2px; transition: width 0.3s ease;"></div>
+                </div>
+                <div id="groupAiWidgetActionContainer" style="display: none; text-align: right;">
+                    <button id="groupAiWidgetActionBtn" style="box-sizing: border-box; padding: 6px 12px; font-size: 11px; border-radius: 6px; border: 0; background: linear-gradient(135deg, #0D9488, #38BDF8); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25); height: 28px; display: inline-flex; align-items: center; justify-content: center;" onclick="openGroupAiWidgetResult()">📋 분석 결과 확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
   </div>
 
   <style>
@@ -237,10 +281,6 @@
                       widgetBar.style.width = '100%';
                       widgetBar.style.background = '#10B981';
                       widgetAction.style.display = 'block';
-                      
-                      if (typeof showToast === 'function') {
-                          showToast('✨ AI 일정 분석이 완료되었습니다. 우측 하단의 알림을 확인하세요!');
-                      }
                   } else if (data.status === 'FAILED') {
                       clearInterval(headerPollingTimer);
                       const failReason = data.failReason || 'AI 분석 실패';
@@ -311,6 +351,7 @@
         function showGroupAiProcessingWidget() {
             const widget = document.getElementById('groupAiFloatingWidget');
             if (!widget) return;
+            document.getElementById('aiWidgetContainer').appendChild(widget);
             widget.style.display = 'block';
             document.getElementById('groupAiWidgetTitle').innerText = 'AI 시간 추천 분석 중';
             document.getElementById('groupAiWidgetDesc').innerText = '모임원들의 일정을 분석해서 추천 시간을 찾는 중입니다...';
@@ -323,6 +364,7 @@
         function showGroupAiCompletedWidget() {
             const widget = document.getElementById('groupAiFloatingWidget');
             if (!widget) return;
+            document.getElementById('aiWidgetContainer').appendChild(widget);
             widget.style.display = 'block';
             document.getElementById('groupAiWidgetTitle').innerText = 'AI 추천 완료!';
             document.getElementById('groupAiWidgetDesc').innerText = '추천 시간을 찾았어요. 결과를 확인해보세요.';
@@ -335,6 +377,7 @@
         function showGroupAiFailedWidget(reason) {
             const widget = document.getElementById('groupAiFloatingWidget');
             if (!widget) return;
+            document.getElementById('aiWidgetContainer').appendChild(widget);
             widget.style.display = 'block';
             document.getElementById('groupAiWidgetTitle').innerText = 'AI 추천 실패';
             document.getElementById('groupAiWidgetDesc').innerText = reason || 'AI 분석이 실패했습니다.';
@@ -401,10 +444,6 @@
                         localStorage.setItem('ps_group_ai_cached_result', JSON.stringify(result.data));
                         showGroupAiCompletedWidget();
 
-                        if (typeof showToast === 'function') {
-                            showToast('✨ AI 시간 추천 분석이 완료되었어요!');
-                        }
-
                         window.dispatchEvent(new CustomEvent('planslot:groupAiCompleted', {
                             detail: { jobId, groupId, data: result.data }
                         }));
@@ -453,10 +492,186 @@
         } else {
             checkAndRecoverGroupAiJob();
         }
-    </script>
 
+        // ===== 모임 채팅 AI 요약 백그라운드 폴링 =====
+        const CHAT_AI_POLL_INTERVAL_MS = 3000;
+        let chatAiPollingTimer = null;
+
+        function closeChatAiWidget() {
+            const widget = document.getElementById('chatAiFloatingWidget');
+            if (widget) widget.style.display = 'none';
+            clearChatAiStorage();
+        }
+
+        function clearChatAiStorage() {
+            localStorage.removeItem('ps_chat_ai_job_id');
+            localStorage.removeItem('ps_chat_ai_group_id');
+            localStorage.removeItem('ps_chat_ai_status');
+            localStorage.removeItem('ps_chat_ai_cached_result');
+            localStorage.removeItem('ps_chat_ai_fail_reason');
+            if (chatAiPollingTimer) {
+                clearInterval(chatAiPollingTimer);
+                chatAiPollingTimer = null;
+            }
+        }
+        window.clearChatAiStorage = clearChatAiStorage;
+
+        function openChatAiWidgetResult() {
+            const groupId = localStorage.getItem('ps_chat_ai_group_id');
+            if (!groupId) return;
+
+            const onSamePage = window.location.pathname === `/groupChat/${groupId}`;
+
+            if (onSamePage) {
+                const widget = document.getElementById('chatAiFloatingWidget');
+                if (widget) widget.style.display = 'none';
+                
+                if (typeof window.showChatAiModalWithData === 'function') {
+                    const dataStr = localStorage.getItem('ps_chat_ai_cached_result');
+                    if(dataStr && dataStr !== "undefined") {
+                        try {
+                            window.showChatAiModalWithData(JSON.parse(dataStr));
+                        } catch(e) {
+                            console.error("Failed to parse chat AI result", e);
+                            alert("오류가 발생했습니다. AI 요약을 다시 진행해주세요.");
+                            clearChatAiStorage();
+                        }
+                    } else if (dataStr === "undefined") {
+                        alert("요약 데이터가 유실되었습니다. 다시 요약을 진행해주세요.");
+                        clearChatAiStorage();
+                    }
+                }
+            } else {
+                window.location.href = `/groupChat/${groupId}?showAiSummary=true`;
+            }
+        }
+
+        function showChatAiProcessingWidget() {
+            const widget = document.getElementById('chatAiFloatingWidget');
+            if (!widget) return;
+            document.getElementById('aiWidgetContainer').appendChild(widget);
+            widget.style.display = 'block';
+            document.getElementById('chatAiWidgetTitle').innerText = 'AI 채팅 요약 진행 중';
+            document.getElementById('chatAiWidgetDesc').innerText = '대화 내용을 요약하고 일정을 찾는 중입니다...';
+            const bar = document.getElementById('chatAiWidgetProgressBar');
+            bar.style.width = '40%';
+            bar.style.background = 'linear-gradient(90deg, #F59E0B, #EF4444)';
+            document.getElementById('chatAiWidgetActionContainer').style.display = 'none';
+        }
+
+        function showChatAiCompletedWidget() {
+            const widget = document.getElementById('chatAiFloatingWidget');
+            if (!widget) return;
+            document.getElementById('aiWidgetContainer').appendChild(widget);
+            widget.style.display = 'block';
+            document.getElementById('chatAiWidgetTitle').innerText = 'AI 요약 완료!';
+            document.getElementById('chatAiWidgetDesc').innerText = '대화 요약이 완료되었습니다. 결과를 확인해보세요.';
+            const bar = document.getElementById('chatAiWidgetProgressBar');
+            bar.style.width = '100%';
+            bar.style.background = '#10B981';
+            document.getElementById('chatAiWidgetActionContainer').style.display = 'block';
+        }
+
+        function showChatAiFailedWidget(reason) {
+            const widget = document.getElementById('chatAiFloatingWidget');
+            if (!widget) return;
+            document.getElementById('aiWidgetContainer').appendChild(widget);
+            widget.style.display = 'block';
+            document.getElementById('chatAiWidgetTitle').innerText = 'AI 요약 실패';
+            document.getElementById('chatAiWidgetDesc').innerText = reason || 'AI 분석이 실패했습니다.';
+            const bar = document.getElementById('chatAiWidgetProgressBar');
+            bar.style.width = '100%';
+            bar.style.background = '#EF4444';
+            document.getElementById('chatAiWidgetActionContainer').style.display = 'none';
+        }
+
+        function registerChatAiJob(jobId, groupId) {
+            localStorage.setItem('ps_chat_ai_job_id', jobId);
+            localStorage.setItem('ps_chat_ai_group_id', String(groupId));
+            localStorage.setItem('ps_chat_ai_status', 'PROCESSING');
+            localStorage.removeItem('ps_chat_ai_cached_result');
+            localStorage.removeItem('ps_chat_ai_fail_reason');
+
+            showChatAiProcessingWidget();
+            startChatAiPolling(jobId, groupId);
+        }
+        window.registerChatAiJob = registerChatAiJob;
+
+        function startChatAiPolling(jobId, groupId) {
+            if (chatAiPollingTimer) clearInterval(chatAiPollingTimer);
+
+            chatAiPollingTimer = setInterval(async () => {
+                const tokenVal = getAuthToken();
+                if (!tokenVal) {
+                    clearInterval(chatAiPollingTimer);
+                    chatAiPollingTimer = null;
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/groupChat/${groupId}/ai-summary/status/${jobId}`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': 'Bearer ' + tokenVal,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        localStorage.setItem('ps_chat_ai_status', data.status);
+
+                        if (data.status === 'COMPLETED') {
+                            clearInterval(chatAiPollingTimer);
+                            chatAiPollingTimer = null;
+                            const actualData = data.result || data.data;
+                            localStorage.setItem('ps_chat_ai_cached_result', JSON.stringify(actualData));
+                            showChatAiCompletedWidget();
+                            if (window.onChatAiCompleted) {
+                                window.onChatAiCompleted(data.result);
+                            }
+                        } else if (data.status === 'FAILED') {
+                            clearInterval(chatAiPollingTimer);
+                            chatAiPollingTimer = null;
+                            const err = data.error || '알 수 없는 오류가 발생했습니다.';
+                            localStorage.setItem('ps_chat_ai_fail_reason', err);
+                            showChatAiFailedWidget(err);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Chat AI Status polling error", error);
+                }
+            }, CHAT_AI_POLL_INTERVAL_MS);
+        }
+
+        function checkAndRecoverChatAiJob() {
+            const jobId = localStorage.getItem('ps_chat_ai_job_id');
+            const groupId = localStorage.getItem('ps_chat_ai_group_id');
+            const status = localStorage.getItem('ps_chat_ai_status');
+
+            if (!jobId || !groupId || !status) return;
+
+            if (status === 'PROCESSING') {
+                showChatAiProcessingWidget();
+                startChatAiPolling(jobId, groupId);
+            } else if (status === 'COMPLETED') {
+                if (localStorage.getItem('ps_chat_ai_cached_result')) {
+                    showChatAiCompletedWidget();
+                }
+            } else if (status === 'FAILED') {
+                showChatAiFailedWidget(localStorage.getItem('ps_chat_ai_fail_reason'));
+            }
+        }
+        
+        checkAndRecoverChatAiJob();
+    </script>
   <script th:src="@{/js/global/header.js}"></script>
   <script th:src="@{/js/notification/notification.js}"></script>
 </div>
 </body>
 </html>
+
+
+
+
+

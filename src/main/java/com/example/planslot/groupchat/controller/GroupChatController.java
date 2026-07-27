@@ -45,19 +45,19 @@ public class GroupChatController {
                 .getId();
     }
 
-    // ======== [View Rendering] ========
-
-    // 1. 채팅방 목록 뷰
+    // 1. 채팅방 목록 → 첫 번째 가입 모임 채팅방으로 리다이렉트
     @GetMapping("")
-    public String chatList(Authentication authentication, Model model) {
+    public String chatList(Authentication authentication) {
         if (authentication != null && authentication.isAuthenticated()) {
             Long memberId = getAuthenticatedMemberId(authentication);
             List<GroupDTO.ListResponse> myGroups = groupService.getMyGroups(memberId).stream()
                     .filter(g -> "joined".equals(g.filter()))
                     .collect(Collectors.toList());
-            model.addAttribute("groups", myGroups);
+            if (!myGroups.isEmpty()) {
+                return "redirect:/groupChat/" + myGroups.get(0).id();
+            }
         }
-        return "groupChat/list";
+        return "redirect:/group/list";
     }
 
     // 2. 개별 채팅방 뷰
@@ -70,6 +70,9 @@ public class GroupChatController {
         if (myMembership.getMemberStatus() != GroupMemberStatus.ACTIVE) {
             throw new IllegalArgumentException("활성 모임원만 채팅방에 입장할 수 있습니다.");
         }
+        
+        // 채팅방 진입 시 안 읽은 메시지 수 초기화
+        groupChatService.clearUnreadChatCount(groupId, memberId);
         
         GroupDTO.DetailResponse groupDetail = groupService.getGroupRead(groupId, memberId);
         List<GroupDTO.ListResponse> myGroups = groupService.getMyGroups(memberId).stream()
@@ -103,6 +106,15 @@ public class GroupChatController {
         
         groupChatService.reportMessage(memberId, request);
         return ResponseEntity.ok("신고가 접수되었습니다.");
+    }
+
+    // 4. 채팅 읽음 처리 API (클라이언트에서 채팅방 활성화 시 호출)
+    @PostMapping("/{groupId}/read")
+    @ResponseBody
+    public ResponseEntity<Void> markAsRead(@PathVariable Long groupId, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupChatService.clearUnreadChatCount(groupId, memberId);
+        return ResponseEntity.ok().build();
     }
 
     // ======== [WebSocket Message Endpoints] ========

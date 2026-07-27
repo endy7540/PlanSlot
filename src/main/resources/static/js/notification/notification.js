@@ -6,7 +6,8 @@ const NOTIFICATION_TARGET_ROUTES = {
     POST: targetId => `/board/read/${encodeURIComponent(targetId)}`,
     BOARD: targetId => `/board/read/${encodeURIComponent(targetId)}`,
     GROUP: targetId => `/group/read?id=${encodeURIComponent(targetId)}`,
-    GROUP_KICK: () => '/group'
+    GROUP_KICK: () => '/group',
+    CHAT: targetId => `/groupChat/${encodeURIComponent(targetId)}`
 };
 
 const notificationPageState = { filter: 'ALL', page: 0, totalPages: 0 };
@@ -102,6 +103,9 @@ function handleNotificationSseEvent(rawEvent) {
         const notification = JSON.parse(dataLines.join('\n'));
         showNotificationToast(`${notification.title}: ${notification.content}`);
         scheduleNotificationRefresh();
+        
+        // 전역으로 알림 수신 이벤트 전파 (모임방 목록 실시간 갱신용)
+        window.dispatchEvent(new CustomEvent('notificationReceived', { detail: notification }));
     } catch (error) {
         console.error('실시간 알림 처리에 실패했습니다.', error);
     }

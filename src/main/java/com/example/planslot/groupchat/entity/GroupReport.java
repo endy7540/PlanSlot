@@ -44,7 +44,7 @@ public class GroupReport {
     @Column(name = "reason", length = 30, nullable = false)
     private String reason;
 
-    @Column(name = "reason_detail", columnDefinition = "TEXT")
+    @Column(name = "reason_detail", length = 200)
     private String reasonDetail;
 
     @Enumerated(EnumType.STRING)

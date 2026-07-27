@@ -12,4 +12,7 @@ public interface GroupChatService {
     
     // 채팅 메시지 신고
     void reportMessage(Long memberId, com.example.planslot.groupchat.dto.GroupReportDTO.Request request);
+
+    // 안 읽은 채팅 개수 초기화
+    void clearUnreadChatCount(Long groupId, Long memberId);
 }

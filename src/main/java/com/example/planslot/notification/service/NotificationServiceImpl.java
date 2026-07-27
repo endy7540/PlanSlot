@@ -217,11 +217,18 @@ public class NotificationServiceImpl implements NotificationService {
 
     // 내 알림 전체 읽음 처리
     @Override
+    @Transactional
     public void readAllNotifications(Long memberId) {
-        findReceiver(memberId);
-
-        List<Notification> notifications = notificationRepository.findAllByReceiver_IdAndIsReadFalse(memberId);
-        notifications.forEach(Notification::read);
+        List<Notification> unreadList = notificationRepository.findAllByReceiver_IdAndIsReadFalse(memberId);
+        unreadList.forEach(Notification::read);
+    }
+    
+    // 특정 타겟(채팅방 등)과 관련된 알림을 모두 읽음 처리
+    @Override
+    @Transactional
+    public void readNotificationsByTarget(Long memberId, String targetType, Long targetId) {
+        List<Notification> unreadList = notificationRepository.findAllByReceiver_IdAndTargetTypeAndTargetIdAndIsReadFalse(memberId, targetType, targetId);
+        unreadList.forEach(Notification::read);
     }
 
     // 전체 및 기능별 알림 설정 조회

@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
     List<ChatMessage> findByGroupChatRoom_IdOrderByCreatedAtAsc(Long groupChatRoomId);
+    
+    ChatMessage findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long groupId);
 }

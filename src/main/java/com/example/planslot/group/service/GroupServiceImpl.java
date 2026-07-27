@@ -39,6 +39,7 @@ public class GroupServiceImpl implements GroupService {
     private final NotificationService notificationService;
     private final com.example.planslot.group.repository.GroupScheduleShareRepository groupScheduleShareRepository;
     private final com.example.planslot.groupchat.repository.GroupChatRoomRepository groupChatRoomRepository;
+    private final com.example.planslot.groupchat.repository.ChatMessageRepository chatMessageRepository;
     private final com.example.planslot.schedule.entity.SourceType sourceType = null; // Unused dummy to prevent import issue
 
     @Override
@@ -81,7 +82,25 @@ public class GroupServiceImpl implements GroupService {
                     );
                     return GroupDTO.ListResponse.of(gm, activeCount);
                 })
+                .sorted((a, b) -> {
+                    com.example.planslot.groupchat.entity.ChatMessage lastMsgA = chatMessageRepository.findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long.valueOf(a.id()));
+                    com.example.planslot.groupchat.entity.ChatMessage lastMsgB = chatMessageRepository.findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long.valueOf(b.id()));
+                    
+                    LocalDateTime timeA = lastMsgA != null ? lastMsgA.getCreatedAt() : gmJoinTime(a.id(), groupMembers);
+                    LocalDateTime timeB = lastMsgB != null ? lastMsgB.getCreatedAt() : gmJoinTime(b.id(), groupMembers);
+                    
+                    return timeB.compareTo(timeA); // 최신순 (내림차순)
+                })
                 .collect(Collectors.toList());
+    }
+    
+    private LocalDateTime gmJoinTime(String groupIdStr, List<GroupMember> groupMembers) {
+        Long groupId = Long.valueOf(groupIdStr);
+        return groupMembers.stream()
+                .filter(gm -> gm.getGroup().getId().equals(groupId))
+                .findFirst()
+                .map(GroupMember::getJoinedAt)
+                .orElse(LocalDateTime.MIN);
     }
 
     @Override
@@ -137,6 +156,7 @@ public class GroupServiceImpl implements GroupService {
                 ownerIdStr,
                 filter,
                 memberId.toString(),
+                group.getProfileImageUrl(),
                 members,
                 waiting,
                 mySchedules,

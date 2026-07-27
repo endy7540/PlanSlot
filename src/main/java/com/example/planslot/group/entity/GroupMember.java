@@ -46,6 +46,9 @@ public class GroupMember {
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt;
 
+    @Column(name = "unread_chat_count", nullable = false)
+    private int unreadChatCount = 0;
+
     @Builder
     private GroupMember(Group group, Member member, Member inviter, String nickname, GroupMemberStatus memberStatus) {
         this.group = group;
@@ -54,6 +57,7 @@ public class GroupMember {
         this.nickname = nickname;
         this.memberStatus = memberStatus;
         this.joinedAt = LocalDateTime.now();
+        this.unreadChatCount = 0;
     }
 
     public static GroupMember createOwner(Group group, Member owner) {
@@ -82,5 +86,13 @@ public class GroupMember {
 
     public void changeStatus(GroupMemberStatus status) {
         this.memberStatus = status;
+    }
+
+    public void incrementUnreadChatCount() {
+        this.unreadChatCount++;
+    }
+
+    public void clearUnreadChatCount() {
+        this.unreadChatCount = 0;
     }
 }

@@ -10,6 +10,10 @@ import com.example.planslot.member.repository.MemberRepository;
 import com.example.planslot.groupchat.entity.GroupReport;
 import com.example.planslot.groupchat.repository.GroupReportRepository;
 import com.example.planslot.group.entity.ReportStatus;
+import com.example.planslot.group.repository.GroupMemberRepository;
+import com.example.planslot.group.entity.GroupMember;
+import com.example.planslot.group.entity.GroupMemberStatus;
+import com.example.planslot.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +31,8 @@ public class GroupChatServiceImpl implements GroupChatService {
     private final MemberRepository memberRepository;
     private final com.example.planslot.group.repository.GroupRepository groupRepository;
     private final GroupReportRepository groupReportRepository;
+    private final GroupMemberRepository groupMemberRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -49,6 +55,23 @@ public class GroupChatServiceImpl implements GroupChatService {
                 .build();
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
+
+        // 다른 활성 모임원들의 안 읽은 메시지 수 증가 및 알림 발송
+        List<GroupMember> groupMembers = groupMemberRepository.findByGroup_Id(messageDTO.getGroupId());
+        for (GroupMember gm : groupMembers) {
+            if (gm.getMemberStatus() == GroupMemberStatus.ACTIVE && !gm.getMember().getId().equals(messageDTO.getSenderId())) {
+                gm.incrementUnreadChatCount();
+                // 알림 발송
+                notificationService.sendGroupMessage(
+                        gm.getMember().getId(),
+                        messageDTO.getGroupId(),
+                        "새 채팅 메시지",
+                        chatRoom.getGroup().getGroupName() + " 방에 새 메시지가 도착했습니다.",
+                        "CHAT",
+                        messageDTO.getGroupId()
+                );
+            }
+        }
         
         return ChatMessageDTO.from(savedMessage);
     }
@@ -90,5 +113,15 @@ public class GroupChatServiceImpl implements GroupChatService {
                 .build();
                 
         groupReportRepository.save(report);
+    }
+
+    @Override
+    @Transactional
+    public void clearUnreadChatCount(Long groupId, Long memberId) {
+        groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
+                .ifPresent(GroupMember::clearUnreadChatCount);
+        
+        // 채팅방에 들어왔으므로 연관된 시스템 알림(종 모양 알림)도 모두 읽음 처리
+        notificationService.readNotificationsByTarget(memberId, "CHAT", groupId);
     }
 }

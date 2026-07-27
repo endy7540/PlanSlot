@@ -137,6 +137,43 @@ public class GroupController {
         return ResponseEntity.ok().build();
     }
 
+    // 모임방 프로필 사진 수정
+    @PostMapping("/{groupId}/image")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> updateGroupImage(
+            @PathVariable("groupId") Long groupId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            String originalFilename = file.getOriginalFilename();
+            String extension = ".png";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+            }
+            String newFilename = java.util.UUID.randomUUID().toString() + extension;
+            
+            java.nio.file.Path uploadPath = java.nio.file.Paths.get(System.getProperty("user.dir"), "uploads", "group");
+            if (!java.nio.file.Files.exists(uploadPath)) {
+                java.nio.file.Files.createDirectories(uploadPath);
+            }
+            
+            java.nio.file.Path filePath = uploadPath.resolve(newFilename);
+            file.transferTo(filePath.toFile());
+            String imageUrl = "/uploads/group/" + newFilename;
+            
+            groupService.updateGroupProfileImage(groupId, imageUrl, memberId);
+            
+            return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     // 모임 삭제
     @DeleteMapping("/{groupId}")
     @ResponseBody

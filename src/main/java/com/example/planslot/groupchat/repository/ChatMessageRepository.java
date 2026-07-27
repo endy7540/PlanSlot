@@ -11,4 +11,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     List<ChatMessage> findByGroupChatRoom_IdOrderByCreatedAtAsc(Long groupChatRoomId);
     
     ChatMessage findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long groupId);
+    
+    void deleteByGroupChatRoom_Id(Long groupChatRoomId);
 }

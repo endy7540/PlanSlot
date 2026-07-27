@@ -20,6 +20,9 @@ public interface GroupService {
     // 모임 이름 수정
     void updateGroupName(Long groupId, String newName, Long memberId);
 
+    // 모임 내 내 색상 수정
+    void updateMyColor(Long groupId, Long memberId, String color);
+
     // 모임 프로필 이미지 수정
     void updateGroupProfileImage(Long groupId, String imageUrl, Long memberId);
 
@@ -34,7 +37,7 @@ public interface GroupService {
 
     // 모임 초대
     void inviteMember(Long groupId, String email, Long memberId);
-    void acceptInvite(Long groupId, Long memberId);
+    void acceptInvite(Long groupId, Long memberId, String color);
     void rejectInvite(Long groupId, Long memberId);
     void toggleFavorite(Long groupId, Long memberId);
 

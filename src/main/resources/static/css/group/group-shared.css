@@ -60,6 +60,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .btn-primary:hover{background:#1e2b45}
 .btn-teal{background:var(--teal);color:#07353c}
 .btn-teal:hover{background:#0ea99a}
+.btn-sky{background:#E0F2FE;color:var(--navy)}
+.btn-sky:hover{background:#BAE6FD}
 .btn-ghost{background:#fff;border-color:var(--border);color:var(--ink)}
 .btn-ghost:hover{background:var(--surface)}
 .btn-danger{background:#fff;border-color:var(--danger-border);color:var(--danger)}

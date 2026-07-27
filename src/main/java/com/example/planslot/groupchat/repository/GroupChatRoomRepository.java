@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface GroupChatRoomRepository extends JpaRepository<GroupChatRoom, Long> {
     Optional<GroupChatRoom> findByGroup_Id(Long groupId);
+    void deleteByGroup_Id(Long groupId);
 }

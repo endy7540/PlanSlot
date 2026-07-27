@@ -1308,11 +1308,32 @@
 
     function closeAiImageModal() {
         document.getElementById('aiImageModal').style.display = 'none';
-        if (typeof clearFileSelect === 'function') {
-            clearFileSelect();
+    }
+
+    async function discardAiImageAnalysis() {
+        let requestId = document.getElementById('aiRequestId') ? document.getElementById('aiRequestId').value : null;
+        if (!requestId) {
+            requestId = localStorage.getItem('ps_ai_request_id');
         }
-        if (typeof resetStep === 'function') {
-            resetStep();
+        
+        // 팝업 숨기기 및 기본 상태 초기화 선제 수행
+        closeAiImageModal();
+        if (typeof clearFileSelect === 'function') clearFileSelect();
+        if (typeof resetStep === 'function') resetStep();
+        if (typeof clearAiStorage === 'function') clearAiStorage();
+
+        if (!requestId) return;
+
+        try {
+            const res = await fetch(`${API_BASE}/ai-image-schedule/${requestId}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                console.log(`[AI-Clean] Discarded temp request #${requestId} and physical image.`);
+            }
+        } catch (e) {
+            console.error('[AI-Clean] Discard failed:', e);
         }
     }
 
@@ -1787,6 +1808,8 @@
 
             showToast(`🎉 총 ${confirmRequests.length}개의 일정이 성공적으로 개인 캘린더에 추가되었습니다!`);
             closeAiImageModal();
+            if (typeof clearFileSelect === 'function') clearFileSelect();
+            if (typeof resetStep === 'function') resetStep();
             if (typeof clearAiStorage === 'function') clearAiStorage();
             
             if (typeof loadMonthSchedules === 'function') {
@@ -1817,7 +1840,7 @@
 <div id="aiImageModal" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;">
     <div class="panel" style="width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto; border-radius: 16px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.5); padding: 24px; position: relative;">
         <!-- 닫기 버튼 -->
-        <button style="position: absolute; top: 16px; right: 16px; background: none; border: 0; font-size: 20px; color: #64748B; cursor: pointer; font-weight: bold;" onclick="closeAiImageModal()">×</button>
+        <button style="position: absolute; top: 16px; right: 16px; background: none; border: 0; font-size: 20px; color: #64748B; cursor: pointer; font-weight: bold;" onclick="discardAiImageAnalysis()">×</button>
         
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
             <span style="font-size: 24px;">🔮</span>
@@ -1868,7 +1891,7 @@
             </div>
 
             <div style="margin-top: 24px; text-align: right;">
-                <button class="ghost" onclick="closeAiImageModal()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; margin-right: 6px; cursor: pointer;">취소</button>
+                <button class="ghost" onclick="discardAiImageAnalysis()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; margin-right: 6px; cursor: pointer;">취소</button>
                 <button class="primary" onclick="submitAiAnalysis()" style="padding: 10px 20px; font-size: 13px; border-radius: 8px; border: 0; background: linear-gradient(135deg, #6366F1, #3B82F6); color: white; cursor: pointer; font-weight: bold;">🚀 AI 분석 요청</button>
             </div>
         </div>
@@ -1901,7 +1924,7 @@
             <div style="margin-top: 24px; text-align: right; display: flex; justify-content: space-between; align-items: center;">
                 <button class="ghost" onclick="reAnalyze()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; color: #4F46E5; border: 2px solid #E2E8F0; font-weight: bold; background: white; cursor: pointer;">🔄 다시 분석</button>
                 <div style="display: flex; gap: 6px;">
-                    <button class="ghost" onclick="resetStep()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; cursor: pointer;">처음으로</button>
+                    <button class="ghost" onclick="discardAiImageAnalysis()" style="padding: 10px 16px; font-size: 13px; border-radius: 8px; cursor: pointer;">처음으로</button>
                     <button id="aiConfirmBtn" class="primary" onclick="confirmSchedule()" style="padding: 10px 20px; font-size: 13px; border-radius: 8px; border: 0; background: linear-gradient(135deg, #10B981, #059669); color: white; font-weight: bold; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); cursor: pointer;">📅 캘린더 등록 확정</button>
                 </div>
             </div>

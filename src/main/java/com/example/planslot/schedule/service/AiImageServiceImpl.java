@@ -620,6 +620,15 @@ public class AiImageServiceImpl implements AiImageService {
                 .toList();
     }
 
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteAiImageAnalysis(Long memberId, Long requestId) {
+        AiImage aiImage = aiImageRepository.findByIdAndMemberId(requestId, memberId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "요청 정보를 찾을 수 없습니다."));
+        deletePhysicalImageFile(aiImage.getImageUrl());
+        aiImageRepository.delete(aiImage);
+    }
+
     private void validateImage(MultipartFile image) {
         if (image == null || image.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일이 전송되지 않았습니다.");

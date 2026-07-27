@@ -123,20 +123,25 @@ function renderGrid(){
       avatarHtml = `<div class="group-avatar" style="background: #e2e8f0; display:flex; justify-content:center; align-items:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>`;
     }
 
+    const favoriteIcon = isWaiting ? '' : (g.isFavorite 
+      ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer; margin-left:auto;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>` 
+      : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer; margin-left:auto;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`);
+
     const unreadBadge = g.unreadChatCount > 0 
       ? `<div style="background-color:#EF4444; color:white; border-radius:9999px; padding:2px 6px; font-size:10px; font-weight:bold; margin-left:8px;">${g.unreadChatCount > 99 ? '99+' : g.unreadChatCount}</div>` 
       : '';
 
     card.innerHTML = `
-      <div class="top-row">
+      <div class="top-row" style="display:flex; align-items:center;">
         ${avatarHtml}
         <div style="flex:1;">
           <div style="display:flex; align-items:center;">
-            <b style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px;">${g.name}</b>
+            <b style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px;">${g.name}</b>
             ${unreadBadge}
           </div>
           <div class="count">참여자 ${g.members.length}명</div>
         </div>
+        ${isWaiting ? '' : `<div class="favorite-btn" data-group-id="${g.id}" style="padding:4px; z-index:10; display:flex; align-items:center;" onclick="event.preventDefault(); event.stopPropagation(); toggleFavorite('${g.id}')">${favoriteIcon}</div>`}
       </div>
       ${badge}
       <div class="go">${isWaiting ? '초대 확인하기 →' : '모임 열기 →'}</div>
@@ -296,6 +301,7 @@ async function fetchAndRenderGrid() {
         filter: d.filter,
         profileImageUrl: d.profileImageUrl,
         unreadChatCount: d.unreadChatCount,
+        isFavorite: d.isFavorite,
         members: new Array(d.memberCount).fill({}),
         waiting: [],
         mySchedules: [],
@@ -316,6 +322,18 @@ window.addEventListener('notificationReceived', (e) => {
   // 알림을 받으면 모임 목록(정렬 및 안 읽은 메시지 수)을 갱신합니다.
   fetchAndRenderGrid();
 });
+
+window.toggleFavorite = function(groupId) {
+  fetchApi(`/group/${groupId}/favorite`, { method: 'POST' })
+    .then(res => {
+      if (res.ok) {
+        fetchAndRenderGrid();
+      } else {
+        showToast('즐겨찾기 변경에 실패했습니다.');
+      }
+    })
+    .catch(console.error);
+};
 </script>
 </body>
 </html>

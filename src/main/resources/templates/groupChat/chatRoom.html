@@ -415,7 +415,11 @@
         </div>
         
         <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13.5px;" th:text="${g.name}">그룹명</div>
-        <div th:if="${g.unreadChatCount > 0}" style="background-color:#EF4444; color:white; border-radius:9999px; padding:2px 6px; font-size:10px; font-weight:bold;" th:text="${g.unreadChatCount > 99 ? '99+' : g.unreadChatCount}"></div>
+        <div th:if="${g.unreadChatCount > 0}" style="background-color:#EF4444; color:white; border-radius:9999px; padding:2px 6px; font-size:10px; font-weight:bold; margin-right:6px;" th:text="${g.unreadChatCount > 99 ? '99+' : g.unreadChatCount}"></div>
+        <div th:data-id="${g.id}" onclick="event.preventDefault(); event.stopPropagation(); toggleFavorite(this.getAttribute('data-id'))" style="padding:4px; z-index:10; display:flex; align-items:center;">
+          <svg th:if="${g.isFavorite()}" width="16" height="16" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          <svg th:unless="${g.isFavorite()}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        </div>
       </a>
     </div>
   </div>
@@ -677,10 +681,14 @@
           
           let badgeHtml = '';
           if (g.unreadChatCount > 0) {
-            badgeHtml = `<div style="background-color:#EF4444; color:white; border-radius:9999px; padding:2px 6px; font-size:10px; font-weight:bold;">
+            badgeHtml = `<div style="background-color:#EF4444; color:white; border-radius:9999px; padding:2px 6px; font-size:10px; font-weight:bold; margin-right:6px;">
                            ${g.unreadChatCount > 99 ? '99+' : g.unreadChatCount}
                          </div>`;
           }
+          
+          let favIconHtml = g.isFavorite 
+            ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`
+            : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
           
           html += `
             <a href="/groupChat/${g.id}?sidebar=left" 
@@ -690,12 +698,27 @@
               ${avatarHtml}
               <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13.5px;">${g.name}</div>
               ${badgeHtml}
+              <div onclick="event.preventDefault(); event.stopPropagation(); toggleFavorite('${g.id}')" style="padding:4px; z-index:10; display:flex; align-items:center;">
+                ${favIconHtml}
+              </div>
             </a>
           `;
         });
         sidebarList.innerHTML = html;
       });
   });
+
+  window.toggleFavorite = function(id) {
+    fetch(`/group/${id}/favorite`, { method: 'POST' })
+      .then(res => {
+        if (res.ok) {
+          window.dispatchEvent(new CustomEvent('notificationReceived'));
+        } else {
+          alert('즐겨찾기 변경에 실패했습니다.');
+        }
+      })
+      .catch(console.error);
+  };
 </script>
 
 </body>

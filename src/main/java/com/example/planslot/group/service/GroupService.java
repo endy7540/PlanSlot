@@ -33,13 +33,10 @@ public interface GroupService {
     void kickMember(Long groupId, Long targetMemberId, Long memberId);
 
     // 모임 초대
-    void inviteMember(Long groupId, String nickname, Long memberId);
-
-    // 초대 수락
+    void inviteMember(Long groupId, String email, Long memberId);
     void acceptInvite(Long groupId, Long memberId);
-
-    // 초대 거절
     void rejectInvite(Long groupId, Long memberId);
+    void toggleFavorite(Long groupId, Long memberId);
 
     // 모임 캘린더용 일정 조회
     List<GroupDTO.CalendarScheduleInfo> getGroupSchedules(Long groupId, Long memberId, LocalDateTime start, LocalDateTime end);

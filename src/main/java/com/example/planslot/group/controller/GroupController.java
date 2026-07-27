@@ -127,6 +127,15 @@ public class GroupController {
         GroupDTO.DetailResponse response = groupService.getGroupRead(groupId, memberId);
         return ResponseEntity.ok(response);
     }
+    
+    // 모임 즐겨찾기 토글 API
+    @PostMapping("/{groupId}/favorite")
+    @ResponseBody
+    public ResponseEntity<Void> toggleFavorite(@PathVariable Long groupId, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.toggleFavorite(groupId, memberId);
+        return ResponseEntity.ok().build();
+    }
 
     // 모임 이름 수정
     @PutMapping("/{groupId}")

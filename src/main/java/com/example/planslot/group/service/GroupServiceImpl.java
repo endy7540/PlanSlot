@@ -83,6 +83,11 @@ public class GroupServiceImpl implements GroupService {
                     return GroupDTO.ListResponse.of(gm, activeCount);
                 })
                 .sorted((a, b) -> {
+                    // 1순위: 즐겨찾기 여부 (true가 위로)
+                    if (a.isFavorite() && !b.isFavorite()) return -1;
+                    if (!a.isFavorite() && b.isFavorite()) return 1;
+                    
+                    // 2순위: 최신 채팅 시간
                     com.example.planslot.groupchat.entity.ChatMessage lastMsgA = chatMessageRepository.findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long.valueOf(a.id()));
                     com.example.planslot.groupchat.entity.ChatMessage lastMsgB = chatMessageRepository.findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long.valueOf(b.id()));
                     
@@ -390,6 +395,14 @@ public class GroupServiceImpl implements GroupService {
         GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId).orElseThrow(() -> new IllegalArgumentException("초대 내역이 없습니다."));
         if (membership.getMemberStatus() != GroupMemberStatus.WAITING) throw new IllegalArgumentException("대기 중인 초대가 아닙니다.");
         groupMemberRepository.delete(membership);
+    }
+
+    @Override
+    @Transactional
+    public void toggleFavorite(Long groupId, Long memberId) {
+        GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
+                .orElseThrow(() -> new IllegalArgumentException("참여 중이 아닙니다."));
+        membership.toggleFavorite();
     }
 
     @Override

@@ -45,7 +45,8 @@ public class GroupDTO {
             String filter,
             int memberCount,
             String profileImageUrl,
-            int unreadChatCount
+            int unreadChatCount,
+            boolean isFavorite
     ) {
         public static ListResponse of(GroupMember groupMember, int activeCount) {
             String filter = groupMember.getMemberStatus().name().equals("WAITING") ? "waiting" : "joined";
@@ -56,7 +57,8 @@ public class GroupDTO {
                     filter,
                     activeCount,
                     groupMember.getGroup().getProfileImageUrl(),
-                    groupMember.getUnreadChatCount()
+                    groupMember.getUnreadChatCount(),
+                    groupMember.isFavorite()
             );
         }
     }

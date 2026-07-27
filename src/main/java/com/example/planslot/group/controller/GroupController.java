@@ -127,6 +127,15 @@ public class GroupController {
         GroupDTO.DetailResponse response = groupService.getGroupRead(groupId, memberId);
         return ResponseEntity.ok(response);
     }
+    
+    // 모임 즐겨찾기 토글 API
+    @PostMapping("/{groupId}/favorite")
+    @ResponseBody
+    public ResponseEntity<Void> toggleFavorite(@PathVariable Long groupId, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.toggleFavorite(groupId, memberId);
+        return ResponseEntity.ok().build();
+    }
 
     // 모임 이름 수정
     @PutMapping("/{groupId}")
@@ -135,6 +144,43 @@ public class GroupController {
         Long memberId = getAuthenticatedMemberId(authentication);
         groupService.updateGroupName(groupId, body.get("name"), memberId);
         return ResponseEntity.ok().build();
+    }
+
+    // 모임방 프로필 사진 수정
+    @PostMapping("/{groupId}/image")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> updateGroupImage(
+            @PathVariable("groupId") Long groupId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            String originalFilename = file.getOriginalFilename();
+            String extension = ".png";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+            }
+            String newFilename = java.util.UUID.randomUUID().toString() + extension;
+            
+            java.nio.file.Path uploadPath = java.nio.file.Paths.get(System.getProperty("user.dir"), "uploads", "group");
+            if (!java.nio.file.Files.exists(uploadPath)) {
+                java.nio.file.Files.createDirectories(uploadPath);
+            }
+            
+            java.nio.file.Path filePath = uploadPath.resolve(newFilename);
+            file.transferTo(filePath.toFile());
+            String imageUrl = "/uploads/group/" + newFilename;
+            
+            groupService.updateGroupProfileImage(groupId, imageUrl, memberId);
+            
+            return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     // 모임 삭제
@@ -175,7 +221,7 @@ public class GroupController {
     @ResponseBody
     public ResponseEntity<Void> inviteMember(@PathVariable("groupId") Long groupId, @RequestBody Map<String, String> body, Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        groupService.inviteMember(groupId, body.get("email"), memberId);
+        groupService.inviteMember(groupId, body.get("nickname"), memberId);
         return ResponseEntity.ok().build();
     }
 
@@ -221,16 +267,16 @@ public class GroupController {
         return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
     }
 
-    // 이메일 검색 (초대 시 자동완성 용도)
-    @GetMapping("/search-email")
+    // 닉네임 검색 (초대 시 자동완성 용도)
+    @GetMapping("/search-nickname")
     @ResponseBody
-    public ResponseEntity<List<String>> searchEmail(@RequestParam("prefix") String prefix) {
-        List<String> emails = memberRepository.findAll().stream()
-                .map(member -> member.getEmail())
-                .filter(email -> email != null && email.toLowerCase().startsWith(prefix.toLowerCase()))
+    public ResponseEntity<List<String>> searchNickname(@RequestParam("prefix") String prefix) {
+        List<String> nicknames = memberRepository.findAll().stream()
+                .map(member -> member.getNickname())
+                .filter(nickname -> nickname != null && nickname.toLowerCase().startsWith(prefix.toLowerCase()))
                 .limit(5)
                 .toList();
-        return ResponseEntity.ok(emails);
+        return ResponseEntity.ok(nicknames);
     }
 
     // 모임 캘린더에 일정 추가 및 공유

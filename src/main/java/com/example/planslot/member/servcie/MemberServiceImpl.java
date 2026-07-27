@@ -26,12 +26,18 @@ public class MemberServiceImpl implements MemberService{
         }
 
         String encodePassword = passwordEncoder.encode(request.getPassword());
+        
+        String reqNickname = request.getNickname();
+        if (reqNickname != null && reqNickname.length() > 20) {
+            throw new IllegalArgumentException("닉네임은 최대 20자까지 입력 가능합니다.");
+        }
+        String uniqueNickname = generateUniqueNickname(reqNickname);
 
         Member member = Member.builder()
                 .loginId(request.getLoginId())
                 .password(encodePassword)
                 .email(request.getEmail())
-                .nickname(request.getNickname())
+                .nickname(uniqueNickname)
                 .address(request.getAddress())
                 .role(Member.Role.MEMBER)
                 .status(Member.Status.ACTIVE)
@@ -54,6 +60,7 @@ public class MemberServiceImpl implements MemberService{
         return com.example.planslot.member.dto.MemberResponseDTO.MyPage.builder()
                 .email(member.getEmail())
                 .nickname(member.getNickname())
+                .displayName(member.getDisplayName())
                 .address(member.getAddress())
                 .profileImageUrl(member.getProfileImageUrl())
                 .allowActivityNoti(member.isAllowActivityNoti())
@@ -79,7 +86,19 @@ public class MemberServiceImpl implements MemberService{
             encodedPassword = passwordEncoder.encode(request.getNewPassword());
         }
         
-        member.updateInfo(request.getNickname(), encodedPassword, request.getAddress());
+        String finalNickname = member.getNickname();
+        if (request.getNickname() != null && 
+            !request.getNickname().equals(member.getDisplayName()) && 
+            !request.getNickname().equals(member.getNickname())) {
+            
+            String reqNickname = request.getNickname().trim();
+            if (reqNickname.length() > 20) {
+                throw new IllegalArgumentException("닉네임은 최대 20자까지 입력 가능합니다.");
+            }
+            finalNickname = generateUniqueNickname(reqNickname);
+        }
+        
+        member.updateInfo(finalNickname, encodedPassword, request.getAddress());
     }
 
     @Override
@@ -118,5 +137,26 @@ public class MemberServiceImpl implements MemberService{
     public Member getMember(String email) {
         return memberRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+    }
+
+    private String generateUniqueNickname(String baseNickname) {
+        java.util.Random random = new java.util.Random();
+        String newNickname;
+        int attempts = 0;
+        int tagMax = 10000;
+        String format = "#%04d";
+        
+        do {
+            int tag = random.nextInt(tagMax);
+            newNickname = baseNickname + String.format(format, tag);
+            attempts++;
+            
+            // 50번 실패할 때마다 자릿수를 늘림 (4자리 -> 5자리 -> 6자리...)
+            if (attempts % 50 == 0) {
+                tagMax *= 10;
+                format = "#%0" + (String.valueOf(tagMax - 1).length()) + "d";
+            }
+        } while (memberRepository.existsByNickname(newNickname));
+        return newNickname;
     }
 }

@@ -39,6 +39,7 @@ public class GroupServiceImpl implements GroupService {
     private final NotificationService notificationService;
     private final com.example.planslot.group.repository.GroupScheduleShareRepository groupScheduleShareRepository;
     private final com.example.planslot.groupchat.repository.GroupChatRoomRepository groupChatRoomRepository;
+    private final com.example.planslot.groupchat.repository.ChatMessageRepository chatMessageRepository;
     private final com.example.planslot.schedule.entity.SourceType sourceType = null; // Unused dummy to prevent import issue
 
     @Override
@@ -81,7 +82,30 @@ public class GroupServiceImpl implements GroupService {
                     );
                     return GroupDTO.ListResponse.of(gm, activeCount);
                 })
+                .sorted((a, b) -> {
+                    // 1순위: 즐겨찾기 여부 (true가 위로)
+                    if (a.isFavorite() && !b.isFavorite()) return -1;
+                    if (!a.isFavorite() && b.isFavorite()) return 1;
+                    
+                    // 2순위: 최신 채팅 시간
+                    com.example.planslot.groupchat.entity.ChatMessage lastMsgA = chatMessageRepository.findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long.valueOf(a.id()));
+                    com.example.planslot.groupchat.entity.ChatMessage lastMsgB = chatMessageRepository.findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long.valueOf(b.id()));
+                    
+                    LocalDateTime timeA = lastMsgA != null ? lastMsgA.getCreatedAt() : gmJoinTime(a.id(), groupMembers);
+                    LocalDateTime timeB = lastMsgB != null ? lastMsgB.getCreatedAt() : gmJoinTime(b.id(), groupMembers);
+                    
+                    return timeB.compareTo(timeA); // 최신순 (내림차순)
+                })
                 .collect(Collectors.toList());
+    }
+    
+    private LocalDateTime gmJoinTime(String groupIdStr, List<GroupMember> groupMembers) {
+        Long groupId = Long.valueOf(groupIdStr);
+        return groupMembers.stream()
+                .filter(gm -> gm.getGroup().getId().equals(groupId))
+                .findFirst()
+                .map(GroupMember::getJoinedAt)
+                .orElse(LocalDateTime.MIN);
     }
 
     @Override
@@ -104,10 +128,10 @@ public class GroupServiceImpl implements GroupService {
 
         for (GroupMember gm : allMembers) {
             String mId = gm.getMember().getId().toString();
-            String mName = gm.getMember().getNickname();
+            String mName = gm.getMember().getDisplayName();
             if (gm.getMemberStatus().name().equals("WAITING")) {
                 boolean isMe = mId.equals(memberId.toString());
-                waiting.add(new GroupDTO.WaitingInfo(mId, gm.getMember().getEmail(), group.getOwner().getNickname(), isMe));
+                waiting.add(new GroupDTO.WaitingInfo(mId, gm.getMember().getEmail(), group.getOwner().getDisplayName(), isMe));
             } else if (gm.getMemberStatus().name().equals("ACTIVE")) {
                 String role = ownerIdStr.equals(mId) ? "owner" : "member";
                 String profileImageUrl = gm.getMember().getProfileImageUrl();
@@ -137,6 +161,7 @@ public class GroupServiceImpl implements GroupService {
                 ownerIdStr,
                 filter,
                 memberId.toString(),
+                group.getProfileImageUrl(),
                 members,
                 waiting,
                 mySchedules,
@@ -221,10 +246,10 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public void inviteMember(Long groupId, String email, Long memberId) {
+    public void inviteMember(Long groupId, String nickname, Long memberId) {
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
         if (!group.getOwner().getId().equals(memberId)) throw new IllegalArgumentException("권한이 없습니다.");
-        Member targetMember = memberRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+        Member targetMember = memberRepository.findByNickname(nickname).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
         if (groupMemberRepository.existsByGroup_IdAndMember_Id(groupId, targetMember.getId())) {
             throw new IllegalArgumentException("이미 초대되었거나 참여 중인 사용자입니다.");
         }
@@ -272,7 +297,7 @@ public class GroupServiceImpl implements GroupService {
         for (GroupMember gm : groupMembers) {
             if (gm.getMemberStatus() == GroupMemberStatus.ACTIVE) {
                 Long targetMemberId = gm.getMember().getId();
-                String nickname = gm.getMember().getNickname();
+                String nickname = gm.getMember().getDisplayName();
                 List<Schedule> schedules;
                 if (start != null && end != null) {
                     schedules = scheduleRepository.findAllByMemberIdAndPeriodCandidate(targetMemberId, start, end);
@@ -374,6 +399,14 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
+    public void toggleFavorite(Long groupId, Long memberId) {
+        GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
+                .orElseThrow(() -> new IllegalArgumentException("참여 중이 아닙니다."));
+        membership.toggleFavorite();
+    }
+
+    @Override
+    @Transactional
     public void addGroupSchedule(Long groupId, Long memberId, String title, String dateStr, String timeStr, String visibility, String endDateStr, String endTimeStr) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
@@ -455,7 +488,7 @@ public class GroupServiceImpl implements GroupService {
                     schedule.getTitle(),
                     dateStr,
                     timeStr,
-                    share.getSharer().getNickname(),
+                    share.getSharer().getDisplayName(),
                     schedule.getIsPublic(),
                     schedule.getScheduleType() != null ? schedule.getScheduleType().name() : "DAILY"
             );
@@ -475,7 +508,7 @@ public class GroupServiceImpl implements GroupService {
                     schedule.getTitle(),
                     dateStr,
                     timeStr,
-                    share.getTargetMember().getNickname(), // For this method, sharerName field is repurposed to hold the target member's name
+                    share.getTargetMember().getDisplayName(), // For this method, sharerName field is repurposed to hold the target member's name
                     schedule.getIsPublic(),
                     schedule.getScheduleType() != null ? schedule.getScheduleType().name() : "DAILY"
             );

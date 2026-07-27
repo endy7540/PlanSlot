@@ -1,4 +1,5 @@
 .header-nav{
+  position: relative;
   height:78px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
   padding:0 28px;background:#F3FAFF;border-bottom:2px solid #DCEFFC;
   box-shadow:0 6px 18px rgba(8,32,51,.05);
@@ -7,7 +8,10 @@
 .header-brand{cursor:pointer;}
 .header-brand .logo{font-size:28px;font-weight:950;color:#38BDF8!important}
 .header-brand .tagline{margin-top:4px;font-size:11px;color:#748898!important}
-.header-menu {display:flex;gap:30px;font-weight:bold;align-items:center;margin:0 auto;}
+.header-menu {
+  display:flex;gap:30px;font-weight:bold;align-items:center;
+  position: absolute; left: 50%; transform: translateX(-50%); margin: 0;
+}
 .header-menu a {text-decoration:none;color:#075985;font-size:17px;transition:color 0.2s;}
 .header-menu a:hover {color:#38BDF8;}
 .header-actions{display:flex;align-items:center;gap:10px}
@@ -30,6 +34,12 @@
 }
 .profile-nickname {
   font-size: 15px; font-weight: bold; color: #075985;
+  width: 120px;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
 }
 .profile-img {
   width: 40px; height: 40px; border-radius: 50%; object-fit: cover;

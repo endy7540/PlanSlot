@@ -81,7 +81,7 @@ public class GroupRecommendationService {
 
         for (GroupMember gm : groupMembers) {
             if (gm.getMemberStatus() == GroupMemberStatus.ACTIVE) {
-                String nickname = gm.getMember().getNickname();
+                String nickname = gm.getMember().getDisplayName();
                 memberNames.add(nickname);
                 promptBuilder.append("Member '").append(nickname).append("':\n");
                 

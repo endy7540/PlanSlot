@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PlanSlot - 모임 상세</title>
 <link rel="stylesheet" th:href="@{/css/group/group-shared.css}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
 <style>
   .cal-event {
     display: block;
@@ -33,6 +34,53 @@
   .blink-slow {
     animation: blinkSlow 1.5s infinite;
     border: 1px dashed #0284C7;
+  }
+
+  /* --- 이미지 크롭 모달 --- */
+  .group-crop-modal-overlay {
+    display: none;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(8,32,51,0.4); backdrop-filter: blur(4px);
+    z-index: 2000;
+    justify-content: center; align-items: center;
+  }
+  .group-crop-modal-overlay.open { display: flex; }
+  .group-crop-modal {
+    background: #fff; border-radius: 20px; width: 500px; max-width: 92vw;
+    box-shadow: 0 10px 40px rgba(8,32,51,0.15); overflow: hidden;
+  }
+  .group-crop-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 24px; border-bottom: 1px solid #E2E8F0;
+  }
+  .group-crop-modal-header h3 { margin: 0; font-size: 16px; color: #1E293B; font-weight: 700; }
+  .group-crop-close-btn {
+    background: none; border: none; font-size: 18px; cursor: pointer; color: #94A3B8;
+  }
+  .group-crop-body {
+    width: 100%; height: 300px;
+    background: #f1f5f9; display: flex; justify-content: center; align-items: center; overflow: hidden;
+  }
+  .group-crop-body img { max-width: 100%; max-height: 100%; }
+  .group-crop-actions {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 14px 24px; border-top: 1px solid #E2E8F0;
+  }
+  .group-crop-actions .btn-cancel-crop {
+    padding: 8px 18px; border: 1px solid #CBD5E1; background: #fff;
+    border-radius: 8px; cursor: pointer; font-size: 13px; color: #64748B;
+  }
+  .group-crop-actions .btn-save-crop {
+    padding: 8px 18px; border: none; background: #0EA5E9;
+    color: #fff; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
+  }
+  .group-crop-actions .btn-save-crop:disabled {
+    opacity: 0.6; cursor: not-allowed;
+  }
+  /* Cropper.js 원형 뷰 */
+  .group-crop-body .cropper-view-box,
+  .group-crop-body .cropper-face {
+    border-radius: 28%;
   }
 </style>
 </head>
@@ -158,9 +206,9 @@
       <div class="tab-panel" id="panel-members">
         <div class="section-row"><h3>초대하기</h3></div>
         <div class="invite-form" style="position: relative;">
-          <input id="inviteEmail" type="email" placeholder="초대할 회원의 이메일 주소" autocomplete="off">
+          <input id="inviteNickname" type="text" placeholder="초대할 회원의 닉네임#태그" autocomplete="off">
           <button class="btn btn-primary" id="btnInvite">초대 보내기</button>
-          <div id="emailSuggestions" class="suggestions-box" style="display:none; position:absolute; top:45px; left:0; width:calc(100% - 110px); background:#fff; border:1px solid #DCEFFC; z-index:100; max-height:150px; overflow-y:auto; border-radius:8px; box-shadow:0 4px 12px rgba(8,32,51,.1);"></div>
+          <div id="nicknameSuggestions" class="suggestions-box" style="display:none; position:absolute; top:45px; left:0; width:calc(100% - 110px); background:#fff; border:1px solid #DCEFFC; z-index:100; max-height:150px; overflow-y:auto; border-radius:8px; box-shadow:0 4px 12px rgba(8,32,51,.1);"></div>
         </div>
 
         <div class="section-row"><h3>수락 대기중</h3></div>
@@ -180,22 +228,33 @@
           </div>
         </div>
 
+        <div class="settings-block" id="blockImageUpdate">
+          <h3>모임방 프로필 사진 수정</h3>
+          <div class="field-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
+            <div style="width:100px; height:100px; border-radius:28%; overflow:hidden; background:#e2e8f0; border:2px solid var(--border); display:flex; justify-content:center; align-items:center;">
+              <img id="groupProfilePreview" src="" alt="모임 사진" style="width:100%; height:100%; object-fit:cover; display:none;">
+              <svg id="groupProfilePlaceholder" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            </div>
+            <input type="file" id="groupImageInput" accept="image/*" style="font-size:13px; padding:6px 0;">
+          </div>
+        </div>
+
         <div class="settings-block">
           <h3>위험 구역</h3>
           <div class="danger-zone">
-            <div class="danger-row" style="border-bottom: 1px solid var(--border); margin-bottom: 12px; padding-bottom: 12px;">
+            <div class="danger-row" id="leaveGroupRow" style="border-bottom: 1px solid var(--border); margin-bottom: 12px; padding-bottom: 12px;">
               <div>
                 <b>모임 탈퇴</b>
                 <span>공유했던 일정도 더 이상 모임원에게 보이지 않아요.</span>
               </div>
               <button class="btn btn-ghost btn-sm" id="btnLeave" style="width:90px; justify-content:center; color:var(--danger); border-color:var(--danger-border);">모임 탈퇴</button>
             </div>
-            <div class="danger-row">
+            <div class="danger-row" id="deleteGroupRow">
               <div>
                 <b>모임 삭제</b>
                 <span>삭제하면 모임의 일정, 채팅, 게시글이 모두 사라지고 되돌릴 수 없어요.</span>
               </div>
-              <button class="btn btn-danger btn-sm" id="btnDeleteGroup" style="width:90px; justify-content:center;">모임 삭제</button>
+              <button class="btn btn-ghost btn-sm" id="btnDeleteGroup" style="width:90px; justify-content:center; color:var(--danger); border-color:var(--danger-border);">모임 삭제</button>
             </div>
           </div>
         </div>
@@ -250,6 +309,23 @@
   </div>
 </div>
 
+<!-- 모임 이미지 크롭 모달 -->
+<div class="group-crop-modal-overlay" id="groupCropModal">
+  <div class="group-crop-modal">
+    <div class="group-crop-modal-header">
+      <h3>모임 프로필 사진 편집</h3>
+      <button class="group-crop-close-btn" id="btnGroupCancelCrop">✕</button>
+    </div>
+    <div class="group-crop-body">
+      <img id="groupCropImageTarget" src="" alt="크롭 대상 이미지">
+    </div>
+    <div class="group-crop-actions">
+      <button class="btn-cancel-crop" id="btnGroupCancelCrop2" onclick="document.getElementById('btnGroupCancelCrop').click()">취소</button>
+      <button class="btn-save-crop" id="btnGroupConfirmCrop">적용 및 업로드</button>
+    </div>
+  </div>
+</div>
+
 <div id="importConfirmBar" style="display:none; position:fixed; top:75px; left:50%; transform:translateX(-50%); background:#fff; color:#1E293B; padding:12px 24px; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.1); border:1px solid #E2E8F0; z-index:9999; align-items:center; gap:16px;">
   <span id="importConfirmMessage" style="font-size:14px; font-weight:600;">선택한 일정을 캘린더에 추가하시겠습니까?</span>
   <div style="display:flex; gap:8px;">
@@ -259,6 +335,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 <script th:src="@{/js/group/group-shared.js}" src="../../static/js/group/group-shared.js"></script>
 <script>
 let group = null;
@@ -277,7 +354,45 @@ function renderHead(){
   const owner = isOwner(group);
   const isWaiting = group.filter === 'waiting';
 
-  document.getElementById('btnDeleteGroup').closest('.settings-block').style.display = owner ? 'block' : 'none';
+  const deleteRow = document.getElementById('btnDeleteGroup').closest('.danger-row');
+  if(deleteRow) deleteRow.style.display = owner ? 'flex' : 'none';
+
+  const leaveRow = document.getElementById('leaveGroupRow');
+  if(leaveRow) {
+    if(!owner) {
+      leaveRow.style.borderBottom = 'none';
+      leaveRow.style.marginBottom = '0';
+      leaveRow.style.paddingBottom = '0';
+    } else {
+      leaveRow.style.borderBottom = '1px solid var(--border)';
+      leaveRow.style.marginBottom = '12px';
+      leaveRow.style.paddingBottom = '12px';
+    }
+  }
+
+  const nameSaveBtn = document.getElementById('btnSaveName');
+  if(nameSaveBtn) {
+    nameSaveBtn.style.display = owner ? 'block' : 'none';
+    document.getElementById('settingsGroupName').disabled = !owner;
+  }
+
+  const blockImageUpdate = document.getElementById('blockImageUpdate');
+  if(blockImageUpdate) {
+    blockImageUpdate.style.display = owner ? 'block' : 'none';
+    if(owner) {
+      const previewImg = document.getElementById('groupProfilePreview');
+      const placeholder = document.getElementById('groupProfilePlaceholder');
+      if (group.profileImageUrl) {
+        previewImg.src = group.profileImageUrl + '?t=' + new Date().getTime();
+        previewImg.style.display = 'block';
+        placeholder.style.display = 'none';
+      } else {
+        previewImg.style.display = 'none';
+        placeholder.style.display = 'block';
+      }
+    }
+  }
+
   document.getElementById('ownerLeaveHint').style.display = owner ? 'block' : 'none';
   document.getElementById('btnGoAi').href = linkToAi(group.id);
 
@@ -482,55 +597,55 @@ function setTab(tab){
   document.getElementById('panel-' + tab).classList.add('active');
 }
 
-const inviteEmailInput = document.getElementById('inviteEmail');
-const emailSuggestions = document.getElementById('emailSuggestions');
+const inviteNicknameInput = document.getElementById('inviteNickname');
+const nicknameSuggestions = document.getElementById('nicknameSuggestions');
 
-inviteEmailInput.addEventListener('input', async (e) => {
+inviteNicknameInput.addEventListener('input', async (e) => {
   const val = e.target.value.trim();
   if(val.length === 0) {
-    emailSuggestions.style.display = 'none';
+    nicknameSuggestions.style.display = 'none';
     return;
   }
   
   try {
-    const res = await fetchApi(`/group/search-email?prefix=${encodeURIComponent(val)}`);
+    const res = await fetchApi(`/group/search-nickname?prefix=${encodeURIComponent(val)}`);
     if(res.ok) {
-      const emails = await res.json();
-      if(emails.length > 0) {
-        emailSuggestions.innerHTML = emails.map(email => 
+      const nicknames = await res.json();
+      if(nicknames.length > 0) {
+        nicknameSuggestions.innerHTML = nicknames.map(nickname => 
           `<div class="suggestion-item" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:14px; color:#182B3A;" 
             onmouseover="this.style.background='#F3FAFF'" 
             onmouseout="this.style.background=''"
-            onclick="document.getElementById('inviteEmail').value='${email}'; document.getElementById('emailSuggestions').style.display='none';">${email}</div>`
+            onclick="document.getElementById('inviteNickname').value='${nickname}'; document.getElementById('nicknameSuggestions').style.display='none';">${nickname}</div>`
         ).join('');
-        emailSuggestions.style.display = 'block';
+        nicknameSuggestions.style.display = 'block';
       } else {
-        emailSuggestions.style.display = 'none';
+        nicknameSuggestions.style.display = 'none';
       }
     }
   } catch(e) { console.error(e); }
 });
 
 document.addEventListener('click', (e) => {
-  if(e.target !== inviteEmailInput && e.target !== emailSuggestions) {
-    emailSuggestions.style.display = 'none';
+  if(e.target !== inviteNicknameInput && e.target !== nicknameSuggestions) {
+    nicknameSuggestions.style.display = 'none';
   }
 });
 
 document.getElementById('btnInvite').addEventListener('click', async ()=>{
-  const input = document.getElementById('inviteEmail');
-  const email = input.value.trim();
-  if(!email || !email.includes('@')){ showToast('올바른 이메일 주소를 입력해주세요.'); return; }
+  const input = document.getElementById('inviteNickname');
+  const nickname = input.value.trim();
+  if(!nickname || !nickname.includes('#')){ showToast('정확한 닉네임과 태그(예: 홍길동#1234)를 입력해주세요.'); return; }
   
   try {
     const res = await fetchApi(`/group/${group.id}/invitation`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ nickname })
     });
     if(res.ok) {
       input.value = '';
-      showToast(`${email}님에게 초대를 보냈어요.`);
+      showToast(`${nickname}님에게 초대를 보냈어요.`);
       fetchGroupDetail();
     } else {
       showToast('초대 중 오류가 발생했습니다.');
@@ -582,6 +697,132 @@ document.getElementById('btnSaveName').addEventListener('click', async ()=>{
     }
   } catch(e) { console.error(e); }
 });
+
+// === 모임 이미지 크롭 & 업로드 (Cropper.js) ===
+(function() {
+  const groupImageInput = document.getElementById('groupImageInput');
+  const cropModal = document.getElementById('groupCropModal');
+  const cropImageTarget = document.getElementById('groupCropImageTarget');
+  const btnCancelCrop = document.getElementById('btnGroupCancelCrop');
+  const btnConfirmCrop = document.getElementById('btnGroupConfirmCrop');
+  let groupCropper = null;
+
+  if (groupImageInput) {
+    groupImageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('파일 크기는 5MB 이하여야 합니다.');
+        groupImageInput.value = '';
+        return;
+      }
+
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        showToast('이미지 파일(jpg, png, gif, webp)만 업로드 가능합니다.');
+        groupImageInput.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        cropImageTarget.src = event.target.result;
+        cropModal.classList.add('open');
+
+        setTimeout(() => { if (btnConfirmCrop) btnConfirmCrop.focus(); }, 100);
+
+        if (groupCropper) {
+          groupCropper.destroy();
+        }
+
+        groupCropper = new Cropper(cropImageTarget, {
+          aspectRatio: 1,
+          viewMode: 1,
+          autoCropArea: 1,
+          dragMode: 'move',
+          background: false
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  if (btnCancelCrop) {
+    btnCancelCrop.addEventListener('click', () => {
+      cropModal.classList.remove('open');
+      groupImageInput.value = '';
+      if (groupCropper) {
+        groupCropper.destroy();
+        groupCropper = null;
+      }
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && cropModal.classList.contains('open') && !btnConfirmCrop.disabled) {
+      e.preventDefault();
+      btnConfirmCrop.click();
+    }
+  });
+
+  if (btnConfirmCrop) {
+    btnConfirmCrop.addEventListener('click', () => {
+      if (!groupCropper || !group) return;
+
+      btnConfirmCrop.innerText = '업로드 중...';
+      btnConfirmCrop.disabled = true;
+
+      groupCropper.getCroppedCanvas({
+        width: 300,
+        height: 300
+      }).toBlob(async (blob) => {
+        if (!blob) {
+          showToast('이미지 크롭에 실패했습니다.');
+          btnConfirmCrop.innerText = '적용 및 업로드';
+          btnConfirmCrop.disabled = false;
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', blob, 'group-profile.png');
+
+        try {
+          const res = await fetch(`/group/${group.id}/image`, {
+            method: 'POST',
+            body: formData
+          });
+          if (res.ok) {
+            const data = await res.json();
+            showToast('사진이 변경되었습니다.');
+            cropModal.classList.remove('open');
+            groupImageInput.value = '';
+            groupCropper.destroy();
+            groupCropper = null;
+            
+            // Update preview immediately with cache buster
+            const previewImg = document.getElementById('groupProfilePreview');
+            const placeholder = document.getElementById('groupProfilePlaceholder');
+            if (data && data.imageUrl) {
+              group.profileImageUrl = data.imageUrl; // update local state
+              previewImg.src = data.imageUrl + '?t=' + new Date().getTime();
+              previewImg.style.display = 'block';
+              placeholder.style.display = 'none';
+            }
+          } else {
+            showToast('사진 변경 중 오류가 발생했습니다.');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('오류가 발생했습니다.');
+        } finally {
+          btnConfirmCrop.innerText = '적용 및 업로드';
+          btnConfirmCrop.disabled = false;
+        }
+      }, 'image/png');
+    });
+  }
+})();
 
 document.getElementById('btnDeleteGroup').addEventListener('click', ()=>{
   openConfirm('모임을 삭제할까요?', `'${group.name}' 모임과 모든 일정, 채팅, 게시글이 삭제되고 되돌릴 수 없어요.`, async ()=>{

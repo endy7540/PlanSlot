@@ -38,7 +38,8 @@ public class EmailServiceImpl implements EmailService {
         // 이메일 발송
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
-        message.setSubject("[PlanSlot] 회원가입 이메일 인증 번호입니다.");
+        String subject = "signup".equals(type) ? "[PlanSlot] 회원가입 이메일 인증 번호입니다." : "[PlanSlot] 계정 찾기 이메일 인증 번호입니다.";
+        message.setSubject(subject);
         message.setText("인증 번호: " + authCode + "\n\n5분 이내에 입력해 주세요.");
         javaMailSender.send(message);
 

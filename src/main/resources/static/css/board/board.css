@@ -330,7 +330,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 }
 .board-mine-button:hover{border-color:#BAE6FD;background:var(--board-surface);color:var(--board-navy)}
 .board-mine-button.active{border-color:var(--board-sky);background:var(--board-surface-deep);color:var(--board-navy)}
-.board-mine-button.active::before{margin-right:5px;content:'✓';color:#0284C7}
+.board-head-actions .board-mine-button{height:40px;padding:0 14px;border-radius:10px}
 
 .board-list-card{overflow:hidden}
 .board-list-head,.board-list-row{
@@ -389,7 +389,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .board-recruitment-badge.open::before{background:#10B981;box-shadow:0 0 0 2px rgba(16,185,129,.14)}
 .board-recruitment-badge.closed{border-color:#FECACA;background:#FEF2F2;color:#B91C1C}
 .board-recruitment-badge.closed::before{background:#EF4444}
-.board-notice-row{background:#FBFDFF}
+.board-notice-row{background:#fff}
 .board-notice-row .board-list-title-text{color:var(--board-navy)}
 .board-type-badge{
   display:inline-flex;

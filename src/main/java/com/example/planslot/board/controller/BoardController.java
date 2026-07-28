@@ -9,9 +9,6 @@ import com.example.planslot.board.service.BoardService;
 import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -109,10 +106,15 @@ public class BoardController {
     public ResponseEntity<Page<BoardDTO>> getBoardList(@PathVariable String boardType,
                                                        @RequestParam(defaultValue = "titleContent") String searchType,
                                                        @RequestParam(required = false) String keyword,
-                                                       @PageableDefault(size = 10, sort = "createdAt",
-                                                               direction = Sort.Direction.DESC) Pageable pageable) {
+                                                       @RequestParam(defaultValue = "latest") String sort,
+                                                       @RequestParam(defaultValue = "false") boolean mine,
+                                                       @RequestParam(defaultValue = "0") int page,
+                                                       @RequestParam(defaultValue = "10") int size,
+                                                       Principal principal) {
+        String memberEmail = principal == null || principal.getName() == null || principal.getName().isBlank()
+                ? null : principal.getName();
         Page<BoardDTO> boardList = boardService.getBoardList(
-                parseBoardType(boardType), searchType, keyword, pageable
+                parseBoardType(boardType), searchType, keyword, sort, mine, page, size, memberEmail
         );
 
         return ResponseEntity.ok(boardList);
@@ -157,6 +159,14 @@ public class BoardController {
         );
 
         return ResponseEntity.ok(board);
+    }
+
+    // 게시글 신고 여부 확인
+    @GetMapping("/{boardId}/report/check")
+    public ResponseEntity<Boolean> checkBoardReport(@PathVariable Long boardId, Principal principal) {
+        boolean reported = boardService.hasReportedBoard(boardId, getLoginEmail(principal));
+
+        return ResponseEntity.ok(reported);
     }
 
     // 게시글 신고

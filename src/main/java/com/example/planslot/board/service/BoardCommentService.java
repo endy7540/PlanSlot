@@ -18,6 +18,9 @@ public interface BoardCommentService {
     // 댓글 및 대댓글 삭제
     void deleteComment(Long commentId, String memberEmail);
 
+    // 댓글 및 대댓글 신고 여부 확인
+    boolean hasReportedComment(Long commentId, String reporterEmail);
+
     // 댓글 및 대댓글 신고
     Long reportComment(Long commentId, BoardReportRequestDTO reportRequestDTO, String reporterEmail);
 }

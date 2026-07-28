@@ -7,7 +7,6 @@ import com.example.planslot.board.entity.BoardRecruitmentStatus;
 import com.example.planslot.board.entity.BoardType;
 import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface BoardService {
@@ -15,7 +14,7 @@ public interface BoardService {
     Long createBoard(BoardType boardType, BoardDTO boardDTO, String memberEmail);
 
     // 게시판 종류별 목록 및 검색
-    Page<BoardDTO> getBoardList(BoardType boardType, String searchType, String keyword, Pageable pageable);
+    Page<BoardDTO> getBoardList(BoardType boardType, String searchType, String keyword, String sort, boolean mine, int page, int size, String memberEmail);
 
     // 게시글 조회
     BoardDTO readBoard(Long boardId, String memberEmail, boolean increaseView);
@@ -33,6 +32,9 @@ public interface BoardService {
 
     // 모집 상태 수정
     BoardDTO updateRecruitmentStatus(Long boardId, BoardRecruitmentStatus recruitmentStatus, String memberEmail);
+
+    // 게시글 신고 여부 확인
+    boolean hasReportedBoard(Long boardId, String reporterEmail);
 
     // 게시글 신고
     Long reportBoard(Long boardId, BoardReportRequestDTO reportRequestDTO, String reporterEmail);

@@ -65,6 +65,14 @@ public class BoardCommentController {
         return ResponseEntity.noContent().build();
     }
 
+    // 댓글 및 대댓글 신고 여부 확인
+    @GetMapping("/comment/{commentId}/report/check")
+    public ResponseEntity<Boolean> checkCommentReport(@PathVariable Long commentId, Principal principal) {
+        boolean reported = boardCommentService.hasReportedComment(commentId, getLoginEmail(principal));
+
+        return ResponseEntity.ok(reported);
+    }
+
     // 댓글 및 대댓글 신고
     @PostMapping("/comment/{commentId}/report")
     public ResponseEntity<Long> reportComment(@PathVariable Long commentId,

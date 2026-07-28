@@ -228,14 +228,14 @@
         .event-chip {
             font-size: 10px;
             font-weight: 700;
-            background: #EAF7FF;
-            color: #075985;
+            background: #F3E8FF;
+            color: #6B21A8;
             border-radius: 4px;
             padding: 2px 5px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            border-left: 3px solid #38BDF8;
+            border-left: 3px solid #C084FC;
             border-top: 1.5px solid transparent;
             border-right: 1.5px solid transparent;
             border-bottom: 1.5px solid transparent;
@@ -245,19 +245,19 @@
             margin-top: 3px;
         }
         .event-chip:hover {
-            border-color: #38BDF8;
-            background: #BAE6FD;
+            border-color: #C084FC;
+            background: #E9D5FF;
             transform: scale(1.02);
             box-shadow: 0 2px 4px rgba(0,0,0,0.06);
         }
         .event-chip.public {
-            background: #DCFCE7;
-            color: #166534;
-            border-left: 3px solid #4ADE80;
+            background: #E0F2FE;
+            color: #0369A1;
+            border-left: 3px solid #38BDF8;
         }
         .event-chip.public:hover {
-            border-color: #4ADE80;
-            background: #BBF7D0;
+            border-color: #38BDF8;
+            background: #BAE6FD;
         }
         .event-more{font-size:10px;color:#94A3B8;padding-left:2px}
 
@@ -447,7 +447,14 @@
         <!-- 선택된 날짜의 일정 목록 패널 (로그인 시 캘린더 아래에 함께 뜸) -->
         <div class="panel" id="selectedDateEventsPanel" style="margin-top: 18px;">
             <div class="panel-head" style="margin-bottom: 12px; border-bottom: 2px solid #F3FAFF; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <h3 id="selectedDateLabel" style="margin: 0; font-size: 16px; color: #075985; font-weight: 800;">날짜를 선택해 주세요.</h3>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <h3 id="selectedDateLabel" style="margin: 0; font-size: 16px; color: #075985; font-weight: 800;">날짜를 선택해 주세요.</h3>
+                    <div style="display: flex; gap: 8px; align-items: center; font-size: 11.5px; margin-top: 2px;">
+                        <span style="color: #64748B; font-weight: 700; display: inline-flex; align-items: center; gap: 2px;">💡 일정 유형:</span>
+                        <span style="color: #0369A1; font-weight: 800; background: #E0F2FE; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px;">공개</span>
+                        <span style="color: #6B21A8; font-weight: 800; background: #F3E8FF; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px; margin-left: 2px;">비공개</span>
+                    </div>
+                </div>
                 <span style="font-size: 11px; color: #748898; font-weight: 700;">* 선택된 날짜를 한 번 더 클릭하면 새 일정을 등록할 수 있습니다.</span>
             </div>
             <div id="selectedDateEventsList">
@@ -668,9 +675,9 @@
         // 달력 첫 칸에 들어갈 이전 달 꼬리의 시작일 계산
         const startCalendarDate = new Date(viewYear, viewMonth, 1 - startDow, 0, 0, 0);
 
-        // 달력 마지막 칸에 들어갈 다음 달 머리의 종료일 계산 (5주 = 35일분량 확보)
+        // 달력 마지막 칸에 들어갈 다음 달 머리의 종료일 계산 (6주 = 42일분량 확보)
         const endCalendarDate = new Date(startCalendarDate.getTime());
-        endCalendarDate.setDate(endCalendarDate.getDate() + 34);
+        endCalendarDate.setDate(endCalendarDate.getDate() + 41);
         endCalendarDate.setHours(23, 59, 59, 999);
 
         // [오늘 및 이번 주 쿼리 확장] 달력 범위 외에 오늘/이번 주 범위가 쿼리에서 누락되지 않도록 최소/최대 시작종료일 연장
@@ -794,6 +801,8 @@
         const now = new Date();
         viewYear = now.getFullYear();
         viewMonth = now.getMonth();
+        const padStr = (n) => String(n).padStart(2, '0');
+        selectedDateKey = `${viewYear}-${padStr(viewMonth+1)}-${padStr(now.getDate())}`;
         loadMonthSchedules();
     }
 
@@ -871,7 +880,6 @@
         let nextDay = 1;
         while (cells.length % 7 !== 0 || cells.length < 35) {
             cells.push({ day: nextDay++, otherMonth: true, y: targetY, m: targetM });
-            if (cells.length >= 35) break;
         }
 
         // 1. 달력 범위의 모든 날짜 키 수집 및 슬롯 초기화
@@ -1055,13 +1063,19 @@
 
         if (hasMultiDay) {
             // 연속 일정이 있다면: 단 한 번만 모달을 띄워 물어봅니다!
+            const listHtml = daySchedules.map(s => `<li style="font-weight: 700; color: #1E293B; margin-bottom: 4px; list-style-position: inside; text-align: left;">• ${escapeHtml(s.title)}</li>`).join('');
             document.getElementById('deleteConfirmModalMsg').innerHTML =
-                `선택한 날인 <strong>${selectedDateKey}</strong>에 등록된 일정 중 연속 일정이 포함되어 있습니다.<br>` +
+                `선택한 날인 <strong>${selectedDateKey}</strong>에 등록된 일정 중 연속 일정이 포함되어 있습니다.<br><br>` +
+                `<div style="text-align: left; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; margin-bottom: 16px;">` +
+                `  <span style="font-weight: 800; color: #0F172A; display: block; margin-bottom: 8px; font-size: 13.5px;">📋 선택한 날의 일정 (${daySchedules.length}개)</span>` +
+                `  <ul style="margin: 0; padding: 0; font-size: 12.5px; color: #334155; list-style: none;">${listHtml}</ul>` +
+                `</div>` +
                 `이 날의 일정만 지우시겠습니까(기간 단축)?<br>아니면 연결된 전체 일정을 삭제하시겠습니까?`;
             document.getElementById('deleteConfirmModal').style.display = 'flex';
         } else {
             // 연속 일정이 없다면: 단일 일정들이므로 컨펌 창 하나만 띄우고 일괄 삭제!
-            if (!confirm(`⚠️ 정말로 ${selectedDateKey}의 모든 일정 (${daySchedules.length}개)을 삭제하시겠습니까?`)) {
+            const titlesPlain = daySchedules.map(s => `- ${s.title}`).join('\n');
+            if (!confirm(`⚠️ 정말로 ${selectedDateKey}의 모든 일정 (${daySchedules.length}개)을 삭제하시겠습니까?\n\n[삭제 대상 일정 목록]\n${titlesPlain}`)) {
                 return;
             }
 
@@ -1252,10 +1266,18 @@
                      timeText = `${startT} ~ ${endT}`;
                 }
             }
+            const isPub = (s.isPublic === true || s.isPublic === 'Y' || s.public === true || s.public === 'Y');
+            const visibilityBadge = isPub 
+                ? `<span style="font-size: 11px; font-weight: 800; color: #0284C7; background: #E0F2FE; padding: 2px 6px; border-radius: 4px; margin-right: 6px; display: inline-flex; align-items: center; gap: 2px; line-height: 1;">공개</span>`
+                : `<span style="font-size: 11px; font-weight: 800; color: #6B21A8; background: #F3E8FF; padding: 2px 6px; border-radius: 4px; margin-right: 6px; display: inline-flex; align-items: center; gap: 2px; line-height: 1;">비공개</span>`;
+
             return `
-                <div class="selected-event-item${searchClass}" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
-                    <span class="selected-event-title">${escapeHtml(s.title)}</span>
-                    <span class="selected-event-time">${timeText}</span>
+                <div class="selected-event-item${searchClass}" onclick="openSchedule(${s.scheduleId}, '${dateKey}')" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #E2E8F0; cursor: pointer;">
+                    <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                        ${visibilityBadge}
+                        <span class="selected-event-title" style="font-weight: 700; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(s.title)}</span>
+                    </div>
+                    <span class="selected-event-time" style="font-size: 12px; color: #64748B; font-weight: 500; margin-left: 12px; white-space: nowrap;">${timeText}</span>
                 </div>
             `;
         }).join('');

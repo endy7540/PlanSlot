@@ -8,6 +8,9 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
     <style>
+        .flatpickr-calendar {
+            z-index: 99999999 !important;
+        }
         *{box-sizing:border-box}
         body{
             margin:0;
@@ -412,7 +415,7 @@
 
         for (let h = 0; h < 24; h++) {
             const hh = String(h).padStart(2, '0');
-            ["00", "30"].forEach(mm => {
+            ["00", "15", "30", "45"].forEach(mm => {
                 const timeStr = `${hh}:${mm}`;
                 
                 // 시작 시간 항목
@@ -433,14 +436,43 @@
     }
 
     function selectTimeVal(type, hh, mm) {
+        let nextStartH = selectedStartHour;
+        let nextStartM = selectedStartMin;
+        let nextEndH = selectedEndHour;
+        let nextEndM = selectedEndMin;
+
         if (type === 'start') {
-            selectedStartHour = hh;
-            selectedStartMin = mm;
+            nextStartH = hh;
+            nextStartM = mm;
         } else {
-            selectedEndHour = hh;
-            selectedEndMin = mm;
+            nextEndH = hh;
+            nextEndM = mm;
         }
+
+        const startTotalMin = parseInt(nextStartH, 10) * 60 + parseInt(nextStartM, 10);
+        const endTotalMin = parseInt(nextEndH, 10) * 60 + parseInt(nextEndM, 10);
+
+        if (endTotalMin < startTotalMin) {
+            if (typeof showToast === 'function') {
+                showToast('종료 시간은 시작 시간보다 빠를 수 없습니다.', true);
+            } else {
+                alert('종료 시간은 시작 시간보다 빠를 수 없습니다.');
+            }
+            return;
+        }
+
+        selectedStartHour = nextStartH;
+        selectedStartMin = nextStartM;
+        selectedEndHour = nextEndH;
+        selectedEndMin = nextEndM;
+
         renderTimeOptions();
+        
+        // 클릭 즉시 시간 범위 텍스트 인풋 반영
+        const input = document.getElementById('f-timeRange');
+        if (input) {
+            input.value = `${selectedStartHour}:${selectedStartMin} ~ ${selectedEndHour}:${selectedEndMin}`;
+        }
     }
 
     function toggleTimeDropdown(show) {
@@ -656,11 +688,20 @@
     function applyUrlParams() {
         const dateParam = new URLSearchParams(window.location.search).get('date');
         if (fpInstance) {
+            const isRangeMode = fpInstance.config.mode === "range";
             if (dateParam) {
-                fpInstance.setDate([dateParam, dateParam]);
+                if (isRangeMode) {
+                    fpInstance.setDate([dateParam, dateParam]);
+                } else {
+                    fpInstance.setDate(dateParam);
+                }
             } else {
                 const todayStr = new Date().toISOString().slice(0, 10);
-                fpInstance.setDate([todayStr, todayStr]);
+                if (isRangeMode) {
+                    fpInstance.setDate([todayStr, todayStr]);
+                } else {
+                    fpInstance.setDate(todayStr);
+                }
             }
         }
     }

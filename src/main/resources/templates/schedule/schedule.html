@@ -9,6 +9,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PlanSlot - 캘린더</title>
     <style>
+        .flatpickr-calendar {
+            z-index: 99999999 !important;
+        }
         *{box-sizing:border-box}
         body{
             margin:0;
@@ -138,6 +141,42 @@
         .cal-dow:last-child {
             border-right: 0;
         }
+
+        /* Page Head Styling for consistency with group lists */
+        .page-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .page-head .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #5B7186;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .page-head .brand b {
+            color: #0F766E;
+            font-size: 15px;
+        }
+        .page-head h1 {
+            margin: 0;
+            font-size: 27px;
+            letter-spacing: -0.3px;
+            font-weight: 800;
+            color: #0F172A;
+        }
+        .page-head p {
+            margin: 6px 0 0;
+            color: #5B7186;
+            font-size: 13px;
+            font-weight: 500;
+        }
         .cal-day{
             min-height:110px;
             max-height:160px;
@@ -186,19 +225,24 @@
             100%{background:#fff;}
         }
 
-        .event-chip{
-            font-size:11px;
-            font-weight:700;
-            background:#E0F2FE;
-            color:#075985;
-            border-radius:6px;
-            padding:2px 6px;
-            white-space:nowrap;
-            overflow:hidden;
-            text-overflow:ellipsis;
-            border: 1.5px solid transparent;
+        .event-chip {
+            font-size: 10px;
+            font-weight: 700;
+            background: #EAF7FF;
+            color: #075985;
+            border-radius: 4px;
+            padding: 2px 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-left: 3px solid #38BDF8;
+            border-top: 1.5px solid transparent;
+            border-right: 1.5px solid transparent;
+            border-bottom: 1.5px solid transparent;
             transition: all 0.15s ease-in-out;
             cursor: pointer;
+            line-height: 1.3;
+            margin-top: 3px;
         }
         .event-chip:hover {
             border-color: #38BDF8;
@@ -206,7 +250,11 @@
             transform: scale(1.02);
             box-shadow: 0 2px 4px rgba(0,0,0,0.06);
         }
-        .event-chip.public{background:#DCFCE7;color:#166534}
+        .event-chip.public {
+            background: #DCFCE7;
+            color: #166534;
+            border-left: 3px solid #4ADE80;
+        }
         .event-chip.public:hover {
             border-color: #4ADE80;
             background: #BBF7D0;
@@ -326,6 +374,26 @@
 <div th:replace="~{global/header :: headerFragment}"></div>
 
 <div class="wrap">
+
+    <!-- 개인 캘린더 헤더 (모임 목록 헤더와 동일 스펙 구성 + 실시간 일정 요약) -->
+    <div class="page-head" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <div class="brand"><b>My Calendar</b> · 개인 캘린더</div>
+            <h1>내 일정</h1>
+            <p>나만의 일정을 기록 및 관리하고, AI 이미지 분석과 구글 캘린더 연동을 편리하게 조율해보세요.</p>
+        </div>
+        <!-- 실시간 오늘 및 주간 일정 뱃지 요약 영역 -->
+        <div id="scheduleSummaryContainer" style="display: flex; gap: 12px; margin-top: 8px; margin-bottom: 2px;">
+            <div style="background: #F0F9FF; border: 2.5px solid #BAE6FD; padding: 12px 20px; border-radius: 12px; font-size: 15px; font-weight: 800; color: #0369A1; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(3, 105, 161, 0.08);">
+                <span>📅 오늘 일정</span>
+                <span id="todayEventCount" style="background: #0284C7; color: white; padding: 3px 10px; border-radius: 999px; font-size: 14px; font-weight: 900; line-height: 1; min-width: 28px; text-align: center;">0</span>
+            </div>
+            <div style="background: #ECFDF5; border: 2.5px solid #A7F3D0; padding: 12px 20px; border-radius: 12px; font-size: 15px; font-weight: 800; color: #047857; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(4, 120, 87, 0.08);">
+                <span>🗓️ 주간 일정</span>
+                <span id="weeklyEventCount" style="background: #10B981; color: white; padding: 3px 10px; border-radius: 999px; font-size: 14px; font-weight: 900; line-height: 1; min-width: 28px; text-align: center;">0</span>
+            </div>
+        </div>
+    </div>
 
 
     <!-- 캘린더 -->
@@ -546,6 +614,53 @@
         }
     };
 
+    // 오늘과 이번 주의 고유 일정을 요약 갱신하는 헬퍼 함수
+    function updateScheduleSummaryCounts(schedules) {
+        if (!Array.isArray(schedules)) return;
+
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+
+        // 이번 주 범위 계산 (오늘을 기준으로 월요일 ~ 일요일)
+        const currentDay = today.getDay(); // 0: 일, 1: 월 ... 6: 토
+        const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+        
+        const monday = new Date(today);
+        monday.setDate(today.getDate() + distanceToMonday);
+        monday.setHours(0, 0, 0, 0);
+
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        sunday.setHours(23, 59, 59, 999);
+
+        const weeklyScheduleIds = new Set();
+        const todayScheduleIds = new Set();
+
+        schedules.forEach(s => {
+            if (!s.startDate) return;
+            const startStr = getDateOnly(s.startDate);
+            const endStr = s.endDate ? getDateOnly(s.endDate) : startStr;
+
+            const startDateObj = new Date(startStr);
+            const endDateObj = new Date(endStr);
+            startDateObj.setHours(0, 0, 0, 0);
+            endDateObj.setHours(23, 59, 59, 999);
+
+            // 오늘 일정 매핑 판별
+            if (todayStr >= startStr && todayStr <= endStr) {
+                todayScheduleIds.add(s.scheduleId);
+            }
+
+            // 주간 일정 매핑 판별
+            if (startDateObj <= sunday && endDateObj >= monday) {
+                weeklyScheduleIds.add(s.scheduleId);
+            }
+        });
+
+        document.getElementById('todayEventCount').textContent = todayScheduleIds.size;
+        document.getElementById('weeklyEventCount').textContent = weeklyScheduleIds.size;
+    }
+
     async function loadMonthSchedules() {
         const firstOfMonth = new Date(viewYear, viewMonth, 1);
         const startDow = firstOfMonth.getDay(); // 0=일
@@ -558,7 +673,22 @@
         endCalendarDate.setDate(endCalendarDate.getDate() + 34);
         endCalendarDate.setHours(23, 59, 59, 999);
 
-        const url = `${API_BASE}/schedule?start=${encodeURIComponent(fmtLocalDateTime(startCalendarDate))}&end=${encodeURIComponent(fmtLocalDateTime(endCalendarDate))}&_t=${new Date().getTime()}`;
+        // [오늘 및 이번 주 쿼리 확장] 달력 범위 외에 오늘/이번 주 범위가 쿼리에서 누락되지 않도록 최소/최대 시작종료일 연장
+        const todayObj = new Date();
+        const currentDay = todayObj.getDay();
+        const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+        const thisWeekMonday = new Date(todayObj);
+        thisWeekMonday.setDate(todayObj.getDate() + distanceToMonday);
+        thisWeekMonday.setHours(0, 0, 0, 0);
+
+        const thisWeekSunday = new Date(thisWeekMonday);
+        thisWeekSunday.setDate(thisWeekMonday.getDate() + 6);
+        thisWeekSunday.setHours(23, 59, 59, 999);
+
+        const queryStartDate = new Date(Math.min(startCalendarDate.getTime(), thisWeekMonday.getTime()));
+        const queryEndDate = new Date(Math.max(endCalendarDate.getTime(), thisWeekSunday.getTime()));
+
+        const url = `${API_BASE}/schedule?start=${encodeURIComponent(fmtLocalDateTime(queryStartDate))}&end=${encodeURIComponent(fmtLocalDateTime(queryEndDate))}&_t=${new Date().getTime()}`;
 
         schedulesByDate = {};
         try {
@@ -581,27 +711,39 @@
                 showToast('일정 조회 실패: ' + res.status, true);
             } else {
                 const schedules = JSON.parse(text);
+                
+                // 오늘 및 이번 주 카운트 실시간 업데이트
+                updateScheduleSummaryCounts(schedules);
+
                 schedules.forEach(s => {
                     if (!s.startDate) return;
                     const startStr = getDateOnly(s.startDate);
                     const endStr = s.endDate ? getDateOnly(s.endDate) : startStr;
 
-                    if (startStr === endStr) {
-                        if (!schedulesByDate[startStr]) schedulesByDate[startStr] = [];
-                        schedulesByDate[startStr].push(s);
-                    } else {
-                        // 2일 이상 걸치는 기간형 일정을 해당되는 모든 날짜에 매핑
-                        const startDateObj = new Date(startStr);
-                        const endDateObj = new Date(endStr);
-                        
-                        let currDate = new Date(startDateObj.getFullYear(), startDateObj.getMonth(), startDateObj.getDate());
-                        const targetEndDateOnly = new Date(endDateObj.getFullYear(), endDateObj.getMonth(), endDateObj.getDate());
+                    // 달력에 표시할 범위(startCalendarDate ~ endCalendarDate) 내에 존재하는 일정들만 달력 날짜에 렌더링 매핑
+                    const startDateObj = new Date(startStr);
+                    const endDateObj = new Date(endStr);
+                    startDateObj.setHours(0,0,0,0);
+                    endDateObj.setHours(23,59,59,999);
 
-                        while (currDate <= targetEndDateOnly) {
-                            const dateKey = `${currDate.getFullYear()}-${pad(currDate.getMonth()+1)}-${pad(currDate.getDate())}`;
-                            if (!schedulesByDate[dateKey]) schedulesByDate[dateKey] = [];
-                            schedulesByDate[dateKey].push(s);
-                            currDate.setDate(currDate.getDate() + 1);
+                    if (startDateObj <= endCalendarDate && endDateObj >= startCalendarDate) {
+                        if (startStr === endStr) {
+                            if (!schedulesByDate[startStr]) schedulesByDate[startStr] = [];
+                            schedulesByDate[startStr].push(s);
+                        } else {
+                            // 2일 이상 걸치는 기간형 일정을 달력 표시 기간에 겹치는 날짜에만 매핑
+                            const calendarStart = new Date(Math.max(startDateObj.getTime(), startCalendarDate.getTime()));
+                            const calendarEnd = new Date(Math.min(endDateObj.getTime(), endCalendarDate.getTime()));
+                            
+                            let currDate = new Date(calendarStart.getFullYear(), calendarStart.getMonth(), calendarStart.getDate());
+                            const targetEndDateOnly = new Date(calendarEnd.getFullYear(), calendarEnd.getMonth(), calendarEnd.getDate());
+
+                            while (currDate <= targetEndDateOnly) {
+                                const dateKey = `${currDate.getFullYear()}-${pad(currDate.getMonth()+1)}-${pad(currDate.getDate())}`;
+                                if (!schedulesByDate[dateKey]) schedulesByDate[dateKey] = [];
+                                schedulesByDate[dateKey].push(s);
+                                currDate.setDate(currDate.getDate() + 1);
+                            }
                         }
                     }
                 });
@@ -820,9 +962,24 @@
                     console.error("연속 일정 판정 오류:", e);
                 }
 
+                let timePrefix = '';
+                if (s.startDate && s.endDate) {
+                    const isAllDay = (s.startDate.includes('T00:00') || s.startDate.includes(' 00:00')) && (s.endDate.includes('T23:59') || s.endDate.includes(' 23:59'));
+                    if (!isAllDay) {
+                        try {
+                            const timeStr = s.startDate.includes('T') ? s.startDate.split('T')[1] : s.startDate.split(' ')[1];
+                            if (timeStr) {
+                                timePrefix = `[${timeStr.slice(0, 5)}] `;
+                            }
+                        } catch (e) {
+                            console.error("칩 시간 추출 오류:", e);
+                        }
+                    }
+                }
+
                 const displayTitle = (durationClass === ' event-middle' || durationClass === ' event-end')
                     ? '&nbsp;'
-                    : escapeHtml(s.title);
+                    : timePrefix + escapeHtml(s.title);
 
                 return `<div class="event-chip${isPub ? ' public' : ''}${searchClass}${durationClass}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${displayTitle}</div>`;
             }).join('');
@@ -1603,11 +1760,11 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px;">
                     <div>
                         <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">시작 시간</label>
-                        <input type="time" class="ai-item-start-time" value="${startTVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;">
+                        <input type="time" class="ai-item-start-time" value="${startTVal}" step="900" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;">
                     </div>
                     <div>
                         <label style="font-size: 10px; font-weight: 800; color: #64748B; display:block; margin-bottom:2px;">종료 시간</label>
-                        <input type="time" class="ai-item-end-time" value="${endTVal}" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;">
+                        <input type="time" class="ai-item-end-time" value="${endTVal}" step="900" style="width: 100%; padding: 6px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 12px; font-weight: 700; color: #334155; box-sizing: border-box; background: #fff;">
                     </div>
                 </div>
 

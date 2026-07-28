@@ -102,6 +102,14 @@ public class GroupChatServiceImpl implements GroupChatService {
         Member reporter = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
         
+        if (groupReportRepository.existsByMember_IdAndChatMessage_Id(memberId, request.getMessageId())) {
+            throw new IllegalArgumentException("이미 신고한 게시글입니다.");
+        }
+        
+        if (request.getReasonDetail() != null && request.getReasonDetail().length() > 200) {
+            throw new IllegalArgumentException("신고 세부 사유는 200자로 제한됩니다.");
+        }
+
         GroupReport report = GroupReport.builder()
                 .group(message.getGroupChatRoom().getGroup())
                 .chatMessage(message)
@@ -123,5 +131,11 @@ public class GroupChatServiceImpl implements GroupChatService {
         
         // 채팅방에 들어왔으므로 연관된 시스템 알림(종 모양 알림)도 모두 읽음 처리
         notificationService.readNotificationsByTarget(memberId, "CHAT", groupId);
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public boolean checkDuplicateReport(Long memberId, Long messageId) {
+        return groupReportRepository.existsByMember_IdAndChatMessage_Id(memberId, messageId);
     }
 }

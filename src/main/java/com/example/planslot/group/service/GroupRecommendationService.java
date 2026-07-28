@@ -6,6 +6,8 @@ import com.example.planslot.schedule.repository.ScheduleRepository;
 import com.example.planslot.group.entity.GroupMember;
 import com.example.planslot.group.repository.GroupMemberRepository;
 import com.example.planslot.group.entity.GroupMemberStatus;
+import com.example.planslot.group.entity.GroupRecommendation;
+import com.example.planslot.group.repository.GroupRecommendationRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,8 @@ public class GroupRecommendationService {
 
     private final GroupMemberRepository groupMemberRepository;
     private final ScheduleRepository scheduleRepository;
+    private final com.example.planslot.group.repository.GroupRepository groupRepository;
+    private final GroupRecommendationRepository groupRecommendationRepository;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -243,5 +247,41 @@ public class GroupRecommendationService {
         List<GroupDTO.RecInfo> recs = new ArrayList<>();
         recs.add(new GroupDTO.RecInfo(1, "내일 오후 2시", "API 키가 올바르게 설정되지 않았거나 호출에 실패했습니다.", "임시 결과", today.plusDays(1).toString(), "14:00", "모임 일정: 오후 2시 - 오후 4시"));
         return new GroupDTO.AiResponse(heat, recs);
+    }
+
+    @Transactional
+    public void bookmarkRecommendation(Long groupId, Long memberId, GroupDTO.RecInfo rec) {
+        com.example.planslot.group.entity.Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 모임입니다."));
+        com.example.planslot.member.entity.Member member = groupMemberRepository.findByGroup_Id(groupId).stream()
+                .filter(gm -> gm.getMember().getId().equals(memberId) && gm.getMemberStatus() == GroupMemberStatus.ACTIVE)
+                .map(GroupMember::getMember)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("모임원이 아닙니다."));
+
+        GroupRecommendation recommendation = GroupRecommendation.builder()
+                .group(group)
+                .requestedBy(member)
+                .rank(rec.rank())
+                .label(rec.label())
+                .sub(rec.sub())
+                .tag(rec.tag())
+                .date(rec.date())
+                .time(rec.time())
+                .title(rec.title())
+                .build();
+
+        groupRecommendationRepository.save(recommendation);
+    }
+
+    @Transactional(readOnly = true)
+    public List<GroupRecommendation> getBookmarkedRecommendations(Long groupId, Long memberId) {
+        List<GroupMember> groupMembers = groupMemberRepository.findByGroup_Id(groupId);
+        boolean isMember = groupMembers.stream()
+                .anyMatch(gm -> gm.getMember().getId().equals(memberId) && gm.getMemberStatus() == GroupMemberStatus.ACTIVE);
+        if (!isMember) {
+            throw new IllegalArgumentException("모임원이 아닙니다.");
+        }
+        return groupRecommendationRepository.findAllByGroup_IdAndRequestedBy_IdOrderByBookmarkedAtDesc(groupId, memberId);
     }
 }

@@ -70,13 +70,13 @@
                             <div th:if="${member.status == 'WITHDRAWN'}">
                                 <span class="badge-member-status badge-withdrawn">탈퇴 회원</span>
                             </div>
-                            <div th:unless="${member.status == 'WITHDRAWN'}">
+                            <div th:unless="${member.status == 'WITHDRAWN'}" style="display: flex; align-items: center; gap: 8px;">
                                 <select class="select-status" th:attr="onchange=|updateStatus(${member.id}, this.value, this)|" th:data-original="${member.status}">
                                     <option value="ACTIVE" th:selected="${member.status == 'ACTIVE'}">정상</option>
                                     <option value="SUSPENDED" th:selected="${member.status == 'SUSPENDED'}">임시 정지</option>
                                     <option value="BANNED" th:selected="${member.status == 'BANNED'}">영구 정지</option>
                                 </select>
-                                <div th:if="${member.status == 'SUSPENDED' && member.suspendedUntil != null}" class="suspension-info">
+                                <div th:if="${member.status == 'SUSPENDED' && member.suspendedUntil != null}" class="suspension-info" style="white-space: nowrap;">
                                     ~ <span th:text="${#temporals.format(member.suspendedUntil, 'yyyy-MM-dd HH:mm')}"></span> 까지
                                 </div>
                             </div>

@@ -283,7 +283,7 @@
                 <div id="timeInputs" style="grid-column: span 2; width: 100%; position: relative;">
                     <label>일정 시간 범위 선택 *</label>
                     <input id="f-timeRange" type="text" readonly class="chip-input" placeholder="시간을 선택하세요 (예: 09:00 ~ 10:00)" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff; cursor: pointer;" required onclick="toggleTimeDropdown()">
-                    
+
                     <!-- 시간 범위 드롭다운 레이어 -->
                     <div id="timeRangeDropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 2px solid #DCEFFC; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 100; padding: 16px; margin-top: 6px;">
                         <div style="display: flex; gap: 12px;">
@@ -380,10 +380,10 @@
         if (fpInstance) {
             fpInstance.destroy();
         }
-        
+
         const placeholderText = isRange ? "시작일과 종료일을 선택하세요" : "날짜를 선택하세요";
         const labelText = isRange ? "일정 기간 선택 *" : "일정 날짜 선택 *";
-        
+
         document.getElementById('f-dateRange').placeholder = placeholderText;
         document.getElementById('dateRangeLabel').textContent = labelText;
 
@@ -417,7 +417,7 @@
             const hh = String(h).padStart(2, '0');
             ["00", "15", "30", "45"].forEach(mm => {
                 const timeStr = `${hh}:${mm}`;
-                
+
                 // 시작 시간 항목
                 const startItem = document.createElement('div');
                 startItem.className = 'time-select-item' + (selectedStartHour === hh && selectedStartMin === mm ? ' active' : '');
@@ -467,7 +467,7 @@
         selectedEndMin = nextEndM;
 
         renderTimeOptions();
-        
+
         // 클릭 즉시 시간 범위 텍스트 인풋 반영
         const input = document.getElementById('f-timeRange');
         if (input) {
@@ -562,9 +562,9 @@
         if (isAllDay) {
             return { startTime: '00:00', endTime: '23:59' };
         }
-        return { 
-            startTime: `${selectedStartHour}:${selectedStartMin}`, 
-            endTime: `${selectedEndHour}:${selectedEndMin}` 
+        return {
+            startTime: `${selectedStartHour}:${selectedStartMin}`,
+            endTime: `${selectedEndHour}:${selectedEndMin}`
         };
     }
 

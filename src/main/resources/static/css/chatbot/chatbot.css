@@ -125,7 +125,7 @@
 .chatbot-window {
     position: absolute;
     right: 0;
-    bottom: 86px;
+    bottom: 0;
     width: 680px;
     height: 960px;
     max-width: calc(100vw - 48px);
@@ -403,6 +403,6 @@
         width: calc(100vw - 48px);
         height: calc(100vh - 120px);
         right: 0;
-        bottom: 82px;
+        bottom: 0;
     }
 }

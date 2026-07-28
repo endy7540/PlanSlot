@@ -52,6 +52,34 @@ public class GroupController {
         return "group/ai-recommend";
     }
 
+    // AI 추천 찜 목록 화면 반환
+    @GetMapping("/ai-favorites")
+    public String groupAiFavorites() {
+        return "group/ai-favorites";
+    }
+
+    // AI 추천 찜하기 API
+    @PostMapping("/{groupId}/ai-recommendations/bookmark")
+    @ResponseBody
+    public ResponseEntity<Void> bookmarkAiRecommendation(
+            @PathVariable Long groupId,
+            @RequestBody GroupDTO.RecInfo recInfo,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupRecommendationService.bookmarkRecommendation(groupId, memberId, recInfo);
+        return ResponseEntity.ok().build();
+    }
+
+    // AI 추천 찜 목록 조회 API
+    @GetMapping("/{groupId}/ai-recommendations/favorites")
+    @ResponseBody
+    public ResponseEntity<List<com.example.planslot.group.entity.GroupRecommendation>> getBookmarkedRecommendations(
+            @PathVariable Long groupId,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        return ResponseEntity.ok(groupRecommendationService.getBookmarkedRecommendations(groupId, memberId));
+    }
+
 
     // AI 추천 데이터 동기 API (기존 유지)
     @GetMapping("/{groupId}/ai-recommendations")

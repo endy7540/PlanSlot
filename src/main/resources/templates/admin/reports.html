@@ -47,18 +47,19 @@
                     <tr>
                         <th class="no-wrap" style="width: 50px;">ID</th>
                         <th class="no-wrap" style="width: 60px;">유형</th>
-                        <th class="no-wrap">신고 대상 (제목)</th>
-                        <th style="width: 160px;">신고 사유</th>
+                        <th style="width: 200px;">신고 대상 (제목)</th>
+                        <th style="width: 150px;">신고 사유</th>
                         <th class="no-wrap" style="width: 80px;">신고자</th>
                         <th class="no-wrap" style="width: 80px;">피신고자</th>
                         <th class="no-wrap" style="width: 90px;">접수일</th>
                         <th class="no-wrap" style="width: 90px;">상태</th>
                         <th class="no-wrap" style="width: 80px;">관리</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:if="${#lists.isEmpty(reports)}">
-                        <td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <td colspan="10" style="text-align: center; padding: 40px; color: #94a3b8;">
                             접수된 신고 내역이 없습니다.
                         </td>
                     </tr>
@@ -67,7 +68,7 @@
                         <td class="no-wrap" th:text="${report.targetType == 'POST' ? '게시글' : (report.targetType == 'COMMENT' ? '댓글' : '채팅')}">게시글</td>
                         <td>
                             <div class="truncate truncate-target clickable-title report-target" 
-                                 th:attr="onclick=|openModal('${report.targetType}', '${#strings.escapeJavaScript(report.targetContent)}', '${#strings.escapeJavaScript(report.targetBody != null ? report.targetBody : '')}', '${report.reasonCode}', '${#strings.escapeJavaScript(report.reasonDetail != null ? report.reasonDetail : '없음')}', '${report.reporterNickname}')|" 
+                                 th:attr="onclick=|openModal('${report.targetType}', '${#strings.escapeJavaScript(report.targetContent)}', '${#strings.escapeJavaScript(report.targetBody != null ? report.targetBody : '')}', '${report.reasonCode}', '${#strings.escapeJavaScript(report.reasonDetail != null ? report.reasonDetail : '없음')}', '${report.reporterNickname}', '${report.reportedNickname}')|" 
                                  th:text="${report.targetContent}">글 제목이 표시됩니다...</div>
                         </td>
                         <td class="report-reason" th:text="${report.reasonCode}">스팸·광고</td>
@@ -83,12 +84,13 @@
                                   th:text="${report.status == 'WAITING' ? '대기중' : (report.status == 'APPROVED' ? '삭제 조치' : '기각됨')}">대기중</span>
                         </td>
                         <td class="no-wrap">
-                            <div th:if="${report.status == 'WAITING'}" style="display:flex; flex-direction:column; gap: 4px; align-items:center;">
-                                <button type="button" class="btn-approve" th:attr="onclick=|processReport('${report.reportId}', 'approve')|" style="padding: 4px 8px; width: 100%; font-size: 11px;">삭제조치</button>
-                                <button type="button" class="btn-reject" th:attr="onclick=|processReport('${report.reportId}', 'reject')|" style="padding: 4px 8px; width: 100%; font-size: 11px;">기각</button>
+                            <div th:if="${report.status == 'WAITING'}" style="display:flex; flex-direction:column; gap: 6px; align-items:center; justify-content:center; width: 100%;">
+                                <button type="button" class="btn-approve" th:attr="onclick=|processReport('${report.reportId}', 'approve')|" style="padding: 6px 0; width: 60px; font-size: 11px; box-sizing: border-box; text-align: center; display: block; margin: 0; line-height: 1;">삭제조치</button>
+                                <button type="button" class="btn-reject" th:attr="onclick=|processReport('${report.reportId}', 'reject')|" style="padding: 6px 0; width: 60px; font-size: 11px; box-sizing: border-box; text-align: center; display: block; margin: 0; line-height: 1;">기각</button>
                             </div>
                             <span th:if="${report.status != 'WAITING'}" style="color:#94a3b8; font-size:13px;">처리됨</span>
                         </td>
+                        <td></td>
                     </tr>
                 </tbody>
                 </table>
@@ -113,9 +115,15 @@
                     <div class="modal-body-label">신고 사유</div>
                     <div id="modalReasonCode" style="color: #ef4444; font-weight: 600;"></div>
                 </div>
-                <div class="modal-body-item" style="margin: 0; text-align: right;">
-                    <div class="modal-body-label">신고자</div>
-                    <div id="modalReporter" style="color: #64748b; font-size: 13px;"></div>
+                <div style="display: flex; flex-direction: column; gap: 8px; text-align: right;">
+                    <div class="modal-body-item" style="margin: 0;">
+                        <div class="modal-body-label">피신고자</div>
+                        <div id="modalReported" style="color: #ef4444; font-size: 13px; font-weight: 600;"></div>
+                    </div>
+                    <div class="modal-body-item" style="margin: 0;">
+                        <div class="modal-body-label">신고자</div>
+                        <div id="modalReporter" style="color: #64748b; font-size: 13px;"></div>
+                    </div>
                 </div>
             </div>
             
@@ -215,9 +223,10 @@
         }
     }
 
-    function openModal(targetType, targetContent, targetBody, reasonCode, reasonDetail, reporterNickname) {
+    function openModal(targetType, targetContent, targetBody, reasonCode, reasonDetail, reporterNickname, reportedNickname) {
         document.getElementById('modalReasonCode').innerText = reasonCode;
         document.getElementById('modalReporter').innerText = reporterNickname;
+        document.getElementById('modalReported').innerText = reportedNickname;
         document.getElementById('modalReasonDetail').innerText = reasonDetail;
         
         let targetLabelText = '신고 대상';

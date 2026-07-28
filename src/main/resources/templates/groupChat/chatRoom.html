@@ -11,6 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PlanSlot - 모임 채팅방</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Pretendard/1.3.9/static/pretendard.css">
+<link rel="stylesheet" th:href="@{/css/board/board.css}" href="/css/board/board.css">
 <!-- SockJS & STOMP CDN -->
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
@@ -483,25 +484,28 @@
 </div>
 
 <!-- 신고 모달 -->
-<div class="modal-overlay" id="reportModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(11,37,64,.45); z-index:100; justify-content:center; align-items:center;">
-  <div class="modal-box" style="background:#fff; border-radius:16px; padding:22px; max-width:380px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,.25);">
-    <h3 style="margin-top:0; font-size:18px;">채팅 신고하기</h3>
-    <p style="font-size: 14px; color: var(--ink-soft); margin-bottom: 16px;">신고 사유를 선택하고 상세 내용을 입력해주세요.</p>
-    
-    <div style="margin-bottom: 16px;">
-      <select id="reportReason" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; box-sizing: border-box; margin-bottom: 8px;">
+<div class="board-modal-overlay" id="reportModal" style="display:none; align-items:center; justify-content:center;">
+  <div class="board-modal">
+    <h3>신고</h3>
+    <p>신고 내용은 관리자 확인을 위해 저장되며, 같은 대상을 중복 신고할 수 없습니다.</p>
+    <div class="board-field">
+      <label for="reportReason">신고 사유 <span class="board-required">*</span></label>
+      <select class="board-select" id="reportReason">
+        <option value="">신고 사유 선택</option>
         <option value="SPAM">스팸/도배</option>
         <option value="ABUSE">욕설/비하</option>
         <option value="INAPPROPRIATE">음란물/부적절</option>
         <option value="PERSONAL_INFORMATION">개인정보 노출</option>
         <option value="OTHER">기타</option>
       </select>
-        <textarea id="reportDetail" rows="3" maxlength="200" style="width:100%; border:1px solid var(--border); border-radius:8px; padding:10px; font-size:14px; color:var(--ink-dark); background:#f8fafc; resize:none;" placeholder="자세한 신고 사유를 적어주세요. (최대 200자)"></textarea>
     </div>
-    
-    <div style="display: flex; gap: 8px; justify-content: flex-end;">
-      <button id="reportCancel" style="padding:8px 16px; border:none; background:#e2e8f0; border-radius:8px; cursor:pointer; font-weight:600;">취소</button>
-      <button id="reportConfirm" style="padding:8px 16px; border:none; background:#ef4444; color:#fff; border-radius:8px; cursor:pointer; font-weight:600;">신고하기</button>
+    <div class="board-field">
+      <label for="reportDetail">세부내용 <span class="board-required">*</span></label>
+      <textarea class="board-textarea" id="reportDetail" style="min-height:130px" placeholder="신고 내용을 입력해 주세요. (200자 이하)"></textarea>
+    </div>
+    <div class="board-modal-actions">
+      <button class="board-btn board-btn-ghost" id="reportCancel" type="button">취소</button>
+      <button class="board-btn board-btn-danger" id="reportConfirm" type="button">신고 접수</button>
     </div>
   </div>
 </div>
@@ -664,7 +668,7 @@
         });
         const exists = await response.json();
         if (exists) {
-            alert("이미 신고한 메시지입니다.");
+            alert("이미 신고된 채팅입니다");
             return;
         }
     } catch (e) {
@@ -672,7 +676,7 @@
     }
 
     currentReportMessageId = msgId;
-    document.getElementById('reportReason').value = 'SPAM';
+    document.getElementById('reportReason').value = '';
     document.getElementById('reportDetail').value = '';
     document.getElementById('reportModal').style.display = 'flex';
   }

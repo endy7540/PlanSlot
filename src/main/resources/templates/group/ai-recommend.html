@@ -162,6 +162,9 @@
           <h2>추천 Top 3</h2>
           <div class="desc" style="margin-bottom:0;">원하는 방식으로 추천을 받아보세요</div>
         </div>
+        <div>
+          <a href="#" id="linkAiFavorites" style="font-size: 13px; color: var(--sky); font-weight: 600; text-decoration: none; padding: 6px 12px; background: #e0f2fe; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;">❤️ 찜 목록 보기</a>
+        </div>
       </div>
 
       <div class="filter-box" style="display:flex; flex-direction:column; gap:14px; margin-bottom: 24px; background: #fff; padding: 18px; border-radius: 14px; border: 1px solid var(--line);">
@@ -240,8 +243,19 @@
     <h3 style="margin-top:0; margin-bottom:8px;">정확한 일정 지정하기</h3>
     <p style="font-size:13px; color:var(--ink-soft); margin-bottom:16px;">AI가 추천한 여유 시간 중, 모임을 진행할 정확한 기간과 시간을 선택해 주세요.</p>
 
-    <label style="font-size:13px; font-weight:700; margin-bottom:4px; display:block;">선택할 일정</label>
-    <input type="text" id="exactRegDate" class="chip-input" style="width:100%; text-align:left; font-size:14px; margin-bottom:20px; border:1px solid var(--border);" placeholder="정확한 날짜/시간을 선택하세요">
+    <label style="font-size:13px; font-weight:700; margin-bottom:4px; display:block;">날짜 선택</label>
+    <input type="text" id="exactRegDate" class="chip-input" style="width:100%; text-align:left; font-size:14px; margin-bottom:12px; border:1px solid var(--border);" placeholder="시작일과 종료일을 선택하세요">
+
+    <div style="display:flex; gap:10px; margin-bottom:20px;">
+      <div style="flex:1;">
+        <label style="font-size:13px; font-weight:700; margin-bottom:4px; display:block;">시작 시간</label>
+        <input type="time" id="exactRegStartTime" class="chip-input" style="width:100%; border:1px solid var(--border); font-size:14px;">
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:13px; font-weight:700; margin-bottom:4px; display:block;">종료 시간</label>
+        <input type="time" id="exactRegEndTime" class="chip-input" style="width:100%; border:1px solid var(--border); font-size:14px;">
+      </div>
+    </div>
 
     <div style="display:flex; gap:10px;">
       <button class="chip-btn" id="btnCancelReg" style="flex:1; padding:10px; background:#f1f5f9; color:var(--ink);">취소</button>
@@ -305,9 +319,9 @@
 
     let exactFlatpickr = flatpickr("#exactRegDate", {
       mode: "range",
-      enableTime: true,
-      dateFormat: "Y-m-d H:i",
-      locale: "ko"
+      dateFormat: "Y-m-d",
+      locale: "ko",
+      showMonths: 2
     });
 
     restoreGroupAiJobIfAny();
@@ -317,7 +331,29 @@
         alert('등록할 추천 일정을 먼저 선택해주세요.');
         return;
       }
-      // TODO: We could pre-fill exactFlatpickr based on selectedRec.date and selectedRec.time
+      
+      let minD = selectedRec.date;
+      let maxD = selectedRec.date;
+      if (selectedRec.date.includes('~')) {
+        const parts = selectedRec.date.split('~').map(s => s.trim());
+        minD = parts[0];
+        maxD = parts[1] || parts[0];
+      }
+      
+      exactFlatpickr.set("minDate", minD);
+      exactFlatpickr.set("maxDate", maxD);
+      exactFlatpickr.clear();
+      
+      document.getElementById('exactRegStartTime').value = '';
+      document.getElementById('exactRegEndTime').value = '';
+      if (selectedRec.time) {
+        const timeParts = selectedRec.time.split('-').map(s => s.trim());
+        if (timeParts.length === 2) {
+          document.getElementById('exactRegStartTime').value = timeParts[0];
+          document.getElementById('exactRegEndTime').value = timeParts[1];
+        }
+      }
+
       document.getElementById('regModal').style.display = 'flex';
     });
 
@@ -332,10 +368,18 @@
         return;
       }
 
+      const startTimeVal = document.getElementById('exactRegStartTime').value;
+      const endTimeVal = document.getElementById('exactRegEndTime').value;
+
+      if (!startTimeVal || !endTimeVal) {
+        alert("시간을 모두 입력해주세요.");
+        return;
+      }
+
       const finalStartDate = flatpickr.formatDate(dates[0], "Y-m-d");
-      const finalStartTime = flatpickr.formatDate(dates[0], "H:i");
+      const finalStartTime = startTimeVal;
       const finalEndDate = dates[1] ? flatpickr.formatDate(dates[1], "Y-m-d") : finalStartDate;
-      const finalEndTime = dates[1] ? flatpickr.formatDate(dates[1], "H:i") : finalStartTime;
+      const finalEndTime = endTimeVal;
 
       try {
         const confirmBtn = document.getElementById('btnConfirmReg');
@@ -371,9 +415,24 @@
         alert('찜할 추천 일정을 먼저 선택해주세요.');
         return;
       }
-      // TODO: 백엔드 API 호출로 변경
-      showToast('일정을 찜했습니다! (백엔드 API 연결 대기 중)');
+      try {
+        const res = await fetchApi(`/group/${groupId}/ai-recommendations/bookmark`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(selectedRec)
+        });
+        if(res.ok) {
+          showToast('추천 일정을 찜했습니다! 찜 목록 페이지에서 확인할 수 있습니다.');
+        } else {
+          showToast('찜하기에 실패했습니다.');
+        }
+      } catch(e) {
+        console.error(e);
+        showToast('찜하기 중 오류가 발생했습니다.');
+      }
     });
+
+    document.getElementById('linkAiFavorites').href = `/group/ai-favorites?id=${groupId}`;
 
     btnRecommend.addEventListener('click', loadAiRecommendations);
 

@@ -100,17 +100,28 @@ public class GroupChatAiService {
                          .append(msg.getContent()).append("\n");
         }
 
-        promptBuilder.append("\n위 대화 기록을 바탕으로 다음 두 가지를 수행해 주세요.\n");
+        java.time.LocalDate today = java.time.LocalDate.now();
+        
+        promptBuilder.append("\n현재 날짜는 ").append(today).append(" 입니다. (이후 일정 계산 시 참고하세요)\n");
+        promptBuilder.append("위 대화 기록을 바탕으로 다음 두 가지를 수행해 주세요.\n");
         promptBuilder.append("1. 'summary': 대화의 핵심 내용과 흐름을 요약해 주세요.\n");
-        promptBuilder.append("2. 'proposedSchedules': 대화 중 모임 일정을 잡거나 제안하는 내용이 있다면, 이를 배열 형태로 추출해 주세요. (없으면 빈 배열)\n");
+        promptBuilder.append("2. 'proposedSchedules': 대화 중 제안되거나 언급된 **모든** 모임 일정들을 배열 형태로 추출해 주세요.\n");
+        promptBuilder.append("   - 가장 마지막 일정 하나만 추출하지 말고, 대화에 나온 모든 유효한 일정 후보를 전부 추출하세요. (없으면 빈 배열)\n");
+        promptBuilder.append("   - 단, 오늘 날짜를 기준으로 이미 완전히 지나간 과거 일정은 철저히 제외하세요.\n");
+        promptBuilder.append("   - 만약 시작일이 과거이더라도 종료일이 오늘이거나 미래로 이어지는 '기간 일정'인 경우에는 시작일과 종료일을 온전하게 포함하여 추출하세요.\n");
+        promptBuilder.append("   - '지난주부터 다음주까지', '다음주까지 작성해' 와 같이 마감이 정해진 작업이나 기간이 언급된 경우, 마감일만 단일 날짜(하루 일정)로 잡지 말고, 시작 시점(과거 포함)부터 마감일(미래)까지를 '기간 일정(date와 endDate가 다른 상태)'으로 명확히 추출하세요.\n");
+        promptBuilder.append("   - 날짜가 명확하지 않은 추상적인 시점(예: '지난 주', '다음 주')은 현재 날짜(").append(today).append(")를 기준으로 합리적인 날짜로 환산하여 YYYY-MM-DD 형식으로 기록하세요.\n");
+        promptBuilder.append("   - [중요]: '오늘', '내일', '이번 주말' 등의 상대적 날짜는 전체의 '현재 날짜'가 아닌, 해당 텍스트가 적힌 각 메시지 앞에 있는 타임스탬프(작성일)를 기준으로 환산하세요!\n");
         promptBuilder.append("결과는 반드시 아래 JSON 형식으로만 응답해야 합니다. 다른 텍스트는 절대 포함하지 마세요.\n");
         promptBuilder.append("{\n");
         promptBuilder.append("  \"summary\": \"요약된 텍스트\",\n");
         promptBuilder.append("  \"proposedSchedules\": [\n");
         promptBuilder.append("    {\n");
         promptBuilder.append("      \"title\": \"일정 제목 (예: 팀 회식)\",\n");
-        promptBuilder.append("      \"date\": \"YYYY-MM-DD\",\n");
-        promptBuilder.append("      \"time\": \"HH:mm\"\n");
+        promptBuilder.append("      \"date\": \"YYYY-MM-DD (단일 날짜 또는 시작일)\",\n");
+        promptBuilder.append("      \"endDate\": \"YYYY-MM-DD (하루 이상인 경우 종료일, 단일이면 생략 또는 동일하게)\",\n");
+        promptBuilder.append("      \"time\": \"HH:mm (시작 시간)\",\n");
+        promptBuilder.append("      \"endTime\": \"HH:mm (종료 시간, 모를 경우 생략)\"\n");
         promptBuilder.append("    }\n");
         promptBuilder.append("  ]\n");
         promptBuilder.append("}\n");

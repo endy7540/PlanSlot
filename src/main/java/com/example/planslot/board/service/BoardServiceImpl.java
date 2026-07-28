@@ -98,21 +98,29 @@ public class BoardServiceImpl implements BoardService {
     // 게시판 종류별 목록, 검색, 정렬 및 내 글 조회
     @Override
     public Page<BoardDTO> getBoardList(BoardType boardType, String searchType, String keyword, String sort,
-                                       boolean mine, int page, int size, String memberEmail) {
+                                       boolean mine, boolean recruitingOnly, int page, int size, String memberEmail) {
         String searchKeyword = normalizeKeyword(keyword);
         String normalizedSearchType = normalizeSearchType(searchType);
         String normalizedSort = normalizeSortType(sort);
         Pageable pageable = createBoardPageable(page, size, normalizedSort);
+        if (recruitingOnly && boardType != BoardType.STUDY && boardType != BoardType.GROUP) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "모집 중 필터는 스터디와 소모임 게시판에서만 사용할 수 있습니다.");
+        }
+
         Long writerId = mine ? findMember(memberEmail).getId() : null;
         Page<Board> boardPage;
 
         if ("comments".equals(normalizedSort)) {
             boardPage = boardRepository.findBoardListOrderByCommentCount(
                     boardType.name(), BoardStatus.ACTIVE.name(), normalizedSearchType,
-                    searchKeyword, writerId, pageable
+                    searchKeyword, writerId, recruitingOnly, pageable
             );
+        } else if (writerId != null && recruitingOnly) {
+            boardPage = getMyRecruitingBoardPage(boardType, normalizedSearchType, searchKeyword, writerId, pageable);
         } else if (writerId != null) {
             boardPage = getMyBoardPage(boardType, normalizedSearchType, searchKeyword, writerId, pageable);
+        } else if (recruitingOnly) {
+            boardPage = getRecruitingBoardPage(boardType, normalizedSearchType, searchKeyword, pageable);
         } else {
             boardPage = getBoardPage(boardType, normalizedSearchType, searchKeyword, pageable);
         }
@@ -165,6 +173,50 @@ public class BoardServiceImpl implements BoardService {
                     .findByBoardTypeAndBoardStatusAndWriter_IdAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndWriter_IdAndContentContainingIgnoreCase(
                             boardType, BoardStatus.ACTIVE, writerId, keyword,
                             boardType, BoardStatus.ACTIVE, writerId, keyword, pageable);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 검색 조건입니다.");
+        };
+    }
+
+
+    private Page<Board> getRecruitingBoardPage(BoardType boardType, String searchType, String keyword, Pageable pageable) {
+        if (keyword == null) {
+            return boardRepository.findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNull(
+                    boardType, BoardStatus.ACTIVE, BoardRecruitmentStatus.OPEN, pageable);
+        }
+
+        return switch (searchType) {
+            case "title" -> boardRepository.findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndTitleContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            case "content" -> boardRepository.findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndContentContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            case "writer" -> boardRepository.findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndWriter_NicknameContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            case "titleContent" -> boardRepository
+                    .findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndContentContainingIgnoreCase(
+                            boardType, BoardStatus.ACTIVE, BoardRecruitmentStatus.OPEN, keyword,
+                            boardType, BoardStatus.ACTIVE, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 검색 조건입니다.");
+        };
+    }
+
+    private Page<Board> getMyRecruitingBoardPage(BoardType boardType, String searchType, String keyword,
+                                                  Long writerId, Pageable pageable) {
+        if (keyword == null) {
+            return boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNull(
+                    boardType, BoardStatus.ACTIVE, writerId, BoardRecruitmentStatus.OPEN, pageable);
+        }
+
+        return switch (searchType) {
+            case "title" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndTitleContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, writerId, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            case "content" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndContentContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, writerId, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            case "writer" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndWriter_NicknameContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, writerId, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            case "titleContent" -> boardRepository
+                    .findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndContentContainingIgnoreCase(
+                            boardType, BoardStatus.ACTIVE, writerId, BoardRecruitmentStatus.OPEN, keyword,
+                            boardType, BoardStatus.ACTIVE, writerId, BoardRecruitmentStatus.OPEN, keyword, pageable);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 검색 조건입니다.");
         };
     }
@@ -276,6 +328,10 @@ public class BoardServiceImpl implements BoardService {
 
         validateCommunityAccess(reporter);
 
+        if (board.getBoardType() == BoardType.NOTICE) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "공지사항 게시글은 신고할 수 없습니다.");
+        }
+
         if (Objects.equals(board.getWriter().getId(), reporter.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인이 작성한 게시글은 신고할 수 없습니다.");
         }
@@ -293,7 +349,11 @@ public class BoardServiceImpl implements BoardService {
         Member reporter = findMember(reporterEmail);
 
         validateCommunityAccess(reporter);
-        
+
+        if (board.getBoardType() == BoardType.NOTICE) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "공지사항 게시글은 신고할 수 없습니다.");
+        }
+
         if (Objects.equals(board.getWriter().getId(), reporter.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인이 작성한 게시글은 신고할 수 없습니다.");
         }

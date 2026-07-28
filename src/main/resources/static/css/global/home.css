@@ -194,14 +194,6 @@ body {
   grid-template-columns: 46px 1fr;
   gap: 15px;
   align-items: center;
-  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.home-guide-item:hover {
-  transform: translateY(-3px);
-  border-color: #B9DDEB;
-  background: #F6FCFF;
-  box-shadow: 0 12px 24px rgba(7, 89, 133, 0.08);
 }
 
 .home-guide-step {
@@ -243,14 +235,6 @@ body {
   border: 1px solid var(--home-line);
   border-radius: 19px;
   background: linear-gradient(180deg, #FFFFFF, #FAFDFE);
-  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
-}
-
-.home-feature-detail-card:hover {
-  transform: translateY(-3px);
-  border-color: #B9DDEB;
-  background: #F6FCFF;
-  box-shadow: 0 12px 24px rgba(7, 89, 133, 0.08);
 }
 
 .home-feature-detail-card-ai {

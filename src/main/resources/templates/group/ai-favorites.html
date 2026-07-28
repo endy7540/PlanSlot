@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlanSlot - AI 추천 찜 목록</title>
+  
+  <link rel="stylesheet" th:href="@{/css/global/home.css}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Pretendard/1.3.9/static/pretendard.css">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    /* 추가적인 스타일 (기존 ai-recommend 카드 스타일 일부 차용) */
+    .favorites-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+
+    .fav-card {
+      background: var(--home-white);
+      border: 1px solid var(--home-line);
+      border-radius: 20px;
+      padding: 24px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      position: relative;
+    }
+    
+    .fav-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--home-shadow);
+      border-color: var(--home-sky);
+    }
+    
+    .fav-rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--home-sky);
+      color: var(--home-primary-dark);
+      font-size: 12px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .fav-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      color: var(--home-text);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    
+    .fav-date-mono {
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--home-primary);
+      margin-bottom: 12px;
+    }
+    
+    .fav-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    
+    .fav-tag {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 100px;
+      background: #F1F5F9;
+      color: var(--home-muted);
+      font-weight: 600;
+    }
+
+    .fav-tag.fit {
+      background: #e0f2fe;
+      color: var(--home-primary);
+    }
+    
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--home-white);
+      border-radius: 20px;
+      border: 1px dashed var(--home-muted);
+      color: var(--home-muted);
+    }
+    
+    .btn-register {
+      display: block;
+      width: 100%;
+      text-align: center;
+      background: linear-gradient(90deg, var(--home-primary-light), var(--home-primary));
+      color: white;
+      padding: 12px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    
+    .btn-register:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<main class="home-main">
+  <section class="home-hero">
+    <div class="home-hero-copy">
+      <span class="home-hero-eyebrow">BOOKMARKED RECOMMENDATIONS</span>
+      <h1>AI 추천 찜 목록</h1>
+      <p>마음에 들어서 찜해둔 추천 시간들을 한곳에서 모아보고,<br>원할 때 언제든 모임 일정으로 확정하세요.</p>
+      <div class="home-hero-actions">
+        <a class="home-button home-button-light" id="backToGroupBtn" href="#">← 모임으로 돌아가기</a>
+        <a class="home-button home-button-outline" id="backToAiBtn" href="#">AI 추천 다시 받기</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="favorites-grid" id="favoritesGrid">
+    <div class="empty-state">불러오는 중...</div>
+  </section>
+</main>
+
+<script>
+  function getQueryParam(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+  }
+  const groupId = getQueryParam('id'); // /group/ai-favorites?id={id}
+
+  document.getElementById('backToGroupBtn').href = `/group/read/${groupId}`;
+  document.getElementById('backToAiBtn').href = `/group/recommend?id=${groupId}`;
+
+  async function loadFavorites() {
+    const grid = document.getElementById('favoritesGrid');
+    try {
+      const res = await fetch(`/group/${groupId}/ai-recommendations/favorites`);
+      if (!res.ok) throw new Error('불러오기 실패');
+      const data = await res.json();
+      
+      if (!data || data.length === 0) {
+        grid.innerHTML = `<div class="empty-state">
+          <div style="font-size: 32px; margin-bottom: 12px;">❤️</div>
+          <h3 style="margin-top:0; margin-bottom: 8px; color: var(--home-text);">찜한 추천 일정이 없습니다.</h3>
+          <p style="font-size: 14px;">AI 추천 페이지에서 마음에 드는 시간을 찜해보세요!</p>
+        </div>`;
+        return;
+      }
+      
+      grid.innerHTML = data.map(item => `
+        <article class="fav-card">
+          <div class="fav-rank-badge">Top ${item.rank} 추천</div>
+          <h3 class="fav-title">${item.title || item.label}</h3>
+          <div class="fav-date-mono">${item.date} ${item.time}</div>
+          
+          <div class="fav-tags">
+            <span class="fav-tag fit">${item.tag}</span>
+            <span class="fav-tag">${item.sub}</span>
+          </div>
+          
+          <div style="font-size: 12px; color: var(--home-muted); margin-bottom: 16px;">
+            찜한 날짜: ${new Date(item.bookmarkedAt).toLocaleDateString()}
+          </div>
+          
+          <button class="btn-register" onclick="alert('모임 일정으로 등록하시려면 AI 추천 페이지에서 진행해주세요. (추후 연동 예정)')">일정으로 등록하기</button>
+        </article>
+      `).join('');
+      
+    } catch (e) {
+      console.error(e);
+      grid.innerHTML = `<div class="empty-state">데이터를 불러오는 중 오류가 발생했습니다.</div>`;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadFavorites);
+</script>
+</body>
+</html>

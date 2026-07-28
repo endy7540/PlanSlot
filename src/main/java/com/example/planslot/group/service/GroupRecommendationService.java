@@ -37,8 +37,8 @@ public class GroupRecommendationService {
     private final ScheduleRepository scheduleRepository;
     private final com.example.planslot.group.repository.GroupRepository groupRepository;
     private final GroupRecommendationRepository groupRecommendationRepository;
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
     @Value("${ai.api-key:}")
     private String apiKey;

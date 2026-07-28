@@ -1,6 +1,7 @@
 package com.example.planslot.group.dto;
 
 import com.example.planslot.group.entity.Group;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -84,7 +85,40 @@ public class GroupDTO {
             List<RecInfo> recs
     ) {}
 
-    public record RecInfo(int rank, String label, String sub, String tag, String date, String time, String title) {}
+    public record RecInfo(
+            @JsonProperty("rank") int rank,
+            @JsonProperty("label") String label,
+            @JsonProperty("sub") String sub,
+            @JsonProperty("tag") String tag,
+            @JsonProperty("date") String date,
+            @JsonProperty("time") String time,
+            @JsonProperty("title") String title
+    ) {}
     public record ImportResult(boolean success, String overlappingTitle, String overlappingTime, String importedDate) {}
     public record AiResponse(List<HeatInfo> heat, List<RecInfo> recs) {}
+    public record BookmarkResponse(
+            Long id,
+            int rank,
+            String label,
+            String sub,
+            String tag,
+            String date,
+            String time,
+            String title,
+            String bookmarkedAt
+    ) {
+        public static BookmarkResponse from(com.example.planslot.group.entity.GroupRecommendation r) {
+            return new BookmarkResponse(
+                    r.getId(),
+                    r.getRank(),
+                    r.getLabel(),
+                    r.getSub(),
+                    r.getTag(),
+                    r.getDate(),
+                    r.getTime(),
+                    r.getTitle(),
+                    r.getBookmarkedAt() != null ? r.getBookmarkedAt().toString() : null
+            );
+        }
+    }
 }

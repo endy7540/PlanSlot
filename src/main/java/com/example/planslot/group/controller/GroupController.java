@@ -65,19 +65,29 @@ public class GroupController {
             @PathVariable Long groupId,
             @RequestBody GroupDTO.RecInfo recInfo,
             Authentication authentication) {
-        Long memberId = getAuthenticatedMemberId(authentication);
-        groupRecommendationService.bookmarkRecommendation(groupId, memberId, recInfo);
-        return ResponseEntity.ok().build();
+        try {
+            Long memberId = getAuthenticatedMemberId(authentication);
+            groupRecommendationService.bookmarkRecommendation(groupId, memberId, recInfo);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).build();
+        }
     }
 
     // AI 추천 찜 목록 조회 API
     @GetMapping("/{groupId}/ai-recommendations/favorites")
     @ResponseBody
-    public ResponseEntity<List<com.example.planslot.group.entity.GroupRecommendation>> getBookmarkedRecommendations(
+    public ResponseEntity<List<GroupDTO.BookmarkResponse>> getBookmarkedRecommendations(
             @PathVariable Long groupId,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        return ResponseEntity.ok(groupRecommendationService.getBookmarkedRecommendations(groupId, memberId));
+        List<GroupDTO.BookmarkResponse> result = groupRecommendationService
+                .getBookmarkedRecommendations(groupId, memberId)
+                .stream()
+                .map(GroupDTO.BookmarkResponse::from)
+                .toList();
+        return ResponseEntity.ok(result);
     }
 
 

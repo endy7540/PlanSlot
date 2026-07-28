@@ -351,12 +351,14 @@ public class GroupServiceImpl implements GroupService {
                         if ("Y".equals(s.getIsPublic()) || targetMemberId.equals(memberId)) {
                             if (s.getScheduleType() == null || s.getScheduleType() == ScheduleType.DAILY) {
                                 String dateStr = s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : "";
+                                String endDateStr = s.getEndDate() != null ? s.getEndDate().toLocalDate().toString() : dateStr;
                                 String timeStr = s.getStartDate() != null ? s.getStartDate().toLocalTime().toString() : "";
                                 result.add(new GroupDTO.CalendarScheduleInfo(
                                         s.getScheduleId().toString(),
                                         nickname,
                                         s.getTitle(),
                                         dateStr,
+                                        endDateStr,
                                         timeStr,
                                         s.getIsPublic()
                                 ));
@@ -405,6 +407,7 @@ public class GroupServiceImpl implements GroupService {
                                                 nickname,
                                                 s.getTitle(),
                                                 dateStr,
+                                                dateStr,
                                                 timeStr,
                                                 s.getIsPublic()
                                         ));
@@ -418,12 +421,14 @@ public class GroupServiceImpl implements GroupService {
                     for (Schedule s : schedules) {
                         if ("Y".equals(s.getIsPublic()) || targetMemberId.equals(memberId)) {
                             String dateStr = s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : "";
+                            String endDateStr = s.getEndDate() != null ? s.getEndDate().toLocalDate().toString() : dateStr;
                             String timeStr = s.getStartDate() != null ? s.getStartDate().toLocalTime().toString() : "";
                             result.add(new GroupDTO.CalendarScheduleInfo(
                                     s.getScheduleId().toString(),
                                     nickname,
                                     s.getTitle(),
                                     dateStr,
+                                    endDateStr,
                                     timeStr,
                                     s.getIsPublic()
                             ));

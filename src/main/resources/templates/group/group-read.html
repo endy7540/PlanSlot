@@ -42,6 +42,33 @@
     border: 1px dashed #0284C7;
   }
 
+  .cal-event {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* 연속 일정 가로 밀착 스타일 정의 (모임 캘린더 고유 규격 크기 엄수) */
+  .cal-event.event-start {
+    border-top-right-radius: 0px !important;
+    border-bottom-right-radius: 0px !important;
+    border-right: 0px !important;
+    margin-right: -8px !important;
+  }
+  .cal-event.event-middle {
+    border-radius: 0px !important;
+    border-left: 0px !important;
+    border-right: 0px !important;
+    margin-left: -8px !important;
+    margin-right: -8px !important;
+  }
+  .cal-event.event-end {
+    border-top-left-radius: 0px !important;
+    border-bottom-left-radius: 0px !important;
+    border-left: 0px !important;
+    margin-left: -8px !important;
+  }
+
   /* --- 이미지 크롭 모달 --- */
   .group-crop-modal-overlay {
     display: none;
@@ -1118,105 +1145,202 @@ function renderDynamicCalendar() {
   const prevMonthDays = new Date(calYear, calMonth, 0).getDate();
   const today = new Date();
   
-  let html = `<div class="weekday" style="color:var(--danger)">일</div><div class="weekday">월</div><div class="weekday">화</div><div class="weekday">수</div><div class="weekday">목</div><div class="weekday">금</div><div class="weekday" style="color:var(--sky)">토</div>`;
-  
+  const cells = [];
+  // 이전달 꼬리
   for(let i = 0; i < firstDay; i++) {
     const d = prevMonthDays - firstDay + i + 1;
-    html += `<div class="date" style="background:#FAFCFE; opacity:0.5"><b style="color:#A0AEC0; background:transparent;">${d}</b></div>`;
+    cells.push({ day: d, otherMonth: true, y: calMonth === 0 ? calYear - 1 : calYear, m: calMonth === 0 ? 11 : calMonth - 1 });
   }
-  
+  // 이번달
   for(let d = 1; d <= daysInMonth; d++) {
-    const isToday = (calYear === today.getFullYear() && calMonth === today.getMonth() && d === today.getDate());
-    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    cells.push({ day: d, otherMonth: false, y: calYear, m: calMonth });
+  }
+  // 다음달 머리
+  const remainder = cells.length % 7;
+  if(remainder > 0) {
+    const targetM = calMonth === 11 ? 0 : calMonth + 1;
+    const targetY = calMonth === 11 ? calYear + 1 : calYear;
+    for(let i = 0; i < 7 - remainder; i++) {
+      cells.push({ day: i + 1, otherMonth: true, y: targetY, m: targetM });
+    }
+  }
+
+  const dateKeys = cells.map(c => `${c.y}-${String(c.m+1).padStart(2,'0')}-${String(c.day).padStart(2,'0')}`);
+  const scheduledSlots = {};
+  dateKeys.forEach(dk => {
+    scheduledSlots[dk] = [null, null, null]; // 3개 슬롯
+  });
+
+  // 고유 일정 수집 및 병합 (동일 내용 중복 방지)
+  const uniqueEventsMap = new Map();
+  const myName = group.members.find(m => String(m.id) === String(group.myMemberId))?.name || '나';
+  
+  groupSchedules.forEach(s => {
+    if (!s.startDate) return;
+    const startStr = s.startDate.slice(0, 10);
+    const key = `${s.id || s.scheduleId}_${startStr}`;
     
-    const daySchedules = groupSchedules.filter(s => s.startDate && s.startDate.startsWith(dateStr));
+    let displayNick = s.nickname;
+    if (s.nickname === myName && s.isPublic === 'N') {
+      displayNick = `${s.nickname} (나-비공개)`;
+    }
+
+    if (!uniqueEventsMap.has(key)) {
+      uniqueEventsMap.set(key, { ...s, nicknames: [displayNick] });
+    } else {
+      const existing = uniqueEventsMap.get(key);
+      if (displayNick && !existing.nicknames.includes(displayNick)) {
+        existing.nicknames.push(displayNick);
+      }
+      if (s.isPublic === 'Y') {
+        existing.isPublic = 'Y';
+      }
+    }
+  });
+
+  const allEvents = Array.from(uniqueEventsMap.values());
+
+  // 우선순위 정렬 (기간이 긴 일정, 시작일이 빠른 일정 우선)
+  allEvents.sort((a, b) => {
+    const aStart = a.startDate.slice(0, 10);
+    const aEnd = a.endDate ? a.endDate.slice(0, 10) : aStart;
+    const bStart = b.startDate.slice(0, 10);
+    const bEnd = b.endDate ? b.endDate.slice(0, 10) : bStart;
+
+    const aDuration = (new Date(aEnd) - new Date(aStart));
+    const bDuration = (new Date(bEnd) - new Date(bStart));
+
+    if (aDuration !== bDuration) {
+      return bDuration - aDuration;
+    }
+    if (aStart !== bStart) {
+      return aStart.localeCompare(bStart);
+    }
+    return (a.title || '').localeCompare(b.title || '');
+  });
+
+  // 슬롯 배정 알고리즘 구동
+  allEvents.forEach(e => {
+    const startStr = e.startDate.slice(0, 10);
+    const endStr = e.endDate ? e.endDate.slice(0, 10) : startStr;
+
+    const activeDates = dateKeys.filter(dk => dk >= startStr && dk <= endStr);
+    if (activeDates.length === 0) return;
+
+    let targetSlot = -1;
+    for (let slotIdx = 0; slotIdx < 3; slotIdx++) {
+      let isAvailable = true;
+      for (let dk of activeDates) {
+        if (scheduledSlots[dk][slotIdx] !== null) {
+          isAvailable = false;
+          break;
+        }
+      }
+      if (isAvailable) {
+        targetSlot = slotIdx;
+        break;
+      }
+    }
+
+    if (targetSlot !== -1) {
+      activeDates.forEach(dk => {
+        scheduledSlots[dk][targetSlot] = e;
+      });
+    }
+  });
+
+  // HTML 조립
+  let html = `<div class="weekday" style="color:var(--danger)">일</div><div class="weekday">월</div><div class="weekday">화</div><div class="weekday">수</div><div class="weekday">목</div><div class="weekday">금</div><div class="weekday" style="color:var(--sky)">토</div>`;
+
+  cells.forEach((c, cellIdx) => {
+    const dateStr = dateKeys[cellIdx];
+    const isToday = (calYear === today.getFullYear() && calMonth === today.getMonth() && c.day === today.getDate() && !c.otherMonth);
+    
+    if (c.otherMonth) {
+      html += `<div class="date" style="background:#FAFCFE; opacity:0.5"><b style="color:#A0AEC0; background:transparent;">${c.day}</b></div>`;
+      return;
+    }
+
+    const slots = scheduledSlots[dateStr];
+    
+    // 그날 배치된 일정 중 가장 높은 슬롯 층수 계산
+    let dayMaxSlot = -1;
+    for (let i = 0; i < 3; i++) {
+      if (slots[i] !== null) {
+        dayMaxSlot = i;
+      }
+    }
+
     let eventsHtml = '';
     
-    // 일정 제목과 시간 기준으로 병합 (동일한 공유 일정은 하나로)
-    const myName = group.members.find(m => String(m.id) === String(group.myMemberId))?.name || '나';
-    const mergedMap = new Map();
-    daySchedules.forEach(s => {
-      const key = `${s.title}|${s.time}`;
-      let displayNick = s.nickname;
-      if (s.nickname === myName && s.isPublic === 'N') {
-        displayNick = `${s.nickname} (나-비공개)`;
-      }
-      
-      if (!mergedMap.has(key)) {
-        mergedMap.set(key, { ...s, nicknames: [displayNick] });
-      } else {
-        const existing = mergedMap.get(key);
-        if (displayNick && !existing.nicknames.includes(displayNick)) {
-          existing.nicknames.push(displayNick);
+    if (dayMaxSlot !== -1) {
+      for (let i = 0; i <= dayMaxSlot; i++) {
+        const s = slots[i];
+        if (s === null) {
+          eventsHtml += `<div class="cal-event placeholder" style="visibility: hidden; pointer-events: none; margin-bottom: 2px; padding: 2px 4px;">&nbsp;</div>`;
+          continue;
         }
-        if (s.isPublic === 'Y') {
-          existing.isPublic = 'Y';
+
+        // 연속 일정 판정
+        let durationClass = '';
+        if (s.startDate && s.endDate) {
+          const startStr = s.startDate.slice(0, 10);
+          const endStr = s.endDate ? s.endDate.slice(0, 10) : startStr;
+          if (startStr !== endStr) {
+            if (dateStr === startStr) {
+              durationClass = ' event-start';
+            } else if (dateStr === endStr) {
+              durationClass = ' event-end';
+            } else if (dateStr > startStr && dateStr < endStr) {
+              durationClass = ' event-middle';
+            }
+          }
         }
+
+        const displayTitle = (durationClass === ' event-middle' || durationClass === ' event-end')
+            ? '&nbsp;'
+            : s.title;
+
+        let cls = s.isPublic === 'N' ? 'cal-event private' : 'cal-event public';
+        cls += durationClass;
+        if (s.isTemp) cls += ' blink-slow';
+
+        const tooltip = `${s.title} (${s.nicknames ? s.nicknames.join(', ') : (s.nickname || '공통')})`;
+        const displayTime = s.title.startsWith('모임 일정') ? '' : ` ${s.time || ''}`;
+        
+        let bgColor = '';
+        let colorStyle = '';
+        if (s.nicknames && s.nicknames.length > 1) {
+            bgColor = '#E0F2FE';
+            colorStyle = 'color: #0284C7;';
+        } else {
+            const memberColor = group.members.find(m => m.name === s.nickname)?.color || '#E2E8F0';
+            bgColor = memberColor;
+            colorStyle = 'color: white; text-shadow: 0px 1px 2px rgba(0,0,0,0.3);';
+            if (s.isPublic === 'N') colorStyle += ' opacity: 0.5;';
+        }
+
+        eventsHtml += `<em class="${cls}" title="${tooltip}" style="background-color: ${bgColor}; ${colorStyle}" onclick="event.stopPropagation(); showDayDetail('${dateStr}')">${displayTitle}${displayTitle !== '&nbsp;' ? displayTime : ''}</em>`;
       }
+    }
+
+    // 3개 슬롯 외에 더보기 처리
+    const daySchedules = groupSchedules.filter(s => {
+      if (!s.startDate) return false;
+      const startStr = s.startDate.slice(0, 10);
+      const endStr = s.endDate ? s.endDate.slice(0, 10) : startStr;
+      return dateStr >= startStr && dateStr <= endStr;
     });
-    let toRender = Array.from(mergedMap.values());
-    
-    if (tempImportSchedule && tempImportSchedule.startDate) {
-      let isMatch = false;
-      const targetDate = new Date(dateStr);
-      const limitStart = new Date(tempImportSchedule.startDate);
-      
-      if (tempImportSchedule.startDate.startsWith(dateStr)) {
-        isMatch = true;
-      } else if (tempImportSchedule.scheduleType !== 'DAILY' && targetDate >= limitStart) {
-        if (tempImportSchedule.scheduleType === 'WEEKLY' && targetDate.getDay() === limitStart.getDay()) {
-          isMatch = true;
-        } else if (tempImportSchedule.scheduleType === 'MONTHLY') {
-          const targetYear = targetDate.getFullYear();
-          const targetMonth = targetDate.getMonth();
-          const maxDayInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
-          const actualDay = Math.min(limitStart.getDate(), maxDayInMonth);
-          if (targetDate.getDate() === actualDay) isMatch = true;
-        } else if (tempImportSchedule.scheduleType === 'YEARLY' && targetDate.getMonth() === limitStart.getMonth() && targetDate.getDate() === limitStart.getDate()) {
-          isMatch = true;
-        }
-      }
-      
-      if (isMatch) {
-        toRender.unshift(tempImportSchedule);
-      }
+    const totalSchedules = daySchedules.length;
+    const displayedCount = slots.filter(s => s !== null).length;
+    const moreCount = totalSchedules - displayedCount;
+    if (moreCount > 0) {
+      eventsHtml += `<span style="display:block;font-size:10px;color:var(--muted);text-align:center;margin-top:2px" onclick="event.stopPropagation(); showDayDetail('${dateStr}')">+${moreCount}개 더보기</span>`;
     }
-    
-    // 최대 3개까지만 표시 (디자인 유지)
-    toRender.slice(0, 3).forEach(s => {
-      let cls = s.isPublic === 'N' ? 'cal-event private' : 'cal-event public';
-      if (s.isTemp) cls += ' blink-slow';
-      const tooltip = s.nicknames ? `${s.title} (${s.nicknames.join(', ')})` : s.title;
-      const displayTime = s.title.startsWith('모임 일정') ? '' : ` ${s.time}`;
-      
-      let bgColor = '';
-      let colorStyle = '';
-      if (s.nicknames && s.nicknames.length > 1) {
-          bgColor = '#E0F2FE';
-          colorStyle = 'color: #0284C7;';
-      } else {
-          const memberColor = group.members.find(m => m.name === s.nickname)?.color || '#E2E8F0';
-          bgColor = memberColor;
-          colorStyle = 'color: white; text-shadow: 0px 1px 2px rgba(0,0,0,0.3);';
-          if (s.isPublic === 'N') colorStyle += ' opacity: 0.5;';
-      }
-      eventsHtml += `<em class="${cls}" title="${tooltip}" style="background-color: ${bgColor}; ${colorStyle}">${s.title}${displayTime}</em>`;
-    });
-    if (toRender.length > 3) {
-      eventsHtml += `<span style="display:block;font-size:10px;color:var(--muted);text-align:center;margin-top:2px">+${toRender.length - 3}개 더보기</span>`;
-    }
-    
-    html += `<div class="date ${isToday ? 'today' : ''}" style="cursor:pointer;" onclick="showDayDetail('${dateStr}')"><b>${d}</b>${eventsHtml}</div>`;
-  }
-  
-  const totalCells = firstDay + daysInMonth;
-  const remainder = totalCells % 7;
-  if(remainder > 0) {
-    for(let i = 0; i < 7 - remainder; i++) {
-      html += `<div class="date" style="background:#FAFCFE; opacity:0.5"><b style="color:#A0AEC0; background:transparent;">${i + 1}</b></div>`;
-    }
-  }
-  
+
+    html += `<div class="date ${isToday ? 'today' : ''}" style="cursor:pointer;" onclick="showDayDetail('${dateStr}')"><b>${c.day}</b>${eventsHtml}</div>`;
+  });
+
   document.getElementById('groupCalendarContainer').innerHTML = html;
 }
 
@@ -1240,7 +1364,12 @@ function showDayDetail(dateStr) {
   currentDetailDate = dateStr;
   title.textContent = `${dateStr} 일정 상세`;
   
-  const daySchedules = groupSchedules.filter(s => s.startDate && s.startDate.startsWith(dateStr));
+  const daySchedules = groupSchedules.filter(s => {
+    if (!s.startDate) return false;
+    const startStr = s.startDate.slice(0, 10);
+    const endStr = s.endDate ? s.endDate.slice(0, 10) : startStr;
+    return dateStr >= startStr && dateStr <= endStr;
+  });
   
   // 일정 제목과 시간 기준으로 병합 (동일한 공유 일정은 하나로)
   const myName = group.members.find(m => String(m.id) === String(group.myMemberId))?.name || '나';
@@ -1702,4 +1831,3 @@ document.getElementById('btnSubmitShareMySchedule').addEventListener('click', as
 </script>
 </body>
 </html>
-

@@ -187,7 +187,17 @@ public class GroupChatController {
     // ======== [WebSocket Message Endpoints] ========
 
     @MessageMapping("/chat/message")
-    public void message(ChatMessageDTO message) {
+    public void message(ChatMessageDTO message, java.security.Principal principal) {
+        if (principal == null) {
+            throw new IllegalArgumentException("인증되지 않은 사용자입니다.");
+        }
+        
+        // STOMP CONNECT 시점에 주입해둔 Authentication 활용
+        Authentication authentication = (Authentication) principal;
+        Long realMemberId = getAuthenticatedMemberId(authentication);
+        // 송신자 위조 방지를 위해 서버에서 확인한 실제 회원 ID로 덮어쓰기
+        message.setSenderId(realMemberId);
+
         // 메시지 타입에 따른 처리 (입장 메시지 등)
         if (ChatMessageDTO.MessageType.ENTER.equals(message.getType())) {
             message.setContent(message.getSenderName() + "님이 입장하셨습니다.");

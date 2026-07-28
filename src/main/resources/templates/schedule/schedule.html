@@ -752,6 +752,35 @@
             log('GET /schedule (에러)', e.message);
         }
         renderCalendar();
+        syncSelectedDateToMonth();
+    }
+
+    function syncUrlWithDateKey(dateKey) {
+        if (dateKey) {
+            const params = new URLSearchParams(window.location.search);
+            params.set('date', dateKey);
+            const newUrl = `${window.location.pathname}?${params.toString()}`;
+            window.history.replaceState({ path: newUrl }, '', newUrl);
+        }
+    }
+
+    function syncSelectedDateToMonth() {
+        if (!selectedDateKey) return;
+        const parts = selectedDateKey.split('-');
+        const selY = parseInt(parts[0], 10);
+        const selM = parseInt(parts[1], 10) - 1;
+
+        if (selY !== viewYear || selM !== viewMonth) {
+            const padStr = (n) => String(n).padStart(2, '0');
+            const today = new Date();
+            if (today.getFullYear() === viewYear && today.getMonth() === viewMonth) {
+                selectedDateKey = `${viewYear}-${padStr(viewMonth+1)}-${padStr(today.getDate())}`;
+            } else {
+                selectedDateKey = `${viewYear}-${padStr(viewMonth+1)}-01`;
+            }
+        }
+        syncUrlWithDateKey(selectedDateKey);
+        renderSelectedDateEvents(selectedDateKey);
     }
 
     function moveMonth(delta) {
@@ -1179,6 +1208,7 @@
             window.location.href = `/schedule/new?date=${dateKey}`;
         } else {
             selectedDateKey = dateKey;
+            syncUrlWithDateKey(dateKey);
             
             document.querySelectorAll('.cal-day').forEach(el => el.classList.remove('selected-day'));
             const currentEl = document.querySelector(`.cal-day[data-date="${dateKey}"]`);

@@ -1087,8 +1087,8 @@
     function updateDeadlineMax() {
         const { dateVal } = parseSelectedDates();
         if (dateVal) {
-            document.getElementById('f-deadlineDate').min = '';
-            document.getElementById('f-deadlineDate').max = dateVal;
+            document.getElementById('f-deadlineDate').min = dateVal;
+            document.getElementById('f-deadlineDate').max = '';
         }
     }
 

@@ -43,8 +43,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
 
         if (requestDTO.getDeadlineDate() != null && requestDTO.getStartDate() != null) {
-            if (requestDTO.getDeadlineDate().isAfter(requestDTO.getStartDate().toLocalDate())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "데드라인 날짜는 일정 시작일보다 이후일 수 없습니다.");
+            if (requestDTO.getDeadlineDate().isBefore(requestDTO.getStartDate().toLocalDate())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "데드라인 날짜는 일정 시작일보다 이전일 수 없습니다.");
             }
         }
 
@@ -103,8 +103,8 @@ public class ScheduleServiceImpl implements ScheduleService {
         Schedule schedule = getOwnedSchedule(scheduleId, memberId);
 
         if (requestDTO.getDeadlineDate() != null && requestDTO.getStartDate() != null) {
-            if (requestDTO.getDeadlineDate().isAfter(requestDTO.getStartDate().toLocalDate())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "데드라인 날짜는 일정 시작일보다 이후일 수 없습니다.");
+            if (requestDTO.getDeadlineDate().isBefore(requestDTO.getStartDate().toLocalDate())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "데드라인 날짜는 일정 시작일보다 이전일 수 없습니다.");
             }
         }
 
@@ -130,6 +130,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                     .orElse(Deadline.builder().schedule(schedule).build());
             deadline.update(requestDTO.getDeadlineDate(), requestDTO.getNotifyDaysBefore());
             deadlineRepository.save(deadline);
+        } else {
+            deadlineRepository.deleteBySchedule_ScheduleId(scheduleId);
         }
 
         // 구글 캘린더 연동되어 있다면 Update

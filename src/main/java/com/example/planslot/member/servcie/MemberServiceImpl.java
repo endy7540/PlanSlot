@@ -8,6 +8,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Random;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -140,7 +142,7 @@ public class MemberServiceImpl implements MemberService{
     }
 
     private String generateUniqueNickname(String baseNickname) {
-        java.util.Random random = new java.util.Random();
+        Random random = new Random();
         String newNickname;
         int attempts = 0;
         int tagMax = 10000;

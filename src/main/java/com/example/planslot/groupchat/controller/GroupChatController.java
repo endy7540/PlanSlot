@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Controller
@@ -133,7 +134,7 @@ public class GroupChatController {
     @ResponseBody
     public ResponseEntity<?> startAiSummaryAsync(
             @PathVariable Long groupId, 
-            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "0") int offset,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
         GroupMember myMembership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
@@ -144,7 +145,7 @@ public class GroupChatController {
 
         try {
             String jobId = groupChatAiService.startSummarizeChatJob(groupId, offset);
-            return ResponseEntity.ok(java.util.Map.of("jobId", jobId));
+            return ResponseEntity.ok(Map.of("jobId", jobId));
         } catch (Exception e) {
             return ResponseEntity.status(500).body("AI 요약 작업 시작 중 오류 발생: " + e.getMessage());
         }
@@ -163,15 +164,15 @@ public class GroupChatController {
         
         GroupChatAiService.ChatAiJob job = groupChatAiService.getJobStatus(jobId);
         if (job == null) {
-            return ResponseEntity.status(404).body(java.util.Map.of("error", "작업을 찾을 수 없습니다."));
+            return ResponseEntity.status(404).body(Map.of("error", "작업을 찾을 수 없습니다."));
         }
         
         if ("PROCESSING".equals(job.status)) {
-            return ResponseEntity.ok(java.util.Map.of("status", "PROCESSING"));
+            return ResponseEntity.ok(Map.of("status", "PROCESSING"));
         } else if ("COMPLETED".equals(job.status)) {
-            return ResponseEntity.ok(java.util.Map.of("status", "COMPLETED", "result", job.result));
+            return ResponseEntity.ok(Map.of("status", "COMPLETED", "result", job.result));
         } else {
-            return ResponseEntity.ok(java.util.Map.of("status", "FAILED", "error", job.error));
+            return ResponseEntity.ok(Map.of("status", "FAILED", "error", job.error));
         }
     }
 
@@ -187,7 +188,17 @@ public class GroupChatController {
     // ======== [WebSocket Message Endpoints] ========
 
     @MessageMapping("/chat/message")
-    public void message(ChatMessageDTO message) {
+    public void message(ChatMessageDTO message, java.security.Principal principal) {
+        if (principal == null) {
+            throw new IllegalArgumentException("인증되지 않은 사용자입니다.");
+        }
+        
+        // STOMP CONNECT 시점에 주입해둔 Authentication 활용
+        Authentication authentication = (Authentication) principal;
+        Long realMemberId = getAuthenticatedMemberId(authentication);
+        // 송신자 위조 방지를 위해 서버에서 확인한 실제 회원 ID로 덮어쓰기
+        message.setSenderId(realMemberId);
+
         // 메시지 타입에 따른 처리 (입장 메시지 등)
         if (ChatMessageDTO.MessageType.ENTER.equals(message.getType())) {
             message.setContent(message.getSenderName() + "님이 입장하셨습니다.");

@@ -45,7 +45,18 @@
         <input id="boardSearchInput" type="search" maxlength="100" placeholder="검색어를 입력하세요">
         <button class="board-btn board-btn-sky" id="boardSearchButton" type="button">검색</button>
       </div>
-      <div class="board-result-count" id="boardResultCount">총 0개</div>
+      <div class="board-list-options">
+        <label class="board-sort-control" for="boardSortSelect">
+          <span>정렬</span>
+          <select id="boardSortSelect" class="board-sort-select" aria-label="게시글 정렬">
+            <option value="latest" selected>최신순</option>
+            <option value="oldest">오래된순</option>
+            <option value="views">조회순</option>
+            <option value="comments">댓글 많은 순</option>
+          </select>
+        </label>
+        <button class="board-mine-button" id="boardMineButton" type="button" aria-pressed="false">내 글 보기</button>
+      </div>
     </div>
 
     <section class="board-card board-list-card">

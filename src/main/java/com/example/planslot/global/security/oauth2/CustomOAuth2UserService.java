@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashMap;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +31,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
         String registrationId = userRequest.getClientRegistration().getRegistrationId();
         Map<String, Object> attributes = oAuth2User.getAttributes();
-        Map<String, Object> modifiableAttributes = new java.util.HashMap<>(attributes);
+        Map<String, Object> modifiableAttributes = new HashMap<>(attributes);
 
         String providerId = "";
         String email = "";
@@ -62,7 +64,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
             String loginId = registrationId + "_" + providerId;
             
             String nickname;
-            java.util.Random random = new java.util.Random();
+            Random random = new Random();
             int attempts = 0;
             int tagMax = 10000;
             String format = "#%04d";

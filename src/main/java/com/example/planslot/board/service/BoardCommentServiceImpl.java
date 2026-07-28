@@ -9,6 +9,7 @@ import com.example.planslot.board.repository.BoardCommentRepository;
 import com.example.planslot.board.repository.BoardRepository;
 import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
 import com.example.planslot.boardreport.entity.BoardReport;
+import com.example.planslot.boardreport.entity.BoardReportReasonCode;
 import com.example.planslot.boardreport.entity.BoardReportTargetType;
 import com.example.planslot.boardreport.repository.BoardReportRepository;
 import com.example.planslot.member.entity.Member;
@@ -185,6 +186,23 @@ public class BoardCommentServiceImpl implements BoardCommentService {
         comment.delete();
     }
 
+    // 댓글 및 대댓글 신고 여부 확인
+    @Override
+    public boolean hasReportedComment(Long commentId, String reporterEmail) {
+        BoardComment comment = findActiveComment(commentId);
+        Member reporter = findMember(reporterEmail);
+
+        validateCommunityAccess(reporter);
+
+        if (Objects.equals(comment.getWriter().getId(), reporter.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인이 작성한 댓글은 신고할 수 없습니다.");
+        }
+
+        return boardReportRepository.existsByReporter_IdAndTargetTypeAndTargetId(
+                reporter.getId(), BoardReportTargetType.COMMENT, commentId
+        );
+    }
+
     // 댓글 및 대댓글 신고
     @Override
     @Transactional
@@ -323,10 +341,11 @@ public class BoardCommentServiceImpl implements BoardCommentService {
         }
 
         String reasonDetail = normalizeReportDetail(reportRequestDTO.getReasonDetail());
-        if (reasonDetail == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용을 입력해 주세요.");
+        if (reportRequestDTO.getReasonCode() == BoardReportReasonCode.OTHER
+                && reasonDetail == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "기타 신고 사유의 세부내용을 입력해 주세요.");
         }
-        if (reasonDetail.length() > 200) {
+        if (reasonDetail != null && reasonDetail.length() > 200) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용은 200자 이하로 입력해 주세요.");
         }
     }

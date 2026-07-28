@@ -337,7 +337,7 @@
             <div class="avatar" style="background: #e2e8f0; display:flex; justify-content:center; align-items:center;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             </div>
-            <div class="bubble" th:utext="${#strings.replace(msg.content, '&#10;', '<br>')}">메시지</div>
+            <div class="bubble" th:utext="${#strings.replace(#strings.escapeXml(msg.content), '&#10;', '<br>')}">메시지</div>
             <div style="display:flex; flex-direction:column; align-items:flex-start; gap:2px;">
               <div class="time" th:text="${#temporals.format(msg.createdAt, 'HH:mm')}">시간</div>
               <button th:onclick="'openReportModal(' + ${msg.id} + ')'" style="border:none; background:none; cursor:pointer; font-size:12px; color:#ef4444; padding:0; text-decoration:underline;" title="신고하기">신고</button>
@@ -347,7 +347,7 @@
 
         <div th:if="${msg.type.name() == 'TALK' and msg.senderId == myMemberId}" class="message mine">
           <div class="message-inner">
-            <div class="bubble" th:utext="${#strings.replace(msg.content, '&#10;', '<br>')}">메시지</div>
+            <div class="bubble" th:utext="${#strings.replace(#strings.escapeXml(msg.content), '&#10;', '<br>')}">메시지</div>
             <div class="time" th:text="${#temporals.format(msg.createdAt, 'HH:mm')}">시간</div>
           </div>
         </div>
@@ -530,7 +530,8 @@
   const stompClient = Stomp.over(sock);
   stompClient.debug = null; // 콘솔 로그 숨기기
 
-  stompClient.connect({}, function (frame) {
+  const token = localStorage.getItem('jwtToken');
+  stompClient.connect({ 'Authorization': 'Bearer ' + token }, function (frame) {
     console.log("Connected: " + frame);
     // 방 구독
     stompClient.subscribe("/sub/chat/room/" + groupId, function (message) {
@@ -563,7 +564,14 @@
     if (msg.type === 'ENTER') {
       html = `<div class="message system">${msg.content}</div>`;
     } else {
-      const contentSafe = msg.content.replace(/\n/g, '<br>');
+      // XSS 방지를 위한 HTML 이스케이프 처리 후 줄바꿈 변환
+      const escapedContent = msg.content
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      const contentSafe = escapedContent.replace(/\n/g, '<br>');
       if (msg.senderId === myMemberId) {
         html = `
           <div class="message mine">

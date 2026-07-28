@@ -38,6 +38,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -49,7 +55,7 @@ public class AiImageServiceImpl implements AiImageService {
     private final MemberRepository memberRepository;
     private final ScheduleRepository scheduleRepository;
     private final GoogleCalendarService googleCalendarService;
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @Value("${file.upload.ai-image-path:./uploads/ai-image}")
     private String aiImageUploadPath;
@@ -171,8 +177,8 @@ public class AiImageServiceImpl implements AiImageService {
             // [중도 취소 감지] 클로드 API 호출 직전 체크
             if (!aiImageRepository.existsById(requestId)) {
                 log.info("[AI-Cancel-Guard] Request #{} was deleted by user. Aborting before Claude API call.", requestId);
-                throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.NOT_FOUND, "요청 정보가 이미 취소/삭제되었습니다."
+                throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "요청 정보가 이미 취소/삭제되었습니다."
                 );
             }
 
@@ -254,8 +260,8 @@ public class AiImageServiceImpl implements AiImageService {
                 // [중도 취소 감지] DB 반영 직전 최종 체크
                 if (!aiImageRepository.existsById(requestId)) {
                     log.info("[AI-Cancel-Guard] Request #{} was deleted by user. Discarding Claude response.", requestId);
-                    throw new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "요청 정보가 이미 취소/삭제되었습니다."
+                    throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "요청 정보가 이미 취소/삭제되었습니다."
                     );
                 }
 
@@ -403,7 +409,7 @@ public class AiImageServiceImpl implements AiImageService {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public AiImageDTO.Response getAiImageAnalysis(Long memberId, Long requestId) {
         AiImage aiImage = aiImageRepository.findByIdAndMemberId(requestId, memberId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "요청 정보를 찾을 수 없습니다."));
@@ -519,19 +525,19 @@ public class AiImageServiceImpl implements AiImageService {
                 // 트랜잭션이 실제로 DB에 커밋된 직후에 비동기 스레드를 실행하도록 조율합니다.
                 if (member.isGoogleSyncEnabled() && member.getGoogleAccessToken() != null) {
                     final Long scheduleId = schedule.getScheduleId();
-                    if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
-                        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
-                            new org.springframework.transaction.support.TransactionSynchronization() {
+                    if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                        TransactionSynchronizationManager.registerSynchronization(
+                            new TransactionSynchronization() {
                                 @Override
                                 public void afterCommit() {
-                                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                                    CompletableFuture.runAsync(() -> {
                                         triggerGoogleSync(memberId, scheduleId);
                                     });
                                 }
                             }
                         );
                     } else {
-                        java.util.concurrent.CompletableFuture.runAsync(() -> {
+                        CompletableFuture.runAsync(() -> {
                             triggerGoogleSync(memberId, scheduleId);
                         });
                     }
@@ -630,7 +636,7 @@ public class AiImageServiceImpl implements AiImageService {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public List<AiImageDTO.Response> getAiImageList(Long memberId) {
         return aiImageRepository.findAllByMemberId(memberId).stream()
                 .map(entity -> AiImageDTO.Response.from(entity, null))
@@ -639,7 +645,7 @@ public class AiImageServiceImpl implements AiImageService {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional
+    @Transactional
     public void deleteAiImageAnalysis(Long memberId, Long requestId) {
         AiImage aiImage = aiImageRepository.findByIdAndMemberId(requestId, memberId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "요청 정보를 찾을 수 없습니다."));

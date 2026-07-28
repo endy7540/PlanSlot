@@ -16,6 +16,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.RegexRequestMatcher;
+import com.example.planslot.global.security.oauth2.CustomOAuth2UserService;
+import com.example.planslot.global.security.oauth2.OAuth2SuccessHandler;
+import com.example.planslot.global.security.oauth2.OAuth2FailureHandler;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 
 @Configuration
 @EnableWebSecurity
@@ -23,15 +29,15 @@ import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final com.example.planslot.global.security.oauth2.CustomOAuth2UserService customOAuth2UserService;
-    private final com.example.planslot.global.security.oauth2.OAuth2SuccessHandler oAuth2SuccessHandler;
-    private final com.example.planslot.global.security.oauth2.OAuth2FailureHandler oAuth2FailureHandler;
-    private final org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final OAuth2FailureHandler oAuth2FailureHandler;
+    private final ClientRegistrationRepository clientRegistrationRepository;
 
-    private org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver authorizationRequestResolver(
-            org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository) {
-        org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver resolver =
-                new org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver(
+    private OAuth2AuthorizationRequestResolver authorizationRequestResolver(
+            ClientRegistrationRepository clientRegistrationRepository) {
+        DefaultOAuth2AuthorizationRequestResolver resolver =
+                new DefaultOAuth2AuthorizationRequestResolver(
                         clientRegistrationRepository, "/oauth2/authorization");
         resolver.setAuthorizationRequestCustomizer(customizer -> {
             customizer.additionalParameters(params -> {

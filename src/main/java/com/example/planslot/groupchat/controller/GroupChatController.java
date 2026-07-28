@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Controller
@@ -133,7 +134,7 @@ public class GroupChatController {
     @ResponseBody
     public ResponseEntity<?> startAiSummaryAsync(
             @PathVariable Long groupId, 
-            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "0") int offset,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
         GroupMember myMembership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
@@ -144,7 +145,7 @@ public class GroupChatController {
 
         try {
             String jobId = groupChatAiService.startSummarizeChatJob(groupId, offset);
-            return ResponseEntity.ok(java.util.Map.of("jobId", jobId));
+            return ResponseEntity.ok(Map.of("jobId", jobId));
         } catch (Exception e) {
             return ResponseEntity.status(500).body("AI 요약 작업 시작 중 오류 발생: " + e.getMessage());
         }
@@ -163,15 +164,15 @@ public class GroupChatController {
         
         GroupChatAiService.ChatAiJob job = groupChatAiService.getJobStatus(jobId);
         if (job == null) {
-            return ResponseEntity.status(404).body(java.util.Map.of("error", "작업을 찾을 수 없습니다."));
+            return ResponseEntity.status(404).body(Map.of("error", "작업을 찾을 수 없습니다."));
         }
         
         if ("PROCESSING".equals(job.status)) {
-            return ResponseEntity.ok(java.util.Map.of("status", "PROCESSING"));
+            return ResponseEntity.ok(Map.of("status", "PROCESSING"));
         } else if ("COMPLETED".equals(job.status)) {
-            return ResponseEntity.ok(java.util.Map.of("status", "COMPLETED", "result", job.result));
+            return ResponseEntity.ok(Map.of("status", "COMPLETED", "result", job.result));
         } else {
-            return ResponseEntity.ok(java.util.Map.of("status", "FAILED", "error", job.error));
+            return ResponseEntity.ok(Map.of("status", "FAILED", "error", job.error));
         }
     }
 

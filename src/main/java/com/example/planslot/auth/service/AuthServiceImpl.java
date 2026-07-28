@@ -8,6 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.SimpleMailMessage;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -17,7 +20,7 @@ public class AuthServiceImpl implements AuthService{
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
-    private final org.springframework.mail.javamail.JavaMailSender javaMailSender;
+    private final JavaMailSender javaMailSender;
 
     @Override
     @Transactional
@@ -60,10 +63,10 @@ public class AuthServiceImpl implements AuthService{
             throw new IllegalArgumentException("일치하는 회원 정보가 없습니다.");
         }
         
-        String tempPw = java.util.UUID.randomUUID().toString().substring(0, 8);
+        String tempPw = UUID.randomUUID().toString().substring(0, 8);
         member.updateInfo(null, passwordEncoder.encode(tempPw), null);
         
-        org.springframework.mail.SimpleMailMessage message = new org.springframework.mail.SimpleMailMessage();
+        SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
         message.setSubject("[PlanSlot] 임시 비밀번호 발급 안내");
         message.setText("임시 비밀번호: " + tempPw + "\n\n로그인 후 비밀번호를 반드시 변경해주세요.");

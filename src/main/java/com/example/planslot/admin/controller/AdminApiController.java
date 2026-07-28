@@ -4,6 +4,7 @@ import com.example.planslot.admin.service.AdminReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -40,13 +41,13 @@ AdminApiController {
     private final com.example.planslot.admin.service.AdminMemberService adminMemberService;
 
     @PutMapping("/members/{memberId}/role")
-    public ResponseEntity<String> updateMemberRole(@PathVariable Long memberId, @RequestBody java.util.Map<String, String> request) {
+    public ResponseEntity<String> updateMemberRole(@PathVariable Long memberId, @RequestBody Map<String, String> request) {
         adminMemberService.updateMemberRole(memberId, request.get("role"));
         return ResponseEntity.ok("회원 권한이 변경되었습니다.");
     }
 
     @PutMapping("/members/{memberId}/status")
-    public ResponseEntity<String> updateMemberStatus(@PathVariable Long memberId, @RequestBody java.util.Map<String, String> request) {
+    public ResponseEntity<String> updateMemberStatus(@PathVariable Long memberId, @RequestBody Map<String, String> request) {
         String status = request.get("status");
         Integer suspendDays = request.containsKey("suspendDays") && request.get("suspendDays") != null 
                 ? Integer.parseInt(request.get("suspendDays")) 

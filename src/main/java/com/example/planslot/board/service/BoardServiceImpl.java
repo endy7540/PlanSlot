@@ -51,6 +51,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -645,7 +646,7 @@ public class BoardServiceImpl implements BoardService {
         Set<Long> groupIds = boards.stream()
                 .map(Board::getGroupId)
                 .filter(Objects::nonNull)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
 
         if (groupIds.isEmpty()) {
             return Map.of();
@@ -653,7 +654,7 @@ public class BoardServiceImpl implements BoardService {
 
         Set<Long> existingGroupIds = groupRepository.findAllById(groupIds).stream()
                 .map(group -> group.getId())
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
         Map<Long, Long> groupIdMap = new HashMap<>();
 
         for (Board board : boards) {

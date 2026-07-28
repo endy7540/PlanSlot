@@ -9,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.Comparator;
 
 @Service
 @RequiredArgsConstructor
@@ -20,7 +22,7 @@ public class AdminMemberService {
     @Transactional(readOnly = true)
     public List<AdminMemberResponseDTO> getAllMembers() {
         // 승인(삭제 처리)된 신고 내역만 필터링하여 제재 횟수로 카운트
-        java.util.Map<String, Long> penaltyCounts = adminReportService.getAllReports().stream()
+        Map<String, Long> penaltyCounts = adminReportService.getAllReports().stream()
                 .filter(report -> "APPROVED".equals(report.getStatus()))
                 .collect(Collectors.groupingBy(com.example.planslot.admin.dto.AdminReportResponseDTO::getReportedNickname, Collectors.counting()));
 
@@ -30,8 +32,8 @@ public class AdminMemberService {
                     return AdminMemberResponseDTO.fromEntity(member, count);
                 })
                 // 제재 횟수 내림차순 -> 가입일 내림차순 정렬
-                .sorted(java.util.Comparator.<AdminMemberResponseDTO>comparingInt(AdminMemberResponseDTO::getReportedCount).reversed()
-                        .thenComparing(java.util.Comparator.comparing(AdminMemberResponseDTO::getCreatedAt).reversed()))
+                .sorted(Comparator.<AdminMemberResponseDTO>comparingInt(AdminMemberResponseDTO::getReportedCount).reversed()
+                        .thenComparing(Comparator.comparing(AdminMemberResponseDTO::getCreatedAt).reversed()))
                 .collect(Collectors.toList());
     }
 

@@ -15,6 +15,15 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
+import org.springframework.web.multipart.MultipartFile;
+import com.example.planslot.group.service.GroupRecommendationService;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.Files;
 
 @Controller
 @RequestMapping("/group")
@@ -22,7 +31,7 @@ import java.util.Map;
 public class GroupController {
 
     private final GroupService groupService;
-    private final com.example.planslot.group.service.GroupRecommendationService groupRecommendationService;
+    private final GroupRecommendationService groupRecommendationService;
     private final MemberRepository memberRepository;
 
     private Long getAuthenticatedMemberId(Authentication authentication) {
@@ -107,38 +116,38 @@ public class GroupController {
     // -----------------------------------------------------
     // Async Job Management for AI Recommendation
     // -----------------------------------------------------
-    private static final java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.CompletableFuture<GroupDTO.AiResponse>> aiJobs = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, CompletableFuture<GroupDTO.AiResponse>> aiJobs = new ConcurrentHashMap<>();
 
     @PostMapping("/{groupId}/ai-recommendations/start")
     @ResponseBody
-    public ResponseEntity<java.util.Map<String, String>> startAiRecommendations(
+    public ResponseEntity<Map<String, String>> startAiRecommendations(
             @PathVariable Long groupId,
             @RequestParam(defaultValue = "SHORT_MEETING") String type,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        String jobId = java.util.UUID.randomUUID().toString();
+        String jobId = UUID.randomUUID().toString();
         
-        java.util.concurrent.CompletableFuture<GroupDTO.AiResponse> future = java.util.concurrent.CompletableFuture.supplyAsync(() -> 
+        CompletableFuture<GroupDTO.AiResponse> future = CompletableFuture.supplyAsync(() -> 
             groupRecommendationService.getRecommendations(groupId, memberId, type, startDate, endDate)
         );
         aiJobs.put(jobId, future);
         
-        java.util.Map<String, String> res = new java.util.HashMap<>();
+        Map<String, String> res = new HashMap<>();
         res.put("jobId", jobId);
         return ResponseEntity.ok(res);
     }
 
     @GetMapping("/ai-recommendations/status/{jobId}")
     @ResponseBody
-    public ResponseEntity<java.util.Map<String, Object>> getAiRecommendationStatus(@PathVariable String jobId) {
-        java.util.concurrent.CompletableFuture<GroupDTO.AiResponse> future = aiJobs.get(jobId);
-        java.util.Map<String, Object> res = new java.util.HashMap<>();
+    public ResponseEntity<Map<String, Object>> getAiRecommendationStatus(@PathVariable String jobId) {
+        CompletableFuture<GroupDTO.AiResponse> future = aiJobs.get(jobId);
+        Map<String, Object> res = new HashMap<>();
         
         if (future == null) {
             res.put("status", "FAILED");
-            java.util.Map<String, String> data = new java.util.HashMap<>();
+            Map<String, String> data = new HashMap<>();
             data.put("error", "작업을 찾을 수 없습니다.");
             res.put("data", data);
             return ResponseEntity.ok(res);
@@ -151,7 +160,7 @@ public class GroupController {
                 res.put("data", aiData);
             } catch (Exception e) {
                 res.put("status", "FAILED");
-                java.util.Map<String, String> data = new java.util.HashMap<>();
+                Map<String, String> data = new HashMap<>();
                 data.put("error", "분석 중 오류가 발생했습니다.");
                 res.put("data", data);
             } finally {
@@ -168,7 +177,7 @@ public class GroupController {
     @PostMapping(value = "/register", consumes = "multipart/form-data")
     public ResponseEntity<GroupDTO.Response> registerGroup(
             @RequestParam("groupName") String groupName,
-            @RequestParam(value = "file", required = false) org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(value = "file", required = false) MultipartFile file,
             Authentication authentication
     ) {
         if (groupName == null || groupName.trim().isEmpty() || groupName.length() > 30) {
@@ -249,7 +258,7 @@ public class GroupController {
     @ResponseBody
     public ResponseEntity<Map<String, String>> updateGroupImage(
             @PathVariable("groupId") Long groupId,
-            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam("file") MultipartFile file,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
         if (file == null || file.isEmpty()) {
@@ -261,14 +270,14 @@ public class GroupController {
             if (originalFilename != null && originalFilename.contains(".")) {
                 extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
             }
-            String newFilename = java.util.UUID.randomUUID().toString() + extension;
+            String newFilename = UUID.randomUUID().toString() + extension;
             
-            java.nio.file.Path uploadPath = java.nio.file.Paths.get(System.getProperty("user.dir"), "uploads", "group");
-            if (!java.nio.file.Files.exists(uploadPath)) {
-                java.nio.file.Files.createDirectories(uploadPath);
+            Path uploadPath = Paths.get(System.getProperty("user.dir"), "uploads", "group");
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
             }
             
-            java.nio.file.Path filePath = uploadPath.resolve(newFilename);
+            Path filePath = uploadPath.resolve(newFilename);
             file.transferTo(filePath.toFile());
             String imageUrl = "/uploads/group/" + newFilename;
             

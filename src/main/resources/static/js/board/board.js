@@ -13,6 +13,7 @@ let currentListKeyword = '';
 let currentListSearchType = 'titleContent';
 let currentListSort = 'latest';
 let currentListMine = false;
+let currentListRecruitingOnly = false;
 let currentReadBoard = null;
 let existingRegisterImage = null;
 let removeExistingRegisterImage = false;
@@ -50,21 +51,26 @@ function getBoardListStateFromUrl() {
   const allowedSearchTypes = ['titleContent', 'title', 'content', 'writer'];
   const allowedSortTypes = ['latest', 'oldest', 'views', 'comments'];
 
+  const type = document.body.dataset.boardType;
+  const recruitmentBoard = type === 'STUDY' || type === 'GROUP';
+
   return {
     page: Number.isInteger(page) && page >= 0 ? page : 0,
     searchType: allowedSearchTypes.includes(searchType) ? searchType : 'titleContent',
     sort: allowedSortTypes.includes(sort) ? sort : 'latest',
     mine: params.get('mine') === 'true',
+    recruitingOnly: recruitmentBoard && params.get('recruitingOnly') === 'true',
     keyword
   };
 }
 
-function applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButton) {
+function applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButton, recruitingButton) {
   const state = getBoardListStateFromUrl();
   currentListPage = state.page;
   currentListSearchType = state.searchType;
   currentListSort = state.sort;
   currentListMine = state.mine;
+  currentListRecruitingOnly = state.recruitingOnly;
   if (searchTypeSelect) {
     searchTypeSelect.value = currentListSearchType;
     searchTypeSelect.dispatchEvent(new Event('change', { bubbles: true }));
@@ -75,6 +81,7 @@ function applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButt
     sortSelect.boardDropdownSync?.();
   }
   updateBoardMineButton(mineButton);
+  updateBoardRecruitingButton(recruitingButton);
 }
 
 function updateBoardMineButton(button) {
@@ -82,6 +89,33 @@ function updateBoardMineButton(button) {
 
   button.classList.toggle('active', currentListMine);
   button.setAttribute('aria-pressed', String(currentListMine));
+  button.textContent = currentListMine ? '전체 글 보기' : '내 글 보기';
+}
+
+function updateBoardRecruitingButton(button) {
+  if (!button) return;
+
+  button.classList.toggle('active', currentListRecruitingOnly);
+  button.setAttribute('aria-pressed', String(currentListRecruitingOnly));
+  button.textContent = currentListRecruitingOnly ? '전체 상태 보기' : '모집 중만 보기';
+}
+
+function resetBoardListFilters(searchTypeSelect, searchInput, sortSelect) {
+  currentListPage = 0;
+  currentListSearchType = 'titleContent';
+  currentListKeyword = '';
+  currentListSort = 'latest';
+
+  if (searchInput) searchInput.value = '';
+  if (searchTypeSelect) {
+    searchTypeSelect.value = currentListSearchType;
+    searchTypeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    searchTypeSelect.boardDropdownSync?.();
+  }
+  if (sortSelect) {
+    sortSelect.value = currentListSort;
+    sortSelect.boardDropdownSync?.();
+  }
 }
 
 function getCurrentBoardListUrl() {
@@ -92,6 +126,7 @@ function getCurrentBoardListUrl() {
   if (currentListPage > 0) params.set('page', String(currentListPage));
   if (currentListSort !== 'latest') params.set('sort', currentListSort);
   if (currentListMine) params.set('mine', 'true');
+  if (currentListRecruitingOnly) params.set('recruitingOnly', 'true');
   if (currentListKeyword) {
     params.set('searchType', currentListSearchType);
     params.set('keyword', currentListKeyword);
@@ -262,7 +297,7 @@ async function submitBoardReport() {
     return;
   }
   if (reasonCode === 'OTHER' && !reasonDetail) {
-    showBoardToast('기타를 선택한 경우 신고 세부 내용을 입력해 주세요.', true);
+    showBoardToast('기타 신고 사유의 세부내용을 입력해 주세요.', true);
     return;
   }
   if (reasonDetail.length > 200) {
@@ -303,8 +338,9 @@ async function initializeBoardList() {
   const searchButton = document.getElementById('boardSearchButton');
   const sortSelect = document.getElementById('boardSortSelect');
   const mineButton = document.getElementById('boardMineButton');
+  const recruitingButton = document.getElementById('boardRecruitingButton');
 
-  applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButton);
+  applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButton, recruitingButton);
 
   if (currentListMine && !currentBoardMember) {
     requireBoardLogin();
@@ -356,15 +392,24 @@ async function initializeBoardList() {
   mineButton?.addEventListener('click', async () => {
     if (!currentListMine && !requireBoardLogin()) return;
 
-    currentListPage = 0;
     currentListMine = !currentListMine;
+    resetBoardListFilters(searchTypeSelect, searchInput, sortSelect);
+    updateBoardSearchPlaceholder(searchTypeSelect, searchInput);
     updateBoardMineButton(mineButton);
     updateBoardListUrl('push');
     await loadBoardList();
   });
 
+  recruitingButton?.addEventListener('click', async () => {
+    currentListRecruitingOnly = !currentListRecruitingOnly;
+    currentListPage = 0;
+    updateBoardRecruitingButton(recruitingButton);
+    updateBoardListUrl('push');
+    await loadBoardList();
+  });
+
   window.addEventListener('popstate', async () => {
-    applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButton);
+    applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButton, recruitingButton);
     updateBoardSearchPlaceholder(searchTypeSelect, searchInput);
     if (currentListMine && !currentBoardMember) {
       requireBoardLogin();
@@ -623,7 +668,8 @@ async function loadBoardList() {
     page: currentListPage,
     size: 10,
     sort: currentListSort,
-    mine: currentListMine
+    mine: currentListMine,
+    recruitingOnly: currentListRecruitingOnly
   });
   if (currentListKeyword) {
     params.set('searchType', currentListSearchType);
@@ -663,7 +709,9 @@ function renderBoardRows(boards) {
   if (!boards.length) {
     let emptyMessage = '아직 등록된 게시글이 없습니다.';
     if (currentListKeyword) emptyMessage = '검색된 게시글이 없습니다.';
+    else if (currentListMine && currentListRecruitingOnly) emptyMessage = '모집 중인 작성글이 없습니다.';
     else if (currentListMine) emptyMessage = '작성한 게시글이 없습니다.';
+    else if (currentListRecruitingOnly) emptyMessage = '현재 모집 중인 게시글이 없습니다.';
     list.innerHTML = `<div class="board-empty">${emptyMessage}</div>`;
     return;
   }
@@ -876,7 +924,7 @@ function renderBoardReadActions(board) {
   if (canDeleteBoard) {
     deleteAction = '<button class="board-btn board-btn-danger" type="button" id="boardDeleteButton">삭제</button>';
   }
-  if (!isWriter && !canDeleteBoard) {
+  if (board.boardType !== 'NOTICE' && !isWriter && !canDeleteBoard) {
     reportAction = '<button class="board-btn board-btn-danger" type="button" id="boardReportButton">신고</button>';
   }
 

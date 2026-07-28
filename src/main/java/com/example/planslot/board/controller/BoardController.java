@@ -108,13 +108,14 @@ public class BoardController {
                                                        @RequestParam(required = false) String keyword,
                                                        @RequestParam(defaultValue = "latest") String sort,
                                                        @RequestParam(defaultValue = "false") boolean mine,
+                                                       @RequestParam(defaultValue = "false") boolean recruitingOnly,
                                                        @RequestParam(defaultValue = "0") int page,
                                                        @RequestParam(defaultValue = "10") int size,
                                                        Principal principal) {
         String memberEmail = principal == null || principal.getName() == null || principal.getName().isBlank()
                 ? null : principal.getName();
         Page<BoardDTO> boardList = boardService.getBoardList(
-                parseBoardType(boardType), searchType, keyword, sort, mine, page, size, memberEmail
+                parseBoardType(boardType), searchType, keyword, sort, mine, recruitingOnly, page, size, memberEmail
         );
 
         return ResponseEntity.ok(boardList);

@@ -70,6 +70,69 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
             Pageable pageable
     );
 
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNull(
+            BoardType boardType, BoardStatus boardStatus, BoardRecruitmentStatus recruitmentStatus, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndTitleContainingIgnoreCase(
+            BoardType boardType, BoardStatus boardStatus, BoardRecruitmentStatus recruitmentStatus,
+            String keyword, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndContentContainingIgnoreCase(
+            BoardType boardType, BoardStatus boardStatus, BoardRecruitmentStatus recruitmentStatus,
+            String keyword, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndWriter_NicknameContainingIgnoreCase(
+            BoardType boardType, BoardStatus boardStatus, BoardRecruitmentStatus recruitmentStatus,
+            String keyword, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndContentContainingIgnoreCase(
+            BoardType titleBoardType, BoardStatus titleBoardStatus, BoardRecruitmentStatus titleRecruitmentStatus,
+            String titleKeyword, BoardType contentBoardType, BoardStatus contentBoardStatus,
+            BoardRecruitmentStatus contentRecruitmentStatus, String contentKeyword, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNull(
+            BoardType boardType, BoardStatus boardStatus, Long writerId,
+            BoardRecruitmentStatus recruitmentStatus, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndTitleContainingIgnoreCase(
+            BoardType boardType, BoardStatus boardStatus, Long writerId,
+            BoardRecruitmentStatus recruitmentStatus, String keyword, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndContentContainingIgnoreCase(
+            BoardType boardType, BoardStatus boardStatus, Long writerId,
+            BoardRecruitmentStatus recruitmentStatus, String keyword, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndWriter_NicknameContainingIgnoreCase(
+            BoardType boardType, BoardStatus boardStatus, Long writerId,
+            BoardRecruitmentStatus recruitmentStatus, String keyword, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"writer"})
+    Page<Board> findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndContentContainingIgnoreCase(
+            BoardType titleBoardType, BoardStatus titleBoardStatus, Long titleWriterId,
+            BoardRecruitmentStatus titleRecruitmentStatus, String titleKeyword,
+            BoardType contentBoardType, BoardStatus contentBoardStatus, Long contentWriterId,
+            BoardRecruitmentStatus contentRecruitmentStatus, String contentKeyword, Pageable pageable
+    );
+
     @Query(value = """
             SELECT b.*
             FROM board b
@@ -83,6 +146,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
             WHERE b.board_type = :boardType
               AND b.board_status = :boardStatus
               AND (:writerId IS NULL OR b.writer_id = :writerId)
+              AND (:recruitingOnly = false OR (b.recruitment_status = 'OPEN' AND b.group_id IS NULL))
               AND (
                     :keyword IS NULL
                     OR (:searchType = 'title' AND LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
@@ -101,6 +165,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
             WHERE b.board_type = :boardType
               AND b.board_status = :boardStatus
               AND (:writerId IS NULL OR b.writer_id = :writerId)
+              AND (:recruitingOnly = false OR (b.recruitment_status = 'OPEN' AND b.group_id IS NULL))
               AND (
                     :keyword IS NULL
                     OR (:searchType = 'title' AND LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
@@ -117,6 +182,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
                                                   @Param("searchType") String searchType,
                                                   @Param("keyword") String keyword,
                                                   @Param("writerId") Long writerId,
+                                                  @Param("recruitingOnly") boolean recruitingOnly,
                                                   Pageable pageable);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

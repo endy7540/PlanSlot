@@ -14,7 +14,7 @@ public interface BoardService {
     Long createBoard(BoardType boardType, BoardDTO boardDTO, String memberEmail);
 
     // 게시판 종류별 목록 및 검색
-    Page<BoardDTO> getBoardList(BoardType boardType, String searchType, String keyword, String sort, boolean mine, int page, int size, String memberEmail);
+    Page<BoardDTO> getBoardList(BoardType boardType, String searchType, String keyword, String sort, boolean mine, boolean recruitingOnly, int page, int size, String memberEmail);
 
     // 게시글 조회
     BoardDTO readBoard(Long boardId, String memberEmail, boolean increaseView);

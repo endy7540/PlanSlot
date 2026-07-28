@@ -51,7 +51,7 @@ public class GroupChatAiService {
 
     private final Map<String, ChatAiJob> jobs = new ConcurrentHashMap<>();
 
-    public String startSummarizeChatJob(Long groupId) {
+    public String startSummarizeChatJob(Long groupId, int offset) {
         String jobId = UUID.randomUUID().toString();
         ChatAiJob job = new ChatAiJob();
         job.status = "PROCESSING";
@@ -60,7 +60,7 @@ public class GroupChatAiService {
 
         CompletableFuture.runAsync(() -> {
             try {
-                GroupChatAiDTO.Response res = summarizeChat(groupId);
+                GroupChatAiDTO.Response res = summarizeChat(groupId, offset);
                 job.result = res;
                 job.status = "COMPLETED";
             } catch (Exception e) {
@@ -76,17 +76,21 @@ public class GroupChatAiService {
         return jobs.get(jobId);
     }
 
-    private GroupChatAiDTO.Response summarizeChat(Long groupId) {
+    private GroupChatAiDTO.Response summarizeChat(Long groupId, int offset) {
         // 최근 메시지를 불러옵니다 (모든 내역 혹은 최근 일정량)
         List<ChatMessageDTO> chatHistory = groupChatService.getChatHistory(groupId);
         if (chatHistory == null || chatHistory.isEmpty()) {
             throw new IllegalArgumentException("요약할 대화 기록이 없습니다.");
         }
 
-        // 최대 100건 정도만 전송하도록 자르기
         int maxMessages = 100;
-        int startIndex = Math.max(0, chatHistory.size() - maxMessages);
-        List<ChatMessageDTO> recentChats = chatHistory.subList(startIndex, chatHistory.size());
+        int endIdx = Math.max(0, chatHistory.size() - offset);
+        if (endIdx == 0) {
+            throw new IllegalArgumentException("더 이상 분석할 이전 대화 기록이 없습니다.");
+        }
+        int startIdx = Math.max(0, endIdx - maxMessages);
+        List<ChatMessageDTO> recentChats = chatHistory.subList(startIdx, endIdx);
+
 
         StringBuilder promptBuilder = new StringBuilder();
         promptBuilder.append("다음은 모임 채팅방의 최근 대화 기록입니다:\n\n");
@@ -145,10 +149,10 @@ public class GroupChatAiService {
                 throw new IllegalStateException("AI 응답을 파싱할 수 없습니다.");
             }
 
-            int startIdx = aiJsonStr.indexOf('{');
-            int endIdx = aiJsonStr.lastIndexOf('}');
-            if(startIdx >= 0 && endIdx >= startIdx) {
-                aiJsonStr = aiJsonStr.substring(startIdx, endIdx + 1);
+            int jsonStartIdx = aiJsonStr.indexOf('{');
+            int jsonEndIdx = aiJsonStr.lastIndexOf('}');
+            if(jsonStartIdx >= 0 && jsonEndIdx >= jsonStartIdx) {
+                aiJsonStr = aiJsonStr.substring(jsonStartIdx, jsonEndIdx + 1);
             }
 
             return objectMapper.readValue(aiJsonStr, GroupChatAiDTO.Response.class);

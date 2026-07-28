@@ -111,21 +111,22 @@ public class GroupChatController {
         return ResponseEntity.ok("신고가 정상적으로 접수되었습니다.");
     }
 
-    // 4. AI 요약 비동기 작업 시작 API
+    // 6. 비동기 AI 요약 트리거 API
     @PostMapping("/{groupId}/ai-summary/async")
     @ResponseBody
-    public ResponseEntity<?> startAiSummary(@PathVariable Long groupId, Authentication authentication) {
+    public ResponseEntity<?> startAiSummaryAsync(
+            @PathVariable Long groupId, 
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int offset,
+            Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        
-        // 권한 확인 (활성 모임원인지)
         GroupMember myMembership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
                 .orElseThrow(() -> new IllegalArgumentException("모임에 가입되어 있지 않습니다."));
         if (myMembership.getMemberStatus() != GroupMemberStatus.ACTIVE) {
             return ResponseEntity.status(403).body("활성 모임원만 이용할 수 있습니다.");
         }
-        
+
         try {
-            String jobId = groupChatAiService.startSummarizeChatJob(groupId);
+            String jobId = groupChatAiService.startSummarizeChatJob(groupId, offset);
             return ResponseEntity.ok(java.util.Map.of("jobId", jobId));
         } catch (Exception e) {
             return ResponseEntity.status(500).body("AI 요약 작업 시작 중 오류 발생: " + e.getMessage());

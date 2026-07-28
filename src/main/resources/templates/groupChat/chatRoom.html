@@ -54,7 +54,7 @@
     padding: 0;
     width: 100vw;
     height: 100vh;
-    font-family: Pretendard, sans-serif;
+    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
     background: var(--bg);
     color: var(--ink);
     overflow: hidden; /* Prevent page scrolling, only chat area scrolls */
@@ -340,7 +340,7 @@
             <div class="bubble" th:utext="${#strings.replace(msg.content, '&#10;', '<br>')}">메시지</div>
             <div style="display:flex; flex-direction:column; align-items:flex-start; gap:2px;">
               <div class="time" th:text="${#temporals.format(msg.createdAt, 'HH:mm')}">시간</div>
-              <button th:onclick="'openReportModal(' + ${msg.id} + ')'" style="border:none; background:none; cursor:pointer; font-size:12px; color:#ef4444; padding:0;" title="신고하기">🚨</button>
+              <button th:onclick="'openReportModal(' + ${msg.id} + ')'" style="border:none; background:none; cursor:pointer; font-size:12px; color:#ef4444; padding:0; text-decoration:underline;" title="신고하기">신고</button>
             </div>
           </div>
         </div>
@@ -496,7 +496,7 @@
         <option value="PERSONAL_INFORMATION">개인정보 노출</option>
         <option value="OTHER">기타</option>
       </select>
-      <textarea id="reportDetail" placeholder="상세 사유를 입력해주세요 (선택)" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; box-sizing: border-box; height: 80px; resize: none;"></textarea>
+        <textarea id="reportDetail" rows="3" maxlength="200" style="width:100%; border:1px solid var(--border); border-radius:8px; padding:10px; font-size:14px; color:var(--ink-dark); background:#f8fafc; resize:none;" placeholder="자세한 신고 사유를 적어주세요. (최대 200자)"></textarea>
     </div>
     
     <div style="display: flex; gap: 8px; justify-content: flex-end;">
@@ -584,7 +584,7 @@
               <div class="bubble">${contentSafe}</div>
               <div style="display:flex; flex-direction:column; align-items:flex-start; gap:2px;">
                 <div class="time">${timeStr}</div>
-                ${msg.id ? `<button onclick="openReportModal(${msg.id})" style="border:none; background:none; cursor:pointer; font-size:12px; color:#ef4444; padding:0;" title="신고하기">🚨</button>` : ''}
+                ${msg.id ? `<button onclick="openReportModal(${msg.id})" style="border:none; background:none; cursor:pointer; font-size:12px; color:#ef4444; padding:0; text-decoration:underline;" title="신고하기">신고</button>` : ''}
               </div>
             </div>
           </div>
@@ -655,8 +655,22 @@
   // 신고 로직
   let currentReportMessageId = null;
 
-  function openReportModal(msgId) {
+  async function openReportModal(msgId) {
     if (!msgId) return;
+
+    try {
+        const response = await fetch(`/groupChat/${groupId}/report/check?messageId=${msgId}`, {
+            credentials: 'include'
+        });
+        const exists = await response.json();
+        if (exists) {
+            alert("이미 신고한 메시지입니다.");
+            return;
+        }
+    } catch (e) {
+        console.error("중복 신고 확인 중 오류 발생", e);
+    }
+
     currentReportMessageId = msgId;
     document.getElementById('reportReason').value = 'SPAM';
     document.getElementById('reportDetail').value = '';
@@ -865,23 +879,25 @@
     const detail = document.getElementById('reportDetail').value;
     
     fetch(`/groupChat/${groupId}/report`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        messageId: currentReportMessageId,
-        reason: reason,
-        reasonDetail: detail
-      })
-    }).then(res => {
-      if (res.ok) {
-        alert("신고가 접수되었습니다.");
-        document.getElementById('reportModal').style.display = 'none';
-      } else {
-        alert("신고 처리 중 오류가 발생했습니다.");
-      }
-    });
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          messageId: currentReportMessageId,
+          reason: reason,
+          reasonDetail: detail
+        })
+      }).then(async res => {
+        if (res.ok) {
+          alert("신고가 접수되었습니다.");
+          document.getElementById('reportModal').style.display = 'none';
+        } else {
+          const errMsg = await res.text();
+          alert(errMsg || "신고 처리 중 오류가 발생했습니다.");
+        }
+      });
   });
 
   // 다른 채팅방에서 메시지가 왔을 때 좌측 사이드바 실시간 갱신 (정렬 & 배지 업데이트)

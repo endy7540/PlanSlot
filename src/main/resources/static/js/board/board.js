@@ -11,6 +11,8 @@ let currentListPage = 0;
 let currentCommentPage = 0;
 let currentListKeyword = '';
 let currentListSearchType = 'titleContent';
+let currentListSort = 'latest';
+let currentListMine = false;
 let currentReadBoard = null;
 let existingRegisterImage = null;
 let removeExistingRegisterImage = false;
@@ -43,26 +45,43 @@ function getBoardListStateFromUrl() {
   const params = new URLSearchParams(location.search);
   const page = Number(params.get('page'));
   const searchType = params.get('searchType');
+  const sort = params.get('sort');
   const keyword = (params.get('keyword') || '').trim().slice(0, 100);
   const allowedSearchTypes = ['titleContent', 'title', 'content', 'writer'];
+  const allowedSortTypes = ['latest', 'oldest', 'views', 'comments'];
 
   return {
     page: Number.isInteger(page) && page >= 0 ? page : 0,
     searchType: allowedSearchTypes.includes(searchType) ? searchType : 'titleContent',
+    sort: allowedSortTypes.includes(sort) ? sort : 'latest',
+    mine: params.get('mine') === 'true',
     keyword
   };
 }
 
-function applyBoardListState(searchTypeSelect, searchInput) {
+function applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButton) {
   const state = getBoardListStateFromUrl();
   currentListPage = state.page;
   currentListSearchType = state.searchType;
-  currentListKeyword = state.keyword;
+  currentListSort = state.sort;
+  currentListMine = state.mine;
   if (searchTypeSelect) {
     searchTypeSelect.value = currentListSearchType;
     searchTypeSelect.dispatchEvent(new Event('change', { bubbles: true }));
   }
-  if (searchInput) searchInput.value = currentListKeyword;
+  if (searchInput) searchInput.value = currentListKeyword = state.keyword;
+  if (sortSelect) {
+    sortSelect.value = currentListSort;
+    sortSelect.boardDropdownSync?.();
+  }
+  updateBoardMineButton(mineButton);
+}
+
+function updateBoardMineButton(button) {
+  if (!button) return;
+
+  button.classList.toggle('active', currentListMine);
+  button.setAttribute('aria-pressed', String(currentListMine));
 }
 
 function getCurrentBoardListUrl() {
@@ -71,6 +90,8 @@ function getCurrentBoardListUrl() {
   const params = new URLSearchParams();
 
   if (currentListPage > 0) params.set('page', String(currentListPage));
+  if (currentListSort !== 'latest') params.set('sort', currentListSort);
+  if (currentListMine) params.set('mine', 'true');
   if (currentListKeyword) {
     params.set('searchType', currentListSearchType);
     params.set('keyword', currentListKeyword);
@@ -199,14 +220,30 @@ function initializeReportModal() {
   submitButton.addEventListener('click', submitBoardReport);
 }
 
-function openReportModal(targetType, targetId) {
+async function openReportModal(targetType, targetId) {
   if (!requireBoardLogin()) return;
 
-  reportTarget = { targetType, targetId };
-  document.getElementById('boardReportReason').value = '';
-  document.getElementById('boardReportDetail').value = '';
-  document.getElementById('boardReportTitle').textContent = targetType === 'POST' ? '게시글 신고' : '댓글 신고';
-  document.getElementById('boardReportModal').classList.add('open');
+  const path = targetType === 'POST'
+      ? `/board/${targetId}/report/check`
+      : `/board/comment/${targetId}/report/check`;
+
+  await runBoardRequest(`report-check-${targetType}-${targetId}`, null, '', async () => {
+    try {
+      const duplicated = await fetchBoardJson(path);
+      if (duplicated) {
+        showBoardToast(targetType === 'POST' ? '이미 신고한 게시글입니다.' : '이미 신고한 댓글입니다.', true);
+        return;
+      }
+
+      reportTarget = { targetType, targetId };
+      document.getElementById('boardReportReason').value = '';
+      document.getElementById('boardReportDetail').value = '';
+      document.getElementById('boardReportTitle').textContent = targetType === 'POST' ? '게시글 신고' : '댓글 신고';
+      document.getElementById('boardReportModal').classList.add('open');
+    } catch (error) {
+      showBoardToast(error.message, true);
+    }
+  });
 }
 
 function closeReportModal() {
@@ -224,8 +261,8 @@ async function submitBoardReport() {
     showBoardToast('신고 사유를 선택해 주세요.', true);
     return;
   }
-  if (!reasonDetail) {
-    showBoardToast('신고 세부내용을 입력해 주세요.', true);
+  if (reasonCode === 'OTHER' && !reasonDetail) {
+    showBoardToast('기타를 선택한 경우 신고 세부 내용을 입력해 주세요.', true);
     return;
   }
   if (reasonDetail.length > 200) {
@@ -264,8 +301,15 @@ async function initializeBoardList() {
   const searchTypeSelect = document.getElementById('boardSearchType');
   const searchInput = document.getElementById('boardSearchInput');
   const searchButton = document.getElementById('boardSearchButton');
+  const sortSelect = document.getElementById('boardSortSelect');
+  const mineButton = document.getElementById('boardMineButton');
 
-  applyBoardListState(searchTypeSelect, searchInput);
+  applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButton);
+
+  if (currentListMine && !currentBoardMember) {
+    requireBoardLogin();
+    return;
+  }
 
   if (writeButton) {
     const canShowWrite = type !== 'NOTICE' || currentBoardMember?.role === 'ADMIN';
@@ -280,11 +324,20 @@ async function initializeBoardList() {
   updateBoardSearchPlaceholder(searchTypeSelect, searchInput);
   searchTypeSelect?.addEventListener('change', () => updateBoardSearchPlaceholder(searchTypeSelect, searchInput));
   initializeBoardSearchDropdown(searchTypeSelect);
+  initializeBoardSortDropdown(sortSelect);
 
   searchButton?.addEventListener('click', async () => {
+    const keyword = searchInput?.value.trim().slice(0, 100) || '';
+
+    if (!keyword) {
+      showBoardToast('검색어를 입력해 주세요.', true);
+      searchInput?.focus();
+      return;
+    }
+
     currentListPage = 0;
     currentListSearchType = searchTypeSelect?.value || 'titleContent';
-    currentListKeyword = searchInput?.value.trim().slice(0, 100) || '';
+    currentListKeyword = keyword;
     updateBoardListUrl('push');
     await loadBoardList();
   });
@@ -293,9 +346,30 @@ async function initializeBoardList() {
     if (event.key === 'Enter') searchButton?.click();
   });
 
+  sortSelect?.addEventListener('change', async () => {
+    currentListPage = 0;
+    currentListSort = sortSelect.value || 'latest';
+    updateBoardListUrl('push');
+    await loadBoardList();
+  });
+
+  mineButton?.addEventListener('click', async () => {
+    if (!currentListMine && !requireBoardLogin()) return;
+
+    currentListPage = 0;
+    currentListMine = !currentListMine;
+    updateBoardMineButton(mineButton);
+    updateBoardListUrl('push');
+    await loadBoardList();
+  });
+
   window.addEventListener('popstate', async () => {
-    applyBoardListState(searchTypeSelect, searchInput);
+    applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButton);
     updateBoardSearchPlaceholder(searchTypeSelect, searchInput);
+    if (currentListMine && !currentBoardMember) {
+      requireBoardLogin();
+      return;
+    }
     await loadBoardList();
   });
 
@@ -422,6 +496,117 @@ function initializeBoardSearchDropdown(select) {
     if (!wrapper.contains(event.target)) setDropdownOpen(false);
   });
   select.addEventListener('change', syncSelectedOption);
+  select.boardDropdownSync = syncSelectedOption;
+
+  syncSelectedOption();
+}
+
+function initializeBoardSortDropdown(select) {
+  if (!select || select.dataset.enhanced === 'true') return;
+
+  select.dataset.enhanced = 'true';
+  select.classList.add('is-enhanced');
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'board-sort-select-wrap';
+  select.parentNode.insertBefore(wrapper, select);
+  wrapper.appendChild(select);
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'board-sort-select-button';
+  button.setAttribute('aria-label', '게시글 정렬');
+  button.setAttribute('aria-haspopup', 'listbox');
+  button.setAttribute('aria-expanded', 'false');
+
+  const selectedLabel = document.createElement('span');
+  selectedLabel.className = 'board-sort-selected-label';
+  const arrow = document.createElement('span');
+  arrow.className = 'board-sort-select-arrow';
+  arrow.setAttribute('aria-hidden', 'true');
+  button.append(selectedLabel, arrow);
+
+  const menu = document.createElement('div');
+  menu.id = 'boardSortTypeMenu';
+  menu.className = 'board-sort-select-menu';
+  menu.setAttribute('role', 'listbox');
+  menu.setAttribute('aria-label', '게시글 정렬 목록');
+  menu.hidden = true;
+  button.setAttribute('aria-controls', menu.id);
+
+  const optionButtons = [...select.options].map(option => {
+    const optionButton = document.createElement('button');
+    optionButton.type = 'button';
+    optionButton.className = 'board-sort-select-option';
+    optionButton.dataset.value = option.value;
+    optionButton.textContent = option.textContent;
+    optionButton.setAttribute('role', 'option');
+
+    optionButton.addEventListener('click', () => {
+      select.value = option.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      syncSelectedOption();
+      setDropdownOpen(false);
+      button.focus();
+    });
+
+    menu.appendChild(optionButton);
+    return optionButton;
+  });
+
+  wrapper.append(button, menu);
+
+  function syncSelectedOption() {
+    const selectedOption = select.options[select.selectedIndex];
+    selectedLabel.textContent = selectedOption?.textContent || '';
+    optionButtons.forEach(optionButton => {
+      const selected = optionButton.dataset.value === select.value;
+      optionButton.classList.toggle('selected', selected);
+      optionButton.setAttribute('aria-selected', String(selected));
+    });
+  }
+
+  function setDropdownOpen(open) {
+    menu.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+  }
+
+  function focusOption(index) {
+    optionButtons[Math.max(0, Math.min(index, optionButtons.length - 1))]?.focus();
+  }
+
+  button.addEventListener('click', () => setDropdownOpen(menu.hidden));
+  button.addEventListener('keydown', event => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+
+    event.preventDefault();
+    setDropdownOpen(true);
+    const selectedIndex = optionButtons.findIndex(optionButton => optionButton.dataset.value === select.value);
+    focusOption(event.key === 'ArrowUp' ? optionButtons.length - 1 : Math.max(0, selectedIndex));
+  });
+
+  menu.addEventListener('keydown', event => {
+    const currentIndex = optionButtons.indexOf(document.activeElement);
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setDropdownOpen(false);
+      button.focus();
+      return;
+    }
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      focusOption((currentIndex + direction + optionButtons.length) % optionButtons.length);
+    }
+  });
+
+  document.addEventListener('click', event => {
+    if (!wrapper.contains(event.target)) setDropdownOpen(false);
+  });
+  select.addEventListener('change', syncSelectedOption);
+  select.boardDropdownSync = syncSelectedOption;
 
   syncSelectedOption();
 }
@@ -430,12 +615,16 @@ async function loadBoardList() {
   const type = document.body.dataset.boardType;
   const list = document.getElementById('boardList');
   const pagination = document.getElementById('boardPagination');
-  const count = document.getElementById('boardResultCount');
 
   list.innerHTML = '<div class="board-loading">게시글을 불러오는 중...</div>';
   pagination.innerHTML = '';
 
-  const params = new URLSearchParams({ page: currentListPage, size: 10 });
+  const params = new URLSearchParams({
+    page: currentListPage,
+    size: 10,
+    sort: currentListSort,
+    mine: currentListMine
+  });
   if (currentListKeyword) {
     params.set('searchType', currentListSearchType);
     params.set('keyword', currentListKeyword);
@@ -452,11 +641,17 @@ async function loadBoardList() {
       return;
     }
 
-    count.textContent = `총 ${page.totalElements ?? 0}개`;
     renderBoardRows(boards);
     renderBoardPagination(page);
   } catch (error) {
-    list.innerHTML = `<div class="board-error">${escapeBoardHtml(error.message)}</div>`;
+    if (error.status === 401 && currentListMine) {
+      requireBoardLogin();
+      return;
+    }
+    const errorMessage = error?.message === 'Failed to fetch'
+      ? '게시글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'
+      : error.message;
+    list.innerHTML = `<div class="board-error">${escapeBoardHtml(errorMessage)}</div>`;
   }
 }
 
@@ -466,7 +661,10 @@ function renderBoardRows(boards) {
   const returnTo = getCurrentBoardListUrl();
 
   if (!boards.length) {
-    list.innerHTML = `<div class="board-empty">${currentListKeyword ? '검색 결과가 없습니다.' : '아직 등록된 게시글이 없습니다.'}</div>`;
+    let emptyMessage = '아직 등록된 게시글이 없습니다.';
+    if (currentListKeyword) emptyMessage = '검색된 게시글이 없습니다.';
+    else if (currentListMine) emptyMessage = '작성한 게시글이 없습니다.';
+    list.innerHTML = `<div class="board-empty">${emptyMessage}</div>`;
     return;
   }
 

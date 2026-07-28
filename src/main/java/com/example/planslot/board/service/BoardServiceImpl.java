@@ -19,6 +19,7 @@ import com.example.planslot.group.entity.GroupMemberStatus;
 import com.example.planslot.group.repository.GroupMemberRepository;
 import com.example.planslot.group.repository.GroupRepository;
 import com.example.planslot.boardreport.entity.BoardReport;
+import com.example.planslot.boardreport.entity.BoardReportReasonCode;
 import com.example.planslot.boardreport.entity.BoardReportTargetType;
 import com.example.planslot.boardreport.repository.BoardReportRepository;
 import com.example.planslot.member.entity.Member;
@@ -27,7 +28,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +60,7 @@ public class BoardServiceImpl implements BoardService {
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
     private static final Set<String> IMAGE_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final Set<String> SEARCH_TYPES = Set.of("titleContent", "title", "content", "writer");
+    private static final Set<String> SORT_TYPES = Set.of("latest", "oldest", "views", "comments");
 
     private final BoardRepository boardRepository;
     private final BoardImageRepository boardImageRepository;
@@ -90,35 +94,26 @@ public class BoardServiceImpl implements BoardService {
         return boardRepository.save(board).getBoardId();
     }
 
-    // 게시판 종류별 목록 및 검색
+    // 게시판 종류별 목록, 검색, 정렬 및 내 글 조회
     @Override
-    public Page<BoardDTO> getBoardList(BoardType boardType, String searchType, String keyword, Pageable pageable) {
+    public Page<BoardDTO> getBoardList(BoardType boardType, String searchType, String keyword, String sort,
+                                       boolean mine, int page, int size, String memberEmail) {
         String searchKeyword = normalizeKeyword(keyword);
+        String normalizedSearchType = normalizeSearchType(searchType);
+        String normalizedSort = normalizeSortType(sort);
+        Pageable pageable = createBoardPageable(page, size, normalizedSort);
+        Long writerId = mine ? findMember(memberEmail).getId() : null;
         Page<Board> boardPage;
 
-        if (searchKeyword == null) {
-            boardPage = boardRepository.findByBoardTypeAndBoardStatus(
-                    boardType, BoardStatus.ACTIVE, pageable
+        if ("comments".equals(normalizedSort)) {
+            boardPage = boardRepository.findBoardListOrderByCommentCount(
+                    boardType.name(), BoardStatus.ACTIVE.name(), normalizedSearchType,
+                    searchKeyword, writerId, pageable
             );
+        } else if (writerId != null) {
+            boardPage = getMyBoardPage(boardType, normalizedSearchType, searchKeyword, writerId, pageable);
         } else {
-            String normalizedSearchType = normalizeSearchType(searchType);
-
-            boardPage = switch (normalizedSearchType) {
-                case "title" -> boardRepository
-                        .findByBoardTypeAndBoardStatusAndTitleContainingIgnoreCase(
-                                boardType, BoardStatus.ACTIVE, searchKeyword, pageable);
-                case "content" -> boardRepository
-                        .findByBoardTypeAndBoardStatusAndContentContainingIgnoreCase(
-                                boardType, BoardStatus.ACTIVE, searchKeyword, pageable);
-                case "writer" -> boardRepository
-                        .findByBoardTypeAndBoardStatusAndWriter_NicknameContainingIgnoreCase(
-                                boardType, BoardStatus.ACTIVE, searchKeyword, pageable);
-                case "titleContent" -> boardRepository
-                        .findByBoardTypeAndBoardStatusAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndContentContainingIgnoreCase(
-                                boardType, BoardStatus.ACTIVE, searchKeyword,
-                                boardType, BoardStatus.ACTIVE, searchKeyword, pageable);
-                default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 검색 조건입니다.");
-            };
+            boardPage = getBoardPage(boardType, normalizedSearchType, searchKeyword, pageable);
         }
 
         Map<Long, Long> commentCountMap = getCommentCountMap(boardPage.getContent());
@@ -129,6 +124,48 @@ public class BoardServiceImpl implements BoardService {
                 commentCountMap.getOrDefault(board.getBoardId(), 0L),
                 groupIdMap.get(board.getBoardId())
         ));
+    }
+
+    private Page<Board> getBoardPage(BoardType boardType, String searchType, String keyword, Pageable pageable) {
+        if (keyword == null) {
+            return boardRepository.findByBoardTypeAndBoardStatus(boardType, BoardStatus.ACTIVE, pageable);
+        }
+
+        return switch (searchType) {
+            case "title" -> boardRepository.findByBoardTypeAndBoardStatusAndTitleContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, keyword, pageable);
+            case "content" -> boardRepository.findByBoardTypeAndBoardStatusAndContentContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, keyword, pageable);
+            case "writer" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_NicknameContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, keyword, pageable);
+            case "titleContent" -> boardRepository
+                    .findByBoardTypeAndBoardStatusAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndContentContainingIgnoreCase(
+                            boardType, BoardStatus.ACTIVE, keyword,
+                            boardType, BoardStatus.ACTIVE, keyword, pageable);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 검색 조건입니다.");
+        };
+    }
+
+    private Page<Board> getMyBoardPage(BoardType boardType, String searchType, String keyword,
+                                       Long writerId, Pageable pageable) {
+        if (keyword == null) {
+            return boardRepository.findByBoardTypeAndBoardStatusAndWriter_Id(
+                    boardType, BoardStatus.ACTIVE, writerId, pageable);
+        }
+
+        return switch (searchType) {
+            case "title" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndTitleContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, writerId, keyword, pageable);
+            case "content" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndContentContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, writerId, keyword, pageable);
+            case "writer" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndWriter_NicknameContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, writerId, keyword, pageable);
+            case "titleContent" -> boardRepository
+                    .findByBoardTypeAndBoardStatusAndWriter_IdAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndWriter_IdAndContentContainingIgnoreCase(
+                            boardType, BoardStatus.ACTIVE, writerId, keyword,
+                            boardType, BoardStatus.ACTIVE, writerId, keyword, pageable);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 검색 조건입니다.");
+        };
     }
 
     // 게시글 조회 및 조회수 증가 선택
@@ -228,6 +265,23 @@ public class BoardServiceImpl implements BoardService {
 
         board.updateRecruitmentStatus(recruitmentStatus);
         return toReadDTO(board, member);
+    }
+
+    // 게시글 신고 여부 확인
+    @Override
+    public boolean hasReportedBoard(Long boardId, String reporterEmail) {
+        Board board = findBoard(boardId);
+        Member reporter = findMember(reporterEmail);
+
+        validateCommunityAccess(reporter);
+
+        if (Objects.equals(board.getWriter().getId(), reporter.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인이 작성한 게시글은 신고할 수 없습니다.");
+        }
+
+        return boardReportRepository.existsByReporter_IdAndTargetTypeAndTargetId(
+                reporter.getId(), BoardReportTargetType.POST, boardId
+        );
     }
 
     // 게시글 신고
@@ -422,10 +476,11 @@ public class BoardServiceImpl implements BoardService {
         }
 
         String reasonDetail = normalizeReportDetail(reportRequestDTO.getReasonDetail());
-        if (reasonDetail == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용을 입력해 주세요.");
+        if (reportRequestDTO.getReasonCode() == BoardReportReasonCode.OTHER
+                && reasonDetail == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "기타 신고 사유의 세부내용을 입력해 주세요.");
         }
-        if (reasonDetail.length() > 200) {
+        if (reasonDetail != null && reasonDetail.length() > 200) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용은 200자 이하로 입력해 주세요.");
         }
     }
@@ -444,6 +499,44 @@ public class BoardServiceImpl implements BoardService {
         }
 
         return normalizedSearchType;
+    }
+
+    // 정렬 조건 확인
+    private String normalizeSortType(String sort) {
+        String normalizedSort = sort == null || sort.isBlank() ? "latest" : sort.trim();
+
+        normalizedSort = switch (normalizedSort.toLowerCase(Locale.ROOT)) {
+            case "createdat,desc", "createdat,desc,boardid,desc" -> "latest";
+            case "createdat,asc", "createdat,asc,boardid,asc" -> "oldest";
+            case "viewcount,desc", "viewcount,desc,createdat,desc" -> "views";
+            case "commentcount,desc" -> "comments";
+            default -> normalizedSort.toLowerCase(Locale.ROOT);
+        };
+
+        if (!SORT_TYPES.contains(normalizedSort)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 정렬 조건입니다.");
+        }
+
+        return normalizedSort;
+    }
+
+    // 게시글 목록 페이지 및 정렬 생성
+    private Pageable createBoardPageable(int page, int size, String sort) {
+        if (page < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "페이지 번호는 0 이상이어야 합니다.");
+        }
+        if (size < 1 || size > 50) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "페이지 크기는 1개 이상 50개 이하여야 합니다.");
+        }
+
+        Sort boardSort = switch (sort) {
+            case "oldest" -> Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("boardId"));
+            case "views" -> Sort.by(Sort.Order.desc("viewCount"), Sort.Order.desc("createdAt"), Sort.Order.desc("boardId"));
+            case "comments" -> Sort.unsorted();
+            default -> Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("boardId"));
+        };
+
+        return PageRequest.of(page, size, boardSort);
     }
 
     // 검색어 확인 및 공백 제거

@@ -24,6 +24,8 @@ public class GroupChatAiDTO {
     public static class ProposedSchedule {
         private String title;
         private String date; // YYYY-MM-DD
+        private String endDate; // YYYY-MM-DD
         private String time; // HH:mm
+        private String endTime; // HH:mm
     }
 }

@@ -138,4 +138,28 @@ public class GroupChatServiceImpl implements GroupChatService {
     public boolean checkDuplicateReport(Long memberId, Long messageId) {
         return groupReportRepository.existsByMember_IdAndChatMessage_Id(memberId, messageId);
     }
+    @Override
+    @Transactional
+    public void updateMessage(Long memberId, Long messageId, String content) {
+        ChatMessage message = chatMessageRepository.findById(messageId)
+                .orElseThrow(() -> new IllegalArgumentException("메시지를 찾을 수 없습니다."));
+        if (!message.getSender().getId().equals(memberId)) {
+            throw new IllegalArgumentException("자신의 메시지만 수정할 수 있습니다.");
+        }
+        if (message.isDeleted()) {
+            throw new IllegalArgumentException("삭제된 메시지는 수정할 수 없습니다.");
+        }
+        message.updateContent(content);
+    }
+
+    @Override
+    @Transactional
+    public void deleteMessage(Long memberId, Long messageId) {
+        ChatMessage message = chatMessageRepository.findById(messageId)
+                .orElseThrow(() -> new IllegalArgumentException("메시지를 찾을 수 없습니다."));
+        if (!message.getSender().getId().equals(memberId)) {
+            throw new IllegalArgumentException("자신의 메시지만 삭제할 수 있습니다.");
+        }
+        message.markAsDeleted();
+    }
 }

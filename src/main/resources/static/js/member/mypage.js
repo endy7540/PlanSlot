@@ -379,7 +379,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 })
                 .catch(err => {
-                    alert(err.message);
+                    let errorMessage = err.message;
+                    if (errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError")) {
+                        errorMessage = "서버 접속이 원활하지 않습니다. 네트워크 상태를 확인해주세요.";
+                    }
+                    alert(errorMessage);
                 })
                 .finally(() => {
                     btnConfirmCrop.innerText = '적용 및 업로드';

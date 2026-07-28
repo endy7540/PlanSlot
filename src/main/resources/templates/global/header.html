@@ -216,6 +216,7 @@
           const widgetAction = document.getElementById('aiWidgetActionContainer');
 
           if (status === 'PROCESSING') {
+              if (widget.style.display !== 'block') document.getElementById('aiWidgetContainer').appendChild(widget);
               widget.style.display = 'block';
               widgetTitle.innerText = 'AI 일정 분석 중';
               widgetDesc.innerText = '이전 페이지에서 시작된 AI 분석 작업을 계속 수행 중입니다...';
@@ -231,6 +232,7 @@
                       const resultData = JSON.parse(cachedDataStr);
                       const count = (resultData.extractedSchedules || []).length;
 
+                      if (widget.style.display !== 'block') document.getElementById('aiWidgetContainer').appendChild(widget);
                       widget.style.display = 'block';
                       widgetTitle.innerText = 'AI 분석 완료!';
                       widgetDesc.innerText = `총 ${count}개의 일정이 발견되었습니다. 결과를 확인하세요.`;
@@ -241,11 +243,13 @@
                       clearAiStorage();
                   }
               } else {
+                  if (widget.style.display !== 'block') document.getElementById('aiWidgetContainer').appendChild(widget);
                   widget.style.display = 'block';
                   startHeaderAiPolling(requestId);
               }
           } else if (status === 'FAILED') {
               const failReason = localStorage.getItem('ps_ai_fail_reason') || 'AI 분석이 실패했습니다.';
+              if (widget.style.display !== 'block') document.getElementById('aiWidgetContainer').appendChild(widget);
               widget.style.display = 'block';
               widgetTitle.innerText = 'AI 분석 실패';
               widgetDesc.innerText = failReason;
@@ -299,6 +303,8 @@
                       localStorage.setItem('ps_ai_cached_result', JSON.stringify(data));
                       
                       const count = (data.extractedSchedules || []).length;
+                      if (widget.style.display !== 'block') document.getElementById('aiWidgetContainer').appendChild(widget);
+                      widget.style.display = 'block';
                       widgetTitle.innerText = 'AI 분석 완료!';
                       widgetDesc.innerText = `총 ${count}개의 일정이 발견되었습니다. 결과를 확인하세요.`;
                       widgetBar.style.width = '100%';
@@ -311,6 +317,8 @@
                       localStorage.setItem('ps_ai_status', 'FAILED');
                       localStorage.setItem('ps_ai_fail_reason', failReason);
                       
+                      if (widget.style.display !== 'block') document.getElementById('aiWidgetContainer').appendChild(widget);
+                      widget.style.display = 'block';
                       widgetTitle.innerText = 'AI 분석 실패';
                       widgetDesc.innerText = failReason;
                       widgetBar.style.width = '100%';
@@ -374,7 +382,7 @@
         function showGroupAiProcessingWidget() {
             const widget = document.getElementById('groupAiFloatingWidget');
             if (!widget) return;
-            document.getElementById('aiWidgetContainer').appendChild(widget);
+            if (widget.style.display !== 'block') document.getElementById('aiWidgetContainer').appendChild(widget);
             widget.style.display = 'block';
             document.getElementById('groupAiWidgetTitle').innerText = 'AI 시간 추천 분석 중';
             document.getElementById('groupAiWidgetDesc').innerText = '모임원들의 일정을 분석해서 추천 시간을 찾는 중입니다...';
@@ -387,7 +395,7 @@
         function showGroupAiCompletedWidget() {
             const widget = document.getElementById('groupAiFloatingWidget');
             if (!widget) return;
-            document.getElementById('aiWidgetContainer').appendChild(widget);
+            if (widget.style.display !== 'block') document.getElementById('aiWidgetContainer').appendChild(widget);
             widget.style.display = 'block';
             document.getElementById('groupAiWidgetTitle').innerText = 'AI 추천 완료!';
             document.getElementById('groupAiWidgetDesc').innerText = '추천 시간을 찾았어요. 결과를 확인해보세요.';
@@ -400,7 +408,7 @@
         function showGroupAiFailedWidget(reason) {
             const widget = document.getElementById('groupAiFloatingWidget');
             if (!widget) return;
-            document.getElementById('aiWidgetContainer').appendChild(widget);
+            if (widget.style.display !== 'block') document.getElementById('aiWidgetContainer').appendChild(widget);
             widget.style.display = 'block';
             document.getElementById('groupAiWidgetTitle').innerText = 'AI 추천 실패';
             document.getElementById('groupAiWidgetDesc').innerText = reason || 'AI 분석이 실패했습니다.';
@@ -572,7 +580,7 @@
         function showChatAiProcessingWidget() {
             const widget = document.getElementById('chatAiFloatingWidget');
             if (!widget) return;
-            document.getElementById('aiWidgetContainer').appendChild(widget);
+            if (widget.style.display !== 'block') document.getElementById('aiWidgetContainer').appendChild(widget);
             widget.style.display = 'block';
             document.getElementById('chatAiWidgetTitle').innerText = 'AI 채팅 요약 진행 중';
             document.getElementById('chatAiWidgetDesc').innerText = '대화 내용을 요약하고 일정을 찾는 중입니다...';
@@ -585,7 +593,7 @@
         function showChatAiCompletedWidget() {
             const widget = document.getElementById('chatAiFloatingWidget');
             if (!widget) return;
-            document.getElementById('aiWidgetContainer').appendChild(widget);
+            if (widget.style.display !== 'block') document.getElementById('aiWidgetContainer').appendChild(widget);
             widget.style.display = 'block';
             document.getElementById('chatAiWidgetTitle').innerText = 'AI 요약 완료!';
             document.getElementById('chatAiWidgetDesc').innerText = '대화 요약이 완료되었습니다. 결과를 확인해보세요.';
@@ -598,7 +606,7 @@
         function showChatAiFailedWidget(reason) {
             const widget = document.getElementById('chatAiFloatingWidget');
             if (!widget) return;
-            document.getElementById('aiWidgetContainer').appendChild(widget);
+            if (widget.style.display !== 'block') document.getElementById('aiWidgetContainer').appendChild(widget);
             widget.style.display = 'block';
             document.getElementById('chatAiWidgetTitle').innerText = 'AI 요약 실패';
             document.getElementById('chatAiWidgetDesc').innerText = reason || 'AI 분석이 실패했습니다.';

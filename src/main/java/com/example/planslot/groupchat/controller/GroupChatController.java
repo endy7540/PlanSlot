@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -98,20 +99,36 @@ public class GroupChatController {
             @PathVariable Long groupId, 
             @RequestBody com.example.planslot.groupchat.dto.GroupReportDTO.Request request, 
             Authentication authentication) {
-        Long memberId = getAuthenticatedMemberId(authentication);
-        
-        // 권한 확인 (활성 모임원인지)
-        GroupMember myMembership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
-                .orElseThrow(() -> new IllegalArgumentException("모임에 가입되어 있지 않습니다."));
-        if (myMembership.getMemberStatus() != GroupMemberStatus.ACTIVE) {
-            throw new IllegalArgumentException("활성 모임원만 신고할 수 있습니다.");
+        try {
+            Long memberId = getAuthenticatedMemberId(authentication);
+            
+            // 권한 확인 (활성 모임원인지)
+            GroupMember myMembership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
+                    .orElseThrow(() -> new IllegalArgumentException("모임에 가입되어 있지 않습니다."));
+            if (myMembership.getMemberStatus() != GroupMemberStatus.ACTIVE) {
+                throw new IllegalArgumentException("활성 모임원만 신고할 수 있습니다.");
+            }
+            
+            groupChatService.reportMessage(memberId, request);
+            return ResponseEntity.ok("신고가 정상적으로 접수되었습니다.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-        
-        groupChatService.reportMessage(memberId, request);
-        return ResponseEntity.ok("신고가 정상적으로 접수되었습니다.");
     }
 
-    // 6. 비동기 AI 요약 트리거 API
+    // 4. 중복 신고 확인 API
+    @GetMapping("/{groupId}/report/check")
+    @ResponseBody
+    public ResponseEntity<Boolean> checkDuplicateReport(
+            @PathVariable Long groupId,
+            @RequestParam Long messageId,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        boolean exists = groupChatService.checkDuplicateReport(memberId, messageId);
+        return ResponseEntity.ok(exists);
+    }
+
+    // 5. 비동기 AI 요약 트리거 API
     @PostMapping("/{groupId}/ai-summary/async")
     @ResponseBody
     public ResponseEntity<?> startAiSummaryAsync(

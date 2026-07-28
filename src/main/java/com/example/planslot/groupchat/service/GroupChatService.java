@@ -15,4 +15,7 @@ public interface GroupChatService {
 
     // 안 읽은 채팅 개수 초기화
     void clearUnreadChatCount(Long groupId, Long memberId);
+
+    // 중복 신고 확인
+    boolean checkDuplicateReport(Long memberId, Long messageId);
 }

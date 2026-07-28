@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface GroupReportRepository extends JpaRepository<GroupReport, Long> {
+    boolean existsByMember_IdAndChatMessage_Id(Long memberId, Long chatMessageId);
 }

@@ -94,3 +94,70 @@ function fetchApi(url, options = {}) {
 }
 
 
+
+/* Inline JS from HTML */
+function getQueryParam(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+  }
+  const groupId = getQueryParam('id'); // /group/ai-favorites?id={id}
+
+  document.getElementById('backToGroupBtn').href = `/group/read/${groupId}`;
+  document.getElementById('backToAiBtn').href = `/group/recommend?id=${groupId}`;
+
+  // 모임 이름 불러와서 제목 업데이트
+  (async () => {
+    try {
+      const res = await fetchApi(`/group/${groupId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.name) {
+          document.getElementById('pageTitle').textContent = `AI 추천 일정 찜 목록 - ${data.name}`;
+          document.title = `${data.name} - AI 추천 찜 목록 | PlanSlot`;
+        }
+      }
+    } catch(e) { console.error(e); }
+  })();
+
+  async function loadFavorites() {
+    const grid = document.getElementById('favoritesGrid');
+    try {
+      const res = await fetchApi(`/group/${groupId}/ai-recommendations/favorites`);
+      if (!res.ok) throw new Error('불러오기 실패');
+      const data = await res.json();
+      
+      if (!data || data.length === 0) {
+        grid.innerHTML = `<div class="empty-state">
+          <div style="font-size: 32px; margin-bottom: 12px;">❤️</div>
+          <h3 style="margin-top:0; margin-bottom: 8px; color: var(--home-text);">찜한 추천 일정이 없습니다.</h3>
+          <p style="font-size: 14px;">AI 추천 페이지에서 마음에 드는 시간을 찜해보세요!</p>
+        </div>`;
+        return;
+      }
+      
+      grid.innerHTML = data.map(item => `
+        <article class="fav-card">
+          <div class="fav-rank-badge">Top ${item.rank} 추천</div>
+          <h3 class="fav-title">${item.title || item.label}</h3>
+          <div class="fav-date-mono">${item.date} ${item.time}</div>
+          
+          <div class="fav-tags">
+            <span class="fav-tag fit">${item.tag}</span>
+            <span class="fav-tag">${item.sub}</span>
+          </div>
+          
+          <div style="font-size: 12px; color: var(--home-muted); margin-bottom: 16px;">
+            찜한 날짜: ${new Date(item.bookmarkedAt).toLocaleDateString()}
+          </div>
+          
+          <button class="btn-register" onclick="alert('모임 일정으로 등록하시려면 AI 추천 페이지에서 진행해주세요. (추후 연동 예정)')">일정으로 등록하기</button>
+        </article>
+      `).join('');
+      
+    } catch (e) {
+      console.error(e);
+      grid.innerHTML = `<div class="empty-state">데이터를 불러오는 중 오류가 발생했습니다.</div>`;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadFavorites);

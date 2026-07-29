@@ -7,7 +7,22 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
-    <link rel="stylesheet" th:href="@{/css/schedule/schedule-modify.css(v='1.0.1')}">
+    <link rel="stylesheet" th:href="@{/css/schedule/schedule-modify.css(v='1.0.7')}">
+
+    <!-- iframe 모달 내부 감지 시 헤더 숨김 및 레이아웃 최적화 -->
+    <script>
+        if (window.self !== window.top) {
+            document.documentElement.classList.add('in-iframe');
+        }
+    </script>
+    <style>
+        html.in-iframe .header-nav,
+        html.in-iframe header { display: none !important; }
+        html.in-iframe body { background: transparent !important; padding: 0 !important; margin: 0 !important; min-height: auto !important; }
+        html.in-iframe .wrap { padding: 10px 20px 16px !important; margin: 0 auto !important; max-width: 100% !important; }
+        html.in-iframe .panel { border: none !important; box-shadow: none !important; margin: 0 !important; padding: 16px 20px !important; }
+    </style>
+
 </head>
 <body>
 
@@ -138,7 +153,7 @@
             </div>
             <div class="btn-row">
                 <button class="primary" id="submitBtn" onclick="updateSchedule()">수정 완료</button>
-                <button class="ghost" onclick="history.back()">취소</button>
+                <button class="ghost" type="button" onclick="handleCancel()">취소</button>
             </div>
         </div>
     </div>
@@ -147,6 +162,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script th:src="@{/js/schedule/schedule-modify.js(v='1.0.1')}"></script>
+<script th:src="@{/js/schedule/schedule-modify.js(v='1.0.4')}"></script>
 </body>
 </html>

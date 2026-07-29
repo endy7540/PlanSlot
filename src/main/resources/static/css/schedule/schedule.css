@@ -391,11 +391,7 @@
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
-#aiImageModal {
-    display: none;
-    align-items: center;
-    justify-content: center;
-}
+
 /* 연속 일정 칩 가로 연결 스타일 */
 .event-chip.event-start {
     border-top-right-radius: 0 !important;
@@ -422,4 +418,112 @@
     position: relative;
     z-index: 2;
     box-shadow: -2px 0 4px rgba(0,0,0,0.04);
+}
+
+/* ===== 공통 모달 백드롭 ===== */
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== iframe 모달 (등록/수정/상세) ===== */
+.iframe-modal-backdrop {
+    inset: 0;
+    padding: 20px;
+}
+.iframe-modal-container {
+    width: 100%;
+    max-width: 660px;
+    border-radius: 23px;
+    background: #fff;
+    box-shadow: var(--shadow);
+    border: 2px solid #DCEFFC;
+    overflow: hidden;
+    position: relative;
+    transition: height 0.25s ease;
+}
+/* 높이는 JS에서 iframe 로드 후 자동 조절 */
+.iframe-modal-close {
+    position: absolute;
+    top: 16px; right: 20px;
+    background: none;
+    border: 0;
+    font-size: 26px;
+    color: #64748B;
+    cursor: pointer;
+    font-weight: bold;
+    z-index: 100;
+    transition: color 0.15s;
+}
+.iframe-modal-close:hover {
+    color: #1E293B;
+}
+.iframe-modal-frame {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #fff;
+}
+
+/* ===== AI 이미지 분석 모달 ===== */
+.ai-modal-panel {
+    width: 100%;
+    max-width: 550px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    padding: 24px;
+    position: relative;
+}
+.ai-modal-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: none;
+    border: 0;
+    font-size: 20px;
+    color: #64748B;
+    cursor: pointer;
+    font-weight: bold;
+}
+.ai-modal-close:hover {
+    color: #1E293B;
+}
+
+/* ===== 삭제 확인 모달 ===== */
+.delete-confirm-panel {
+    width: 100%;
+    max-width: 440px;
+    border-radius: 16px;
+    background: white;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border: 1px solid #E2E8F0;
+    padding: 24px;
+    text-align: center;
+}
+.delete-confirm-panel .danger {
+    padding: 12px;
+    font-size: 13.5px;
+    border-radius: 10px;
+    border: 0;
+    background: #EF4444;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.15s;
+    width: 100%;
+}
+.delete-confirm-panel .danger:hover {
+    background: #DC2626;
 }

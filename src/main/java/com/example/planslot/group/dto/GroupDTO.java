@@ -65,7 +65,7 @@ public class GroupDTO {
     }
 
     public record MemberInfo(String id, String name, String role, String profileImageUrl, String color) {}
-    public record WaitingInfo(String id, String email, String inviterName, boolean isMe) {}
+    public record WaitingInfo(String id, String email, String inviterName, boolean isMe, String nickname) {}
     public record ScheduleInfo(String id, String title, String date, String time, String visibility) {}
     public record HeatInfo(String name, List<String> row) {}
     public record CalendarScheduleInfo(String id, String nickname, String title, String startDate, String endDate, String time, String isPublic) {}

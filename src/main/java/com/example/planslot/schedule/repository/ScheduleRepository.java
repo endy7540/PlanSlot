@@ -9,6 +9,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import com.example.planslot.schedule.entity.ScheduleType;
+
 public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
 
     // 회원의 삭제되지 않은 전체 일정 목록 조회
@@ -26,11 +28,11 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     @Query("SELECT s FROM Schedule s WHERE s.member.id = :memberId " +
             "AND s.deletedAt IS NULL " +
             "AND (" +
-            "  ((s.scheduleType IS NULL OR s.scheduleType = com.example.planslot.schedule.entity.ScheduleType.DAILY OR s.scheduleType = com.example.planslot.schedule.entity.ScheduleType.NONE) AND (" +
+            "  ((s.scheduleType IS NULL OR s.scheduleType = ScheduleType.DAILY OR s.scheduleType = ScheduleType.NONE) AND (" +
             "     (s.endDate IS NOT NULL AND s.startDate <= :end AND s.endDate >= :start) OR " +
             "     (s.endDate IS NULL AND s.startDate BETWEEN :start AND :end)" +
             "  )) OR " +
-            "  (s.scheduleType IS NOT NULL AND s.scheduleType != com.example.planslot.schedule.entity.ScheduleType.DAILY AND s.scheduleType != com.example.planslot.schedule.entity.ScheduleType.NONE AND s.startDate <= :end)" +
+            "  (s.scheduleType IS NOT NULL AND s.scheduleType != ScheduleType.DAILY AND s.scheduleType != ScheduleType.NONE AND s.startDate <= :end)" +
             ")")
     List<Schedule> findAllByMemberIdAndPeriodCandidate(@Param("memberId") Long memberId,
                                                        @Param("start") LocalDateTime start,

@@ -22,6 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.UUID;
 
+import java.time.LocalDate;
+
 @Service
 @RequiredArgsConstructor
 public class GroupChatAiService {
@@ -100,7 +102,7 @@ public class GroupChatAiService {
                          .append(msg.getContent()).append("\n");
         }
 
-        java.time.LocalDate today = java.time.LocalDate.now();
+        LocalDate today = LocalDate.now();
         
         promptBuilder.append("\n현재 날짜는 ").append(today).append(" 입니다. (이후 일정 계산 시 참고하세요)\n");
         promptBuilder.append("위 대화 기록을 바탕으로 다음 두 가지를 수행해 주세요.\n");

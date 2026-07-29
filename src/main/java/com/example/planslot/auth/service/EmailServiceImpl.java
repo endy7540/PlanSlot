@@ -11,13 +11,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Random;
 
+import com.example.planslot.member.repository.MemberRepository;
+
 @Service
 @RequiredArgsConstructor
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender javaMailSender;
     private final AuthEmailRepository authEmailRepository;
-    private final com.example.planslot.member.repository.MemberRepository memberRepository;
+    private final MemberRepository memberRepository;
 
     @Override
     @Transactional

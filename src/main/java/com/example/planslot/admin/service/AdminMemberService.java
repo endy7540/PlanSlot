@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.Comparator;
 
+import com.example.planslot.admin.dto.AdminReportResponseDTO;
+
 @Service
 @RequiredArgsConstructor
 public class AdminMemberService {
@@ -24,7 +26,7 @@ public class AdminMemberService {
         // 승인(삭제 처리)된 신고 내역만 필터링하여 제재 횟수로 카운트
         Map<String, Long> penaltyCounts = adminReportService.getAllReports().stream()
                 .filter(report -> "APPROVED".equals(report.getStatus()))
-                .collect(Collectors.groupingBy(com.example.planslot.admin.dto.AdminReportResponseDTO::getReportedNickname, Collectors.counting()));
+                .collect(Collectors.groupingBy(AdminReportResponseDTO::getReportedNickname, Collectors.counting()));
 
         return memberRepository.findAll().stream()
                 .map(member -> {

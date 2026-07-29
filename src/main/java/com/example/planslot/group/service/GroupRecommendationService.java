@@ -27,13 +27,18 @@ import java.util.Map;
 
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.planslot.group.repository.GroupRepository;
+import java.time.temporal.ChronoUnit;
+import com.example.planslot.schedule.entity.ScheduleType;
+import java.time.Duration;
+
 @Service
 @RequiredArgsConstructor
 public class GroupRecommendationService {
 
     private final GroupMemberRepository groupMemberRepository;
     private final ScheduleRepository scheduleRepository;
-    private final com.example.planslot.group.repository.GroupRepository groupRepository;
+    private final GroupRepository groupRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -72,7 +77,7 @@ public class GroupRecommendationService {
         LocalDateTime start = fromDate.atStartOfDay();
         LocalDateTime end = toDate.atTime(23, 59, 59);
         
-        long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(fromDate, toDate);
+        long daysBetween = ChronoUnit.DAYS.between(fromDate, toDate);
         
         StringBuilder promptBuilder = new StringBuilder();
         promptBuilder.append("We need to find a common free time for our group meeting in the next ").append(daysBetween + 1).append(" days (").append(fromDate).append(" to ").append(toDate).append(").\n");
@@ -89,7 +94,7 @@ public class GroupRecommendationService {
                 List<Schedule> schedules = scheduleRepository.findAllByMemberIdAndPeriodCandidate(gm.getMember().getId(), start, end);
                 boolean hasSchedule = false;
                 for (Schedule s : schedules) {
-                    if (s.getScheduleType() == null || s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.DAILY || s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.NONE) {
+                    if (s.getScheduleType() == null || s.getScheduleType() == ScheduleType.DAILY || s.getScheduleType() == ScheduleType.NONE) {
                         LocalDateTime schedEnd = s.getEndDate() != null ? s.getEndDate() : s.getStartDate();
                         if (schedEnd.equals(s.getStartDate())) {
                             schedEnd = s.getStartDate().plusHours(1);
@@ -117,14 +122,14 @@ public class GroupRecommendationService {
                             if (limitEnd != null && date.isAfter(limitEnd)) continue;
                             
                             boolean matches = false;
-                            if (s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.WEEKLY && date.getDayOfWeek() == limitStart.getDayOfWeek()) matches = true;
-                            if (s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.MONTHLY && date.getDayOfMonth() == Math.min(limitStart.getDayOfMonth(), date.lengthOfMonth())) matches = true;
-                            if (s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.YEARLY && date.getMonthValue() == limitStart.getMonthValue() && date.getDayOfMonth() == limitStart.getDayOfMonth()) matches = true;
+                            if (s.getScheduleType() == ScheduleType.WEEKLY && date.getDayOfWeek() == limitStart.getDayOfWeek()) matches = true;
+                            if (s.getScheduleType() == ScheduleType.MONTHLY && date.getDayOfMonth() == Math.min(limitStart.getDayOfMonth(), date.lengthOfMonth())) matches = true;
+                            if (s.getScheduleType() == ScheduleType.YEARLY && date.getMonthValue() == limitStart.getMonthValue() && date.getDayOfMonth() == limitStart.getDayOfMonth()) matches = true;
                             
                             if (matches) {
-                                long durationMinutes = java.time.Duration.between(s.getStartDate(), s.getEndDate() != null ? s.getEndDate() : s.getStartDate()).toMinutes();
-                                java.time.LocalDateTime startDateTime = date.atTime(s.getStartDate().toLocalTime());
-                                java.time.LocalDateTime endDateTime = startDateTime.plusMinutes(durationMinutes);
+                                long durationMinutes = Duration.between(s.getStartDate(), s.getEndDate() != null ? s.getEndDate() : s.getStartDate()).toMinutes();
+                                LocalDateTime startDateTime = date.atTime(s.getStartDate().toLocalTime());
+                                LocalDateTime endDateTime = startDateTime.plusMinutes(durationMinutes);
                                 promptBuilder.append("- ").append(startDateTime).append(" to ").append(endDateTime).append("\n");
                                 hasSchedule = true;
                             }

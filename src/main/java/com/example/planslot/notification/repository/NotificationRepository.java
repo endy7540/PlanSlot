@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 
+import com.example.planslot.notification.entity.NotificationType;
+
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
     List<Notification> findAllByReceiver_IdOrderByCreatedAtDesc(Long receiverId);
@@ -21,7 +23,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     
     List<Notification> findAllByReceiver_IdAndTargetTypeAndTargetIdAndIsReadFalse(Long receiverId, String targetType, Long targetId);
 
-    List<Notification> findAllByReceiver_IdAndTargetTypeAndTargetIdAndNotificationType(Long receiverId, String targetType, Long targetId, com.example.planslot.notification.entity.NotificationType notificationType);
+    List<Notification> findAllByReceiver_IdAndTargetTypeAndTargetIdAndNotificationType(Long receiverId, String targetType, Long targetId, NotificationType notificationType);
 
     Page<Notification> findAllByReceiver_Id(Long receiverId, Pageable pageable);
 

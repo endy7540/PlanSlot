@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Random;
 
+import com.example.planslot.member.dto.MemberResponseDTO;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -56,10 +58,10 @@ public class MemberServiceImpl implements MemberService{
     }
 
     @Override
-    public com.example.planslot.member.dto.MemberResponseDTO.MyPage getMyPage(String email) {
+    public MemberResponseDTO.MyPage getMyPage(String email) {
         Member member = memberRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
-        return com.example.planslot.member.dto.MemberResponseDTO.MyPage.builder()
+        return MemberResponseDTO.MyPage.builder()
                 .email(member.getEmail())
                 .nickname(member.getNickname())
                 .displayName(member.getDisplayName())

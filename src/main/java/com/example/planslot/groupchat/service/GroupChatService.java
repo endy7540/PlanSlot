@@ -3,6 +3,8 @@ package com.example.planslot.groupchat.service;
 import com.example.planslot.groupchat.dto.ChatMessageDTO;
 import java.util.List;
 
+import com.example.planslot.groupchat.dto.GroupReportDTO;
+
 public interface GroupChatService {
     // 채팅 메시지 저장
     ChatMessageDTO saveMessage(ChatMessageDTO messageDTO);
@@ -11,7 +13,7 @@ public interface GroupChatService {
     List<ChatMessageDTO> getChatHistory(Long groupId);
     
     // 채팅 메시지 신고
-    void reportMessage(Long memberId, com.example.planslot.groupchat.dto.GroupReportDTO.Request request);
+    void reportMessage(Long memberId, GroupReportDTO.Request request);
 
     // 안 읽은 채팅 개수 초기화
     void clearUnreadChatCount(Long groupId, Long memberId);

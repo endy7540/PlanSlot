@@ -236,7 +236,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void deleteNotificationsByTarget(Long memberId, String targetType, Long targetId) {
         List<Notification> targetList = notificationRepository.findAllByReceiver_IdAndTargetTypeAndTargetIdAndNotificationType(
-                memberId, targetType, targetId, com.example.planslot.notification.entity.NotificationType.INVITATION);
+                memberId, targetType, targetId, NotificationType.INVITATION);
         notificationRepository.deleteAll(targetList);
     }
 

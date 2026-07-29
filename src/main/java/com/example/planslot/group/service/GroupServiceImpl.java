@@ -26,6 +26,15 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
+import com.example.planslot.group.repository.GroupScheduleShareRepository;
+import com.example.planslot.groupchat.repository.GroupChatRoomRepository;
+import com.example.planslot.groupchat.repository.ChatMessageRepository;
+import com.example.planslot.schedule.entity.SourceType;
+import com.example.planslot.groupchat.entity.GroupChatRoom;
+import com.example.planslot.groupchat.entity.ChatMessage;
+import com.example.planslot.group.entity.GroupScheduleShare;
+import java.time.Duration;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -37,10 +46,10 @@ public class GroupServiceImpl implements GroupService {
     private final GroupScheduleRepository groupScheduleRepository;
     private final ScheduleRepository scheduleRepository;
     private final NotificationService notificationService;
-    private final com.example.planslot.group.repository.GroupScheduleShareRepository groupScheduleShareRepository;
-    private final com.example.planslot.groupchat.repository.GroupChatRoomRepository groupChatRoomRepository;
-    private final com.example.planslot.groupchat.repository.ChatMessageRepository chatMessageRepository;
-    private final com.example.planslot.schedule.entity.SourceType sourceType = null; // Unused dummy to prevent import issue
+    private final GroupScheduleShareRepository groupScheduleShareRepository;
+    private final GroupChatRoomRepository groupChatRoomRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final SourceType sourceType = null; // Unused dummy to prevent import issue
 
     @Override
     @Transactional
@@ -58,7 +67,7 @@ public class GroupServiceImpl implements GroupService {
         groupMemberRepository.save(ownerMembership);
 
         // 모임 생성 시 해당 모임의 채팅방도 자동 생성
-        com.example.planslot.groupchat.entity.GroupChatRoom chatRoom = com.example.planslot.groupchat.entity.GroupChatRoom.builder()
+        GroupChatRoom chatRoom = GroupChatRoom.builder()
                 .group(group)
                 .build();
         groupChatRoomRepository.save(chatRoom);
@@ -88,8 +97,8 @@ public class GroupServiceImpl implements GroupService {
                     if (!a.isFavorite() && b.isFavorite()) return 1;
                     
                     // 2순위: 최신 채팅 시간
-                    com.example.planslot.groupchat.entity.ChatMessage lastMsgA = chatMessageRepository.findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long.valueOf(a.id()));
-                    com.example.planslot.groupchat.entity.ChatMessage lastMsgB = chatMessageRepository.findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long.valueOf(b.id()));
+                    ChatMessage lastMsgA = chatMessageRepository.findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long.valueOf(a.id()));
+                    ChatMessage lastMsgB = chatMessageRepository.findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long.valueOf(b.id()));
                     
                     LocalDateTime timeA = lastMsgA != null ? lastMsgA.getCreatedAt() : gmJoinTime(a.id(), groupMembers);
                     LocalDateTime timeB = lastMsgB != null ? lastMsgB.getCreatedAt() : gmJoinTime(b.id(), groupMembers);
@@ -143,7 +152,7 @@ public class GroupServiceImpl implements GroupService {
         List<GroupSchedule> myGroupSchedules = groupScheduleRepository.findByGroup_IdAndSharer_Id(groupId, memberId);
         
         List<GroupDTO.ScheduleInfo> mySchedules = myGroupSchedules.stream().map(gs -> {
-            java.time.LocalDateTime start = gs.getSchedule().getStartDate();
+            LocalDateTime start = gs.getSchedule().getStartDate();
             String dateStr = start != null ? start.toLocalDate().toString() : "";
             String timeStr = start != null ? start.toLocalTime().toString() : "";
             String visibility = gs.isVisible() ? "public" : "private";
@@ -467,10 +476,9 @@ public class GroupServiceImpl implements GroupService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
 
-        boolean isMember = groupMemberRepository.findByGroup_Id(groupId).stream()
-                .anyMatch(gm -> gm.getMember().getId().equals(memberId) &&
-                        gm.getMemberStatus() == GroupMemberStatus.ACTIVE);
-        if (!isMember) {
+        GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
+                .orElse(null);
+        if (membership == null || membership.getMemberStatus() != GroupMemberStatus.ACTIVE) {
             throw new IllegalArgumentException("모임원이 아닙니다.");
         }
 
@@ -504,7 +512,7 @@ public class GroupServiceImpl implements GroupService {
                 .scheduleType(type)
                 .recurrenceEndDate(parsedRecurrenceEndDate)
                 .isPublic(isPublic ? "Y" : "N")
-                .sourceType(com.example.planslot.schedule.entity.SourceType.MANUAL)
+                .sourceType(SourceType.MANUAL)
                 .build();
 
         schedule = scheduleRepository.save(schedule);
@@ -532,7 +540,7 @@ public class GroupServiceImpl implements GroupService {
                     continue;
                 }
                 Member target = memberRepository.findById(targetMemberId).orElseThrow();
-                com.example.planslot.group.entity.GroupScheduleShare share = com.example.planslot.group.entity.GroupScheduleShare.builder()
+                GroupScheduleShare share = GroupScheduleShare.builder()
                         .group(group)
                         .schedule(schedule)
                         .sharer(sharer)
@@ -546,7 +554,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public List<GroupDTO.SharedPeerSchedule> getSharedPeerSchedules(Long groupId, Long targetMemberId) {
-        List<com.example.planslot.group.entity.GroupScheduleShare> shares = groupScheduleShareRepository.findByGroup_IdAndTargetMember_Id(groupId, targetMemberId);
+        List<GroupScheduleShare> shares = groupScheduleShareRepository.findByGroup_IdAndTargetMember_Id(groupId, targetMemberId);
         return shares.stream().map(share -> {
             Schedule schedule = share.getSchedule();
             String dateStr = schedule.getStartDate() != null ? schedule.getStartDate().toLocalDate().toString() : "";
@@ -566,7 +574,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public List<GroupDTO.SharedPeerSchedule> getSchedulesSharedByMe(Long groupId, Long sharerId) {
-        List<com.example.planslot.group.entity.GroupScheduleShare> shares = groupScheduleShareRepository.findByGroup_IdAndSharer_Id(groupId, sharerId);
+        List<GroupScheduleShare> shares = groupScheduleShareRepository.findByGroup_IdAndSharer_Id(groupId, sharerId);
         return shares.stream().map(share -> {
             Schedule schedule = share.getSchedule();
             String dateStr = schedule.getStartDate() != null ? schedule.getStartDate().toLocalDate().toString() : "";
@@ -587,7 +595,7 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional
     public void deleteSharedPeerSchedule(Long shareId, Long sharerId) {
-        com.example.planslot.group.entity.GroupScheduleShare share = groupScheduleShareRepository.findById(shareId).orElseThrow(() -> new IllegalArgumentException("해당 공유 일정을 찾을 수 없습니다."));
+        GroupScheduleShare share = groupScheduleShareRepository.findById(shareId).orElseThrow(() -> new IllegalArgumentException("해당 공유 일정을 찾을 수 없습니다."));
         if (!share.getSharer().getId().equals(sharerId)) {
             throw new IllegalArgumentException("공유 일정을 취소할 권한이 없습니다.");
         }
@@ -597,7 +605,7 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional
     public GroupDTO.ImportResult importSharedPeerSchedule(Long shareId, Long memberId, boolean overwrite, String isPublic) {
-        com.example.planslot.group.entity.GroupScheduleShare share = groupScheduleShareRepository.findById(shareId)
+        GroupScheduleShare share = groupScheduleShareRepository.findById(shareId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 공유 일정을 찾을 수 없습니다."));
 
         if (!share.getTargetMember().getId().equals(memberId)) {
@@ -611,13 +619,13 @@ public class GroupServiceImpl implements GroupService {
         
         if (!overwrite) {
             for (Schedule mySchedule : mySchedules) {
-                if (mySchedule.getStartDate() != null && sharedStart != null && java.time.Duration.between(mySchedule.getStartDate(), sharedStart).abs().toMinutes() < 60) {
+                if (mySchedule.getStartDate() != null && sharedStart != null && Duration.between(mySchedule.getStartDate(), sharedStart).abs().toMinutes() < 60) {
                     return new GroupDTO.ImportResult(false, mySchedule.getTitle(), mySchedule.getStartDate().toLocalTime().toString(), sharedStart.toLocalDate().toString());
                 }
             }
         } else {
             for (Schedule mySchedule : mySchedules) {
-                if (mySchedule.getStartDate() != null && sharedStart != null && java.time.Duration.between(mySchedule.getStartDate(), sharedStart).abs().toMinutes() < 60) {
+                if (mySchedule.getStartDate() != null && sharedStart != null && Duration.between(mySchedule.getStartDate(), sharedStart).abs().toMinutes() < 60) {
                     mySchedule.softDelete();
                     scheduleRepository.save(mySchedule);
                 }

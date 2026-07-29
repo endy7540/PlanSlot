@@ -13,11 +13,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 import com.example.planslot.boardreport.entity.BoardReport;
 
+import com.example.planslot.groupchat.repository.GroupReportRepository;
+import com.example.planslot.boardreport.entity.BoardReportStatus;
+import com.example.planslot.groupchat.entity.GroupReport;
+import com.example.planslot.group.entity.ReportStatus;
+
 @Service
 @RequiredArgsConstructor
 public class AdminReportService {
     private final BoardReportRepository boardReportRepository;
-    private final com.example.planslot.groupchat.repository.GroupReportRepository groupReportRepository;
+    private final GroupReportRepository groupReportRepository;
     private final BoardRepository boardRepository;
     private final BoardCommentRepository boardCommentRepository;
 
@@ -64,7 +69,7 @@ public class AdminReportService {
         BoardReport report = boardReportRepository.findById(reportId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 신고입니다."));
         
-        if (report.getStatus() != com.example.planslot.boardreport.entity.BoardReportStatus.WAITING) {
+        if (report.getStatus() != BoardReportStatus.WAITING) {
             throw new IllegalArgumentException("이미 처리된 신고입니다.");
         }
 
@@ -82,7 +87,7 @@ public class AdminReportService {
         BoardReport report = boardReportRepository.findById(reportId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 신고입니다."));
         
-        if (report.getStatus() != com.example.planslot.boardreport.entity.BoardReportStatus.WAITING) {
+        if (report.getStatus() != BoardReportStatus.WAITING) {
             throw new IllegalArgumentException("이미 처리된 신고입니다.");
         }
 
@@ -91,10 +96,10 @@ public class AdminReportService {
 
     @Transactional
     public void approveGroupReport(Long reportId) {
-        com.example.planslot.groupchat.entity.GroupReport report = groupReportRepository.findById(reportId)
+        GroupReport report = groupReportRepository.findById(reportId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 채팅 신고입니다."));
         
-        if (report.getStatus() != com.example.planslot.group.entity.ReportStatus.WAITING) {
+        if (report.getStatus() != ReportStatus.WAITING) {
             throw new IllegalArgumentException("이미 처리된 신고입니다.");
         }
         
@@ -107,10 +112,10 @@ public class AdminReportService {
 
     @Transactional
     public void rejectGroupReport(Long reportId) {
-        com.example.planslot.groupchat.entity.GroupReport report = groupReportRepository.findById(reportId)
+        GroupReport report = groupReportRepository.findById(reportId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 채팅 신고입니다."));
         
-        if (report.getStatus() != com.example.planslot.group.entity.ReportStatus.WAITING) {
+        if (report.getStatus() != ReportStatus.WAITING) {
             throw new IllegalArgumentException("이미 처리된 신고입니다.");
         }
 

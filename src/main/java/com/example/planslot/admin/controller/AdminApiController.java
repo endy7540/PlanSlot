@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
+import com.example.planslot.admin.service.AdminMemberService;
+
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
@@ -38,7 +40,7 @@ AdminApiController {
         return ResponseEntity.ok("신고가 반려되었습니다.");
     }
 
-    private final com.example.planslot.admin.service.AdminMemberService adminMemberService;
+    private final AdminMemberService adminMemberService;
 
     @PutMapping("/members/{memberId}/role")
     public ResponseEntity<String> updateMemberRole(@PathVariable Long memberId, @RequestBody Map<String, String> request) {

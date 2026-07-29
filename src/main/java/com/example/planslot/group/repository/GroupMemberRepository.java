@@ -16,6 +16,7 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
 
     List<GroupMember> findByMember_IdAndMemberStatusIn(Long memberId, List<GroupMemberStatus> statuses);
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"member"})
     List<GroupMember> findByGroup_Id(Long groupId);
 
     int countByGroup_IdAndMemberStatus(Long groupId, GroupMemberStatus status);

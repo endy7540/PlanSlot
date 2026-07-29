@@ -26,6 +26,8 @@ import java.util.Optional;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
 
+import com.example.planslot.schedule.entity.ScheduleType;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -150,7 +152,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .toList();
     }
     @Override
-    public List<com.example.planslot.schedule.entity.Schedule> debugGetAllSchedules(Long memberId) {
+    public List<Schedule> debugGetAllSchedules(Long memberId) {
         return scheduleRepository.debugFindAllByMemberId(memberId);
     }
 
@@ -161,8 +163,8 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         for (Schedule s : candidates) {
             if (s.getScheduleType() == null || 
-                s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.DAILY ||
-                s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.NONE) {
+                s.getScheduleType() == ScheduleType.DAILY ||
+                s.getScheduleType() == ScheduleType.NONE) {
                 result.add(ScheduleDTO.from(s));
                 continue;
             }
@@ -186,12 +188,12 @@ public class ScheduleServiceImpl implements ScheduleService {
                 }
 
                 boolean matches = false;
-                if (s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.WEEKLY) {
+                if (s.getScheduleType() == ScheduleType.WEEKLY) {
                     matches = (date.getDayOfWeek() == limitStart.getDayOfWeek());
-                } else if (s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.MONTHLY) {
+                } else if (s.getScheduleType() == ScheduleType.MONTHLY) {
                     int targetDay = limitStart.getDayOfMonth();
                     matches = (date.getDayOfMonth() == targetDay);
-                } else if (s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.YEARLY) {
+                } else if (s.getScheduleType() == ScheduleType.YEARLY) {
                     int targetMonth = limitStart.getMonthValue();
                     int targetDay = limitStart.getDayOfMonth();
                     if (date.getMonthValue() == targetMonth) {
@@ -284,7 +286,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                             .member(member)
                             .title(title)
                             .description(description)
-                            .scheduleType(com.example.planslot.schedule.entity.ScheduleType.DAILY)
+                            .scheduleType(ScheduleType.DAILY)
                             .startDate(start)
                             .endDate(end)
                             .isPublic("N")

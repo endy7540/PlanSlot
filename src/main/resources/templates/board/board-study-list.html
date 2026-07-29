@@ -24,18 +24,22 @@
 <main class="board-main">
   <div class="board-page-head">
     <div>
-      <div class="board-label">COMMUNITY</div>
+      <div class="board-label"><b>Community Board</b> · 게시판</div>
       <h1>스터디</h1>
       <p>함께 공부할 팀원을 찾고 스터디 소식을 나눠보세요.</p>
     </div>
     <div class="board-head-actions">
-      <button class="board-mine-button board-recruiting-button" id="boardRecruitingButton" type="button" aria-pressed="false">모집 중만 보기</button>
-      <button class="board-mine-button" id="boardMineButton" type="button" aria-pressed="false">내 글 보기</button>
       <button class="board-btn board-btn-primary" id="boardRegisterButton" type="button" hidden>+ 글쓰기</button>
     </div>
   </div>
 
   <section>
+    <div class="board-filter-tabs" role="group" aria-label="게시글 보기 필터">
+      <button class="board-filter-tab active" id="boardAllButton" type="button" aria-pressed="true">전체</button>
+      <button class="board-filter-tab" id="boardRecruitingButton" type="button" aria-pressed="false">모집 중</button>
+      <button class="board-filter-tab" id="boardMineButton" type="button" aria-pressed="false">내 글</button>
+    </div>
+
     <div class="board-card board-toolbar">
       <div class="board-search">
         <select id="boardSearchType" class="board-search-select" aria-label="검색 조건">

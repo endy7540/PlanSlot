@@ -43,8 +43,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."));
 
         if (requestDTO.getDeadlineDate() != null && requestDTO.getStartDate() != null) {
-            if (requestDTO.getDeadlineDate().isBefore(requestDTO.getStartDate().toLocalDate())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "데드라인 날짜는 일정 시작일보다 이전일 수 없습니다.");
+            if (requestDTO.getDeadlineDate().isAfter(requestDTO.getStartDate().toLocalDate())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "데드라인 날짜는 일정 시작일보다 이후일 수 없습니다.");
             }
         }
 
@@ -103,8 +103,8 @@ public class ScheduleServiceImpl implements ScheduleService {
         Schedule schedule = getOwnedSchedule(scheduleId, memberId);
 
         if (requestDTO.getDeadlineDate() != null && requestDTO.getStartDate() != null) {
-            if (requestDTO.getDeadlineDate().isBefore(requestDTO.getStartDate().toLocalDate())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "데드라인 날짜는 일정 시작일보다 이전일 수 없습니다.");
+            if (requestDTO.getDeadlineDate().isAfter(requestDTO.getStartDate().toLocalDate())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "데드라인 날짜는 일정 시작일보다 이후일 수 없습니다.");
             }
         }
 
@@ -190,9 +190,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                     matches = (date.getDayOfWeek() == limitStart.getDayOfWeek());
                 } else if (s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.MONTHLY) {
                     int targetDay = limitStart.getDayOfMonth();
-                    int maxDayInMonth = date.lengthOfMonth();
-                    int actualDay = Math.min(targetDay, maxDayInMonth);
-                    matches = (date.getDayOfMonth() == actualDay);
+                    matches = (date.getDayOfMonth() == targetDay);
                 } else if (s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.YEARLY) {
                     int targetMonth = limitStart.getMonthValue();
                     int targetDay = limitStart.getDayOfMonth();

@@ -40,6 +40,7 @@ public class GroupChatController {
     private final GroupMemberRepository groupMemberRepository;
     private final SimpMessageSendingOperations messagingTemplate;
     private final GroupChatAiService groupChatAiService;
+    private final com.example.planslot.groupchat.repository.GroupReportRepository groupReportRepository;
 
     private Long getAuthenticatedMemberId(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -84,12 +85,14 @@ public class GroupChatController {
                 .filter(g -> "joined".equals(g.filter()))
                 .collect(Collectors.toList());
         List<ChatMessageDTO> chatHistory = groupChatService.getChatHistory(groupId);
+        List<Long> reportedMessageIds = groupReportRepository.findReportedMessageIds(groupId, memberId);
         
         model.addAttribute("group", groupDetail);
         model.addAttribute("myGroups", myGroups);
         model.addAttribute("groupId", groupId);
         model.addAttribute("myMemberId", memberId);
         model.addAttribute("chatHistory", chatHistory);
+        model.addAttribute("reportedMessageIds", reportedMessageIds);
         return "groupChat/chatRoom";
     }
 
@@ -208,6 +211,28 @@ public class GroupChatController {
         }
         
         // /sub/chat/room/{groupId} 구독자들에게 메시지 뿌리기
+        messagingTemplate.convertAndSend("/sub/chat/room/" + message.getGroupId(), message);
+    }
+
+    @MessageMapping("/chat/message/update")
+    public void updateMessage(ChatMessageDTO message, java.security.Principal principal) {
+        if (principal == null) throw new IllegalArgumentException("인증되지 않은 사용자입니다.");
+        Long realMemberId = getAuthenticatedMemberId((Authentication) principal);
+        groupChatService.updateMessage(realMemberId, message.getId(), message.getContent());
+        
+        message.setType(ChatMessageDTO.MessageType.UPDATE);
+        message.setIsEdited(true);
+        messagingTemplate.convertAndSend("/sub/chat/room/" + message.getGroupId(), message);
+    }
+
+    @MessageMapping("/chat/message/delete")
+    public void deleteMessage(ChatMessageDTO message, java.security.Principal principal) {
+        if (principal == null) throw new IllegalArgumentException("인증되지 않은 사용자입니다.");
+        Long realMemberId = getAuthenticatedMemberId((Authentication) principal);
+        groupChatService.deleteMessage(realMemberId, message.getId());
+        
+        message.setType(ChatMessageDTO.MessageType.DELETE);
+        message.setContent("삭제된 메시지입니다.");
         messagingTemplate.convertAndSend("/sub/chat/room/" + message.getGroupId(), message);
     }
 }

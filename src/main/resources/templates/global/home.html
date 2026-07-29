@@ -144,11 +144,11 @@
         <div class="chatbot-header-badge">PS</div>
         <div class="chatbot-header-text">
           <strong>플랜슬롯 AI 도우미</strong>
-          <span>서비스 이용 방법 안내</span>
+          <div class="chatbot-header-status"><span class="chatbot-status-dot" aria-hidden="true"></span>플랜슬롯 이용 방법을 안내해요</div>
         </div>
       </div>
       <div class="chatbot-header-actions">
-        <button class="chatbot-clear-btn" id="chatbotClear" type="button">기록 지우기</button>
+        <button class="chatbot-clear-btn" id="chatbotClear" type="button">대화 내용 지우기</button>
         <button class="chatbot-icon-btn" id="chatbotClose" type="button" aria-label="챗봇 닫기">×</button>
       </div>
     </div>
@@ -157,8 +157,14 @@
 
     <div class="chatbot-compose">
       <div class="chatbot-input-wrap">
-        <textarea class="chatbot-input" id="chatbotInput" maxlength="100" rows="1" placeholder="플랜슬롯 사용 방법을 질문해 주세요."></textarea>
-        <button class="chatbot-send-btn" id="chatbotSend" type="button" disabled>전송</button>
+        <textarea class="chatbot-input" id="chatbotInput" maxlength="100" rows="1" placeholder="플랜슬롯 기능을 질문해 주세요."></textarea>
+        <button class="chatbot-send-btn" id="chatbotSend" type="button" aria-label="질문 전송" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg>
+        </button>
+      </div>
+      <div class="chatbot-compose-meta">
+        <span>Enter 전송 · Shift+Enter 줄바꿈</span>
+        <span class="chatbot-counter" id="chatbotCounter">0/100</span>
       </div>
     </div>
   </section>

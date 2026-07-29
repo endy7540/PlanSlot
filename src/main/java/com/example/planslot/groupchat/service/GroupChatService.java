@@ -18,4 +18,10 @@ public interface GroupChatService {
 
     // 중복 신고 확인
     boolean checkDuplicateReport(Long memberId, Long messageId);
+
+    // 메시지 수정
+    void updateMessage(Long memberId, Long messageId, String content);
+
+    // 메시지 삭제
+    void deleteMessage(Long memberId, Long messageId);
 }

@@ -41,11 +41,25 @@ public class ChatMessage {
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted = false;
 
+    @Column(name = "is_edited", nullable = false)
+    private boolean isEdited = false;
+
     @Builder
     public ChatMessage(GroupChatRoom groupChatRoom, Member sender, String content) {
         this.groupChatRoom = groupChatRoom;
         this.sender = sender;
         this.content = content;
+    }
+
+    public void updateContent(String newContent) {
+        this.content = newContent;
+        this.isEdited = true;
+    }
+
+    public void markAsDeleted() {
+        this.isDeleted = true;
+        this.isEdited = false;
+        this.content = "삭제된 메시지입니다.";
     }
 
     public void delete() {

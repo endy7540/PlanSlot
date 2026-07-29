@@ -1622,3 +1622,9 @@ document.getElementById('btnSubmitShareMySchedule').addEventListener('click', as
     }
   } catch (e) { console.error(e); }
 });
+
+
+if (!localStorage.getItem('jwtToken')) {
+            alert('로그인이 필요한 서비스입니다.');
+            window.location.href = '/auth/login';
+        }

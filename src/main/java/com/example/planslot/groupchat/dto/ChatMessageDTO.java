@@ -18,7 +18,7 @@ public class ChatMessageDTO {
     
     // 메시지 종류: 입장(ENTER), 일반 메시지(TALK)
     public enum MessageType {
-        ENTER, TALK
+        ENTER, TALK, UPDATE, DELETE
     }
 
     private MessageType type; // 메시지 타입
@@ -28,6 +28,7 @@ public class ChatMessageDTO {
     private String senderName;// 보내는 사람 이름
     private String content;   // 메시지 내용
     private LocalDateTime createdAt;
+    private Boolean isEdited; // 수정 여부
 
     public static ChatMessageDTO from(ChatMessage message) {
         return ChatMessageDTO.builder()
@@ -38,6 +39,7 @@ public class ChatMessageDTO {
                 .senderName(message.getSender().getDisplayName())
                 .content(message.getContent())
                 .createdAt(message.getCreatedAt())
+                .isEdited(message.isEdited())
                 .build();
     }
 }

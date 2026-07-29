@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PlanSlot - 자유게시판</title>
   <link rel="stylesheet" th:href="@{/css/notification/notification.css}" href="/css/notification/notification.css">
-  <link rel="stylesheet" th:href="@{/css/board/board.css}" href="/css/board/board.css">
+  <link rel="stylesheet" th:href="@{/css/board/board-common.css}" href="/css/board/board-common.css">
+  <link rel="stylesheet" th:href="@{/css/board/board-list.css}" href="/css/board/board-list.css">
 </head>
 <body data-board-page="list" data-board-type="FREE">
 
@@ -71,6 +72,7 @@
 </main>
 
 <div class="board-toast" id="boardToast"></div>
-<script th:src="@{/js/board/board.js}" src="/js/board/board.js"></script>
+<script th:src="@{/js/board/board-common.js}" src="/js/board/board-common.js"></script>
+<script th:src="@{/js/board/board-list.js}" src="/js/board/board-list.js"></script>
 </body>
 </html>

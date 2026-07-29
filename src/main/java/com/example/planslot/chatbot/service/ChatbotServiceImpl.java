@@ -10,7 +10,6 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -18,10 +17,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,14 +31,12 @@ public class ChatbotServiceImpl implements ChatbotService {
 
     private static final String GENERAL_ERROR_MESSAGE = "현재 답변을 불러올 수 없어요. 잠시 후 다시 질문해 주세요.";
     private static final String TIMEOUT_MESSAGE = "답변이 예상보다 오래 걸리고 있어요. 잠시 후 다시 질문해 주세요.";
-    private static final String RATE_LIMIT_MESSAGE = "질문이 너무 빠르게 이어졌어요. 잠시 후 다시 시도해 주세요.";
-    private static final int MAX_HISTORY_ASSISTANT_LENGTH = 2000;
+    private static final String REQUEST_IN_PROGRESS_MESSAGE = "답변을 준비 중이에요. 잠시만 기다려 주세요.";
+    private static final int MAX_HISTORY_ASSISTANT_LENGTH = 1200;
     private static final Pattern EMOJI_PATTERN = Pattern.compile("[\\x{1F300}-\\x{1FAFF}\\x{2600}-\\x{27BF}\\x{FE0F}]", Pattern.UNICODE_CHARACTER_CLASS);
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Set<String> activeRequests = ConcurrentHashMap.newKeySet();
-    private final Map<String, Deque<Instant>> requestHistory = new ConcurrentHashMap<>();
-    private final Map<String, Instant> lastCompletedAt = new ConcurrentHashMap<>();
     private HttpClient httpClient;
 
     @Value("${ai.url:https://api.anthropic.com/v1/messages}")
@@ -57,7 +51,7 @@ public class ChatbotServiceImpl implements ChatbotService {
     @Value("${ai.model:claude-3-haiku-20240307}")
     private String claudeModel;
 
-    @Value("${chatbot.max-tokens:1000}")
+    @Value("${chatbot.max-tokens:300}")
     private int maxTokens;
 
     @Value("${chatbot.timeout-seconds:15}")
@@ -68,15 +62,6 @@ public class ChatbotServiceImpl implements ChatbotService {
 
     @Value("${chatbot.history-rounds:5}")
     private int historyRounds;
-
-    @Value("${chatbot.cooldown-seconds:3}")
-    private int cooldownSeconds;
-
-    @Value("${chatbot.request-limit:20}")
-    private int requestLimit;
-
-    @Value("${chatbot.request-limit-minutes:10}")
-    private int requestLimitMinutes;
 
     @PostConstruct
     private void initializeHttpClient() {
@@ -93,20 +78,12 @@ public class ChatbotServiceImpl implements ChatbotService {
 
         String message = validateAndNormalizeRequest(request);
         if (!activeRequests.add(memberKey)) {
-            throw new ChatbotException(HttpStatus.TOO_MANY_REQUESTS, "CHATBOT_REQUEST_IN_PROGRESS", RATE_LIMIT_MESSAGE);
+            throw new ChatbotException(HttpStatus.CONFLICT, "CHATBOT_REQUEST_IN_PROGRESS", REQUEST_IN_PROGRESS_MESSAGE);
         }
 
-        boolean countedRequest = false;
         try {
-            enforceCooldown(memberKey);
-            registerRequest(memberKey);
-            countedRequest = true;
-            String answer = callClaude(message, request.getHistory());
-            return ChatbotResponseDTO.success(answer);
+            return ChatbotResponseDTO.success(callClaude(message, request.getHistory()));
         } finally {
-            if (countedRequest) {
-                lastCompletedAt.put(memberKey, Instant.now());
-            }
             activeRequests.remove(memberKey);
         }
     }
@@ -158,46 +135,6 @@ public class ChatbotServiceImpl implements ChatbotService {
             historyMessage.setContent(content);
         }
         return message;
-    }
-
-    private void enforceCooldown(String memberKey) {
-        Instant completedAt = lastCompletedAt.get(memberKey);
-        if (completedAt != null && Instant.now().isBefore(completedAt.plusSeconds(cooldownSeconds))) {
-            throw new ChatbotException(HttpStatus.TOO_MANY_REQUESTS, "CHATBOT_COOLDOWN", RATE_LIMIT_MESSAGE);
-        }
-    }
-
-    private void registerRequest(String memberKey) {
-        Instant now = Instant.now();
-        Instant windowStart = now.minus(Duration.ofMinutes(requestLimitMinutes));
-
-        requestHistory.compute(memberKey, (key, timestamps) -> {
-            Deque<Instant> current = timestamps == null ? new ArrayDeque<>() : timestamps;
-            while (!current.isEmpty() && current.peekFirst().isBefore(windowStart)) {
-                current.pollFirst();
-            }
-            if (current.size() >= requestLimit) {
-                throw new ChatbotException(HttpStatus.TOO_MANY_REQUESTS, "CHATBOT_RATE_LIMIT", RATE_LIMIT_MESSAGE);
-            }
-            current.addLast(now);
-            return current;
-        });
-    }
-
-    @Scheduled(fixedDelayString = "${chatbot.cleanup-interval-millis:600000}")
-    public void cleanupRequestState() {
-        Instant now = Instant.now();
-        Instant requestWindowStart = now.minus(Duration.ofMinutes(requestLimitMinutes));
-
-        requestHistory.forEach((memberKey, ignored) ->
-                requestHistory.computeIfPresent(memberKey, (key, timestamps) -> {
-                    while (!timestamps.isEmpty() && timestamps.peekFirst().isBefore(requestWindowStart)) {
-                        timestamps.pollFirst();
-                    }
-                    return timestamps.isEmpty() ? null : timestamps;
-                }));
-
-        lastCompletedAt.entrySet().removeIf(entry -> entry.getValue().isBefore(requestWindowStart));
     }
 
     private String callClaude(String message, List<ChatbotRequestDTO.HistoryMessage> history) {

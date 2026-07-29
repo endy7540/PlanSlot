@@ -1,18 +1,56 @@
 (function() {
-    const STORAGE_KEY = 'planslotChatbotMessages';
+    const STORAGE_BASE_KEY = 'planslotChatbotMessages';
+    const SAVED_AT_BASE_KEY = 'planslotChatbotSavedAt';
     const CLIENT_ID_KEY = 'planslotChatbotClientId';
     const MAX_QUESTION_LENGTH = 100;
     const HISTORY_ROUNDS = 5;
-    const COOLDOWN_MS = 3000;
-    const GREETING = '안녕하세요. 플랜슬롯 이용 방법이 궁금한가요? 로그인하지 않아도 일정, 모임, 게시판, 알림 등 사용 방법을 질문할 수 있어요.';
+    const STORAGE_EXPIRES_MS = 2 * 60 * 60 * 1000;
+    const GREETING = '안녕하세요. 플랜슬롯 이용 방법을 짧고 정확하게 안내해 드릴게요.';
 
     let messages = [];
     let isRequesting = false;
     let typingRow = null;
-    let cooldownTimer = null;
+    let storageScope = resolveStorageScope();
 
     function getToken() {
         return localStorage.getItem('jwtToken');
+    }
+
+    function getTokenSubject(token) {
+        try {
+            const payload = token.split('.')[1];
+            if (!payload) return '';
+            const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+            const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+            const parsed = JSON.parse(atob(padded));
+            return typeof parsed.sub === 'string' ? parsed.sub : '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function hashText(text) {
+        let hash = 2166136261;
+        for (let i = 0; i < text.length; i++) {
+            hash ^= text.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+        }
+        return (hash >>> 0).toString(36);
+    }
+
+    function resolveStorageScope() {
+        const token = getToken();
+        if (!token) return 'guest';
+        const subject = getTokenSubject(token);
+        return `member-${hashText(subject || token)}`;
+    }
+
+    function getStorageKey() {
+        return `${STORAGE_BASE_KEY}:${storageScope}`;
+    }
+
+    function getSavedAtKey() {
+        return `${SAVED_AT_BASE_KEY}:${storageScope}`;
     }
 
     function getClientId() {
@@ -34,15 +72,36 @@
         document.cookie = 'jwtToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     }
 
+    function isConversationExpired() {
+        const savedAt = Number(sessionStorage.getItem(getSavedAtKey()));
+        return !Number.isFinite(savedAt) || Date.now() - savedAt >= STORAGE_EXPIRES_MS;
+    }
+
     function loadMessages() {
         try {
-            const saved = sessionStorage.getItem(STORAGE_KEY);
-            const parsed = saved ? JSON.parse(saved) : [];
+            const saved = sessionStorage.getItem(getStorageKey());
+            if (!saved) {
+                messages = [];
+                sessionStorage.removeItem(getSavedAtKey());
+                return;
+            }
+            if (isConversationExpired()) {
+                clearStoredMessages();
+                return;
+            }
+            const parsed = JSON.parse(saved);
             messages = Array.isArray(parsed) ? parsed.filter(isValidStoredMessage) : [];
         } catch (e) {
-            messages = [];
-            sessionStorage.removeItem(STORAGE_KEY);
+            clearStoredMessages();
         }
+    }
+
+    function switchConversationScope() {
+        const nextScope = resolveStorageScope();
+        if (nextScope === storageScope) return;
+        storageScope = nextScope;
+        loadMessages();
+        renderMessages();
     }
 
     function isValidStoredMessage(message) {
@@ -51,13 +110,15 @@
 
     function saveMessages() {
         try {
-            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+            sessionStorage.setItem(getStorageKey(), JSON.stringify(messages));
+            sessionStorage.setItem(getSavedAtKey(), String(Date.now()));
         } catch (e) {
             trimOldestConversation();
             try {
-                sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+                sessionStorage.setItem(getStorageKey(), JSON.stringify(messages));
+                sessionStorage.setItem(getSavedAtKey(), String(Date.now()));
             } catch (ignored) {
-                sessionStorage.removeItem(STORAGE_KEY);
+                clearStoredMessages();
             }
         }
     }
@@ -67,29 +128,28 @@
             messages = [];
             return;
         }
-        let removeCount = 1;
-        if (messages[0] && messages[0].role === 'user' && messages[1] && messages[1].role === 'assistant') {
-            removeCount = 2;
-        }
+        const removeCount = messages[0]?.role === 'user' && messages[1]?.role === 'assistant' ? 2 : 1;
         messages.splice(0, removeCount);
     }
 
     function clearStoredMessages() {
         messages = [];
-        sessionStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(getStorageKey());
+        sessionStorage.removeItem(getSavedAtKey());
+    }
+
+    function createAvatar() {
+        const avatar = document.createElement('div');
+        avatar.className = 'chatbot-avatar';
+        avatar.textContent = 'PS';
+        return avatar;
     }
 
     function createMessageRow(message) {
         const row = document.createElement('div');
         row.className = `chatbot-message-row ${message.role}`;
         if (message.type === 'error') row.classList.add('error');
-
-        if (message.role === 'assistant') {
-            const avatar = document.createElement('div');
-            avatar.className = 'chatbot-avatar';
-            avatar.textContent = '🤖';
-            row.appendChild(avatar);
-        }
+        if (message.role === 'assistant') row.appendChild(createAvatar());
 
         const bubble = document.createElement('div');
         bubble.className = 'chatbot-bubble';
@@ -121,10 +181,9 @@
     }
 
     function updateMessageType(index, type) {
-        if (messages[index]) {
-            messages[index].type = type;
-            saveMessages();
-        }
+        if (!messages[index]) return;
+        messages[index].type = type;
+        saveMessages();
     }
 
     function showTyping() {
@@ -133,16 +192,12 @@
         typingRow = document.createElement('div');
         typingRow.className = 'chatbot-message-row assistant';
 
-        const avatar = document.createElement('div');
-        avatar.className = 'chatbot-avatar';
-        avatar.textContent = '🤖';
-
         const bubble = document.createElement('div');
         bubble.className = 'chatbot-bubble chatbot-typing';
         bubble.setAttribute('aria-label', '답변 작성 중');
         bubble.innerHTML = '<span></span><span></span><span></span>';
 
-        typingRow.appendChild(avatar);
+        typingRow.appendChild(createAvatar());
         typingRow.appendChild(bubble);
         container.appendChild(typingRow);
         scrollToBottom();
@@ -177,16 +232,6 @@
         if (sendButton) sendButton.disabled = requesting || !input || !input.value.trim();
     }
 
-    function startCooldown() {
-        const input = document.getElementById('chatbotInput');
-        const sendButton = document.getElementById('chatbotSend');
-        if (sendButton) sendButton.disabled = true;
-        clearTimeout(cooldownTimer);
-        cooldownTimer = setTimeout(() => {
-            if (sendButton && input) sendButton.disabled = !input.value.trim();
-        }, COOLDOWN_MS);
-    }
-
     function requestChatbot(message, history, token) {
         const headers = {
             'Content-Type': 'application/json',
@@ -202,10 +247,17 @@
         });
     }
 
+    function expireConversationIfNeeded() {
+        if (!sessionStorage.getItem(getStorageKey()) || !isConversationExpired()) return;
+        clearStoredMessages();
+        renderMessages();
+    }
+
     async function sendMessage() {
         const input = document.getElementById('chatbotInput');
         if (!input || isRequesting) return;
 
+        expireConversationIfNeeded();
         const text = input.value.trim();
         const length = Array.from(text).length;
         if (!text) return;
@@ -214,8 +266,8 @@
             return;
         }
 
-        const history = buildHistory();
-        const userIndex = messages.length;
+        let history = buildHistory();
+        let userIndex = messages.length;
         appendMessage({ role: 'user', type: 'pending', content: text, createdAt: Date.now() });
         input.value = '';
         updateInputState();
@@ -223,11 +275,18 @@
         showTyping();
 
         try {
-            const token = getToken();
+            let token = getToken();
             let response = await requestChatbot(text, history, token);
             if (response.status === 401 && token) {
+                updateMessageType(userIndex, 'failed');
                 clearAuthToken();
-                response = await requestChatbot(text, history, null);
+                switchConversationScope();
+                history = buildHistory();
+                userIndex = messages.length;
+                appendMessage({ role: 'user', type: 'pending', content: text, createdAt: Date.now() });
+                showTyping();
+                token = null;
+                response = await requestChatbot(text, history, token);
             }
 
             let result = null;
@@ -243,7 +302,7 @@
                 appendMessage({
                     role: 'assistant',
                     type: 'error',
-                    content: result && result.message ? result.message : '현재 답변을 불러올 수 없어요. 잠시 후 다시 질문해 주세요.',
+                    content: result?.message || '현재 답변을 불러올 수 없어요. 잠시 후 다시 질문해 주세요.',
                     createdAt: Date.now()
                 });
                 return;
@@ -258,7 +317,6 @@
         } finally {
             hideTyping();
             setRequestState(false);
-            startCooldown();
             if (input) input.focus();
         }
     }
@@ -266,23 +324,29 @@
     function updateInputState() {
         const input = document.getElementById('chatbotInput');
         const sendButton = document.getElementById('chatbotSend');
+        const counter = document.getElementById('chatbotCounter');
         if (!input) return;
         const length = Array.from(input.value).length;
         if (sendButton && !isRequesting) sendButton.disabled = !input.value.trim() || length > MAX_QUESTION_LENGTH;
+        if (counter) {
+            counter.textContent = `${length}/${MAX_QUESTION_LENGTH}`;
+            counter.classList.toggle('limit', length >= MAX_QUESTION_LENGTH);
+        }
         input.style.height = 'auto';
-        input.style.height = `${Math.min(input.scrollHeight, 92)}px`;
+        input.style.height = `${Math.min(input.scrollHeight, 88)}px`;
     }
 
     function openChatbot() {
         const windowElement = document.getElementById('chatbotWindow');
         const toggle = document.getElementById('chatbotToggle');
         if (!windowElement || !toggle) return;
+        switchConversationScope();
+        loadMessages();
         windowElement.hidden = false;
         toggle.setAttribute('aria-expanded', 'true');
         toggle.style.display = 'none';
         renderMessages();
-        const input = document.getElementById('chatbotInput');
-        if (input) input.focus();
+        document.getElementById('chatbotInput')?.focus();
     }
 
     function closeChatbot() {
@@ -295,9 +359,9 @@
     }
 
     function clearConversation() {
-        if (!confirm('대화 기록을 모두 지울까요?')) return;
         clearStoredMessages();
         renderMessages();
+        document.getElementById('chatbotInput')?.focus();
     }
 
     function observeExistingAiWidget() {

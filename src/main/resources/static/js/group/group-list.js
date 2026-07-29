@@ -556,3 +556,8 @@ window.showWaitingGroupInfo = async function(groupId) {
     showToast('모임 정보를 불러오지 못했습니다.');
   }
 };
+
+if (!localStorage.getItem('jwtToken')) {
+            alert('로그인이 필요한 서비스입니다.');
+            window.location.href = '/auth/login';
+        }

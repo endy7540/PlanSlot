@@ -28,6 +28,7 @@ async function openReportModal(targetType, targetId) {
     try {
       const duplicated = await fetchBoardJson(path);
       if (duplicated) {
+        if (targetType === 'POST') document.getElementById('boardReportButton')?.classList.add('board-btn-reported');
         showBoardToast(targetType === 'POST' ? '이미 신고한 게시글입니다.' : '이미 신고한 댓글입니다.', true);
         return;
       }
@@ -79,9 +80,11 @@ async function submitBoardReport() {
       });
 
       closeReportModal();
+      if (target.targetType === 'POST') document.getElementById('boardReportButton')?.classList.add('board-btn-reported');
       showBoardToast('신고가 접수되었습니다.', false, 'success');
     } catch (error) {
       if (error.status === 409) {
+        if (target.targetType === 'POST') document.getElementById('boardReportButton')?.classList.add('board-btn-reported');
         showBoardToast(target.targetType === 'POST' ? '이미 신고한 게시글입니다.' : '이미 신고한 댓글입니다.', true);
         return;
       }
@@ -272,6 +275,18 @@ function renderBoardReadActions(board) {
   document.getElementById('boardGroupOpenButton')?.addEventListener('click', event => openBoardGroupModal(board, event.currentTarget));
   document.getElementById('boardRecruitmentStatusButton')?.addEventListener('click', event => updateBoardRecruitmentStatus(board, event.currentTarget));
   document.getElementById('boardGroupViewButton')?.addEventListener('click', () => location.href = `/group/read?id=${board.groupId}`);
+  updateBoardReportButtonState(board.boardId);
+}
+async function updateBoardReportButtonState(boardId) {
+  const reportButton = document.getElementById('boardReportButton');
+  if (!reportButton || !currentBoardMember) return;
+
+  try {
+    const duplicated = await fetchBoardJson(`/board/${boardId}/report/check`);
+    reportButton.classList.toggle('board-btn-reported', Boolean(duplicated));
+  } catch (error) {
+    if (error.status !== 401 && error.status !== 403) console.warn('게시글 신고 여부를 확인하지 못했습니다.', error);
+  }
 }
 function updateBoardCommentFormState() {
   const form = document.getElementById('boardCommentForm');

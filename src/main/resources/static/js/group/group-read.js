@@ -364,7 +364,7 @@ function renderMembers(){
     const fallbackSvg = `<div style="width:100%; height:100%; background: #e2e8f0; border-radius:50%; display:flex; justify-content:center; align-items:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>`;
     
     const avatarHtml = (m.profileImageUrl && m.profileImageUrl !== 'null' && m.profileImageUrl.trim() !== '')
-      ? `<img src="${m.profileImageUrl}" alt="${m.name}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" onerror="this.outerHTML='${fallbackSvg.replace(/'/g, "\\'")}'">`
+      ? `<img src="${m.profileImageUrl}" alt="${m.name}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" onerror="this.outerHTML=decodeURIComponent('${encodeURIComponent(fallbackSvg)}')">`
       : fallbackSvg;
 
     let colorPickerHtml = '';
@@ -436,11 +436,38 @@ function renderMembers(){
   group.waiting.forEach(w => {
     const row = document.createElement('div');
     row.className = 'waiting-item';
+    let cancelBtnHtml = '';
+    if (owner) {
+      cancelBtnHtml = `<button class="btn btn-sm btn-danger cancel-invite-btn" data-id="${w.id}">취소</button>`;
+    }
+    
     row.innerHTML = `
-      <div><b>${w.email}</b><span>${w.inviterName}님이 초대함</span></div>
-      <div class="member-actions">
+      <div><b>${w.nickname || w.email}</b><span>${w.inviterName}님이 초대함</span></div>
+      <div class="member-actions" style="display:flex; align-items:center; gap:8px;">
         <span class="pill waiting">응답 대기중</span>
+        ${cancelBtnHtml}
       </div>`;
+      
+    if (owner) {
+      setTimeout(() => {
+        const cancelBtn = row.querySelector('.cancel-invite-btn');
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', () => {
+            openConfirm('초대를 취소할까요?', `'${w.nickname || w.email}'님에 대한 모임 초대를 취소합니다.`, async () => {
+              try {
+                const res = await fetchApi(`/group/${group.id}/member/${w.id}`, { method: 'DELETE' });
+                if (res.ok) {
+                  showToast('초대를 취소했어요.');
+                  fetchGroupDetail();
+                } else {
+                  showToast('취소 중 오류가 발생했습니다.');
+                }
+              } catch(e) { console.error(e); }
+            });
+          });
+        }
+      }, 0);
+    }
     waitingList.appendChild(row);
   });
 }

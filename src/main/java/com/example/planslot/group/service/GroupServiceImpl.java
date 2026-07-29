@@ -141,7 +141,7 @@ public class GroupServiceImpl implements GroupService {
             if (gm.getMemberStatus().name().equals("WAITING")) {
                 boolean isMe = mId.equals(memberId.toString());
                 String inviterName = gm.getInviter() != null ? gm.getInviter().getDisplayName() : group.getOwner().getDisplayName();
-                waiting.add(new GroupDTO.WaitingInfo(mId, gm.getMember().getEmail(), inviterName, isMe));
+                waiting.add(new GroupDTO.WaitingInfo(mId, gm.getMember().getEmail(), inviterName, isMe, gm.getMember().getNickname()));
             } else if (gm.getMemberStatus().name().equals("ACTIVE")) {
                 String role = ownerIdStr.equals(mId) ? "owner" : "member";
                 String profileImageUrl = gm.getMember().getProfileImageUrl();
@@ -258,17 +258,18 @@ public class GroupServiceImpl implements GroupService {
         if (!group.getOwner().getId().equals(memberId)) throw new IllegalArgumentException("권한이 없습니다.");
         GroupMember target = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, targetMemberId).orElseThrow(() -> new IllegalArgumentException("대상을 찾을 수 없습니다."));
 
-        // 추방 알림 전송 (그룹 멤버에서 삭제되기 전에 전송해야 알림 설정 필터를 통과함)
-        notificationService.sendGroupMessage(
-                targetMemberId,
-                groupId,
-                "모임 추방 안내",
-                group.getGroupName() + " 모임에서 추방되었습니다.",
-                "group_kick",
-                groupId
-        );
-
-        group.decreasePersonCount();
+        if (target.getMemberStatus().name().equals("ACTIVE")) {
+            // 추방 알림 전송 (그룹 멤버에서 삭제되기 전에 전송해야 알림 설정 필터를 통과함)
+            notificationService.sendGroupMessage(
+                    targetMemberId,
+                    groupId,
+                    "모임 추방 안내",
+                    group.getGroupName() + " 모임에서 추방되었습니다.",
+                    "group_kick",
+                    groupId
+            );
+            group.decreasePersonCount();
+        }
         groupMemberRepository.delete(target);
     }
 

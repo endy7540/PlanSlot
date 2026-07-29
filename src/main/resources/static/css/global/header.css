@@ -62,3 +62,13 @@
 }
 .profile-dropdown button { border-top: 1px solid #f1f5f9; color: #ef4444; }
 .profile-dropdown button:hover { background: #fef2f2; color: #dc2626; }
+
+
+@keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+  }
+@keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+  }

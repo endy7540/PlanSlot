@@ -1,0 +1,20 @@
+window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const isNew = urlParams.get('isNew');
+        
+        if (token) {
+            sessionStorage.removeItem('planslotChatbotMessages');
+            localStorage.setItem('jwtToken', token);
+            document.cookie = "jwtToken=" + token + "; path=/;";
+            
+            if (isNew === 'true') {
+                window.location.href = '/auth/terms?social=true';
+            } else {
+                window.location.href = '/planslot';
+            }
+        } else {
+            alert('소셜 로그인에 실패했습니다.');
+            window.location.href = '/auth/login';
+        }
+    };

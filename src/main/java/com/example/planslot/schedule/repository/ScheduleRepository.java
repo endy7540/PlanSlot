@@ -26,11 +26,11 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     @Query("SELECT s FROM Schedule s WHERE s.member.id = :memberId " +
             "AND s.deletedAt IS NULL " +
             "AND (" +
-            "  (s.scheduleType = com.example.planslot.schedule.entity.ScheduleType.DAILY AND (" +
+            "  ((s.scheduleType IS NULL OR s.scheduleType = com.example.planslot.schedule.entity.ScheduleType.DAILY OR s.scheduleType = com.example.planslot.schedule.entity.ScheduleType.NONE) AND (" +
             "     (s.endDate IS NOT NULL AND s.startDate <= :end AND s.endDate >= :start) OR " +
             "     (s.endDate IS NULL AND s.startDate BETWEEN :start AND :end)" +
             "  )) OR " +
-            "  (s.scheduleType != com.example.planslot.schedule.entity.ScheduleType.DAILY AND s.startDate <= :end)" +
+            "  (s.scheduleType IS NOT NULL AND s.scheduleType != com.example.planslot.schedule.entity.ScheduleType.DAILY AND s.scheduleType != com.example.planslot.schedule.entity.ScheduleType.NONE AND s.startDate <= :end)" +
             ")")
     List<Schedule> findAllByMemberIdAndPeriodCandidate(@Param("memberId") Long memberId,
                                                        @Param("start") LocalDateTime start,

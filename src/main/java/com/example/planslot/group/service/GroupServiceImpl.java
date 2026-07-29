@@ -349,7 +349,7 @@ public class GroupServiceImpl implements GroupService {
                     schedules = scheduleRepository.findAllByMemberIdAndPeriodCandidate(targetMemberId, start, end);
                     for (Schedule s : schedules) {
                         if ("Y".equals(s.getIsPublic()) || targetMemberId.equals(memberId)) {
-                            if (s.getScheduleType() == null || s.getScheduleType() == ScheduleType.DAILY) {
+                            if (s.getScheduleType() == null || s.getScheduleType() == ScheduleType.DAILY || s.getScheduleType() == ScheduleType.NONE) {
                                 String dateStr = s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : "";
                                 String endDateStr = s.getEndDate() != null ? s.getEndDate().toLocalDate().toString() : dateStr;
                                 String timeStr = s.getStartDate() != null ? s.getStartDate().toLocalTime().toString() : "";
@@ -461,7 +461,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public void addGroupSchedule(Long groupId, Long memberId, String title, String dateStr, String timeStr, String visibility, String endDateStr, String endTimeStr) {
+    public void addGroupSchedule(Long groupId, Long memberId, String title, String dateStr, String timeStr, String visibility, String endDateStr, String endTimeStr, String scheduleType, String recurrenceEndDate) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
         Member member = memberRepository.findById(memberId)
@@ -481,13 +481,28 @@ public class GroupServiceImpl implements GroupService {
         }
         
         boolean isPublic = "public".equals(visibility);
+        
+        ScheduleType type = ScheduleType.DAILY;
+        if (scheduleType != null && !scheduleType.trim().isEmpty()) {
+            try {
+                type = ScheduleType.valueOf(scheduleType.toUpperCase());
+            } catch(Exception e) {}
+        }
+        
+        LocalDate parsedRecurrenceEndDate = null;
+        if (recurrenceEndDate != null && !recurrenceEndDate.trim().isEmpty()) {
+            try {
+                parsedRecurrenceEndDate = LocalDate.parse(recurrenceEndDate);
+            } catch(Exception e) {}
+        }
 
         Schedule schedule = Schedule.builder()
                 .member(member)
                 .title(title)
                 .startDate(startDateTime)
                 .endDate(endDateTime)
-                .scheduleType(ScheduleType.DAILY)
+                .scheduleType(type)
+                .recurrenceEndDate(parsedRecurrenceEndDate)
                 .isPublic(isPublic ? "Y" : "N")
                 .sourceType(com.example.planslot.schedule.entity.SourceType.MANUAL)
                 .build();

@@ -96,29 +96,5 @@ public class GroupDTO {
     ) {}
     public record ImportResult(boolean success, String overlappingTitle, String overlappingTime, String importedDate) {}
     public record AiResponse(List<HeatInfo> heat, List<RecInfo> recs) {}
-    public record BookmarkResponse(
-            Long id,
-            int rank,
-            String label,
-            String sub,
-            String tag,
-            String date,
-            String time,
-            String title,
-            String bookmarkedAt
-    ) {
-        public static BookmarkResponse from(com.example.planslot.group.entity.GroupRecommendation r) {
-            return new BookmarkResponse(
-                    r.getId(),
-                    r.getRank(),
-                    r.getLabel(),
-                    r.getSub(),
-                    r.getTag(),
-                    r.getDate(),
-                    r.getTime(),
-                    r.getTitle(),
-                    r.getBookmarkedAt() != null ? r.getBookmarkedAt().toString() : null
-            );
-        }
-    }
+
 }

@@ -1,0 +1,467 @@
+const API_BASE = "http://localhost:8080";
+
+    // 메시지 출력 헬퍼 함수
+    function showFieldMsg(id, text, isSuccess = false) {
+        const el = document.getElementById(id);
+        if(el) {
+            el.innerText = text;
+            el.style.color = isSuccess ? '#047857' : '#B91C1C';
+        }
+    }
+
+    function clearAllFieldMsgs() {
+        document.querySelectorAll('.field-msg').forEach(el => el.innerText = '');
+    }
+
+    // 화면 전환 함수
+    function togglePage(target, updateUrl = true) {
+        document.querySelectorAll('.auth-page').forEach(page => page.classList.remove('active'));
+        document.getElementById('page-' + target).classList.add('active');
+        
+        // 화면 전환 시 메시지 초기화
+        clearAllFieldMsgs();
+
+        // 입력 폼 초기화
+        document.querySelectorAll('.auth-container input').forEach(input => {
+            if (input.type === 'checkbox') {
+                input.checked = false;
+            } else {
+                input.value = '';
+            }
+        });
+        
+        // 중복 확인 및 이메일 인증 상태 초기화
+        if (typeof isIdVerified !== 'undefined') isIdVerified = false;
+        if (typeof isEmailVerified !== 'undefined') isEmailVerified = false;
+        if (typeof emailTimerInterval !== 'undefined') clearInterval(emailTimerInterval);
+        const authContainer = document.getElementById('authCodeContainer');
+        if (authContainer) authContainer.style.display = 'none';
+        const sendBtn = document.getElementById('sendEmailBtn');
+        if (sendBtn) sendBtn.innerText = '인증번호 발송';
+
+        // 브라우저 URL 동기화
+        if (updateUrl) {
+            const newPath = target === 'signup' ? '/auth/signup' : '/auth/login';
+            if (window.location.pathname !== newPath) {
+                window.history.pushState({}, '', newPath);
+            }
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        // 아이디 변경 시 중복확인 초기화
+        document.getElementById('signupId').addEventListener('input', () => {
+            isIdVerified = false;
+            showFieldMsg('signupIdMsg', '');
+        });
+
+        // 비밀번호 실시간 검증 이벤트 리스너 등록
+        document.getElementById('signupPw').addEventListener('input', checkPasswordMatch);
+        document.getElementById('signupPwConfirm').addEventListener('input', checkPasswordMatch);
+        
+        if (window.location.pathname.includes('/auth/signup')) {
+            togglePage('signup', false);
+        } else {
+            togglePage('login', false);
+        }
+    });
+
+    let isIdVerified = false;
+
+    // 아이디 중복 확인 요청
+    async function checkDuplicateIdBtn() {
+        const id = document.getElementById('signupId').value;
+
+        if (!id) {
+            showFieldMsg('signupIdMsg', '아이디를 입력해주세요.');
+            return;
+        }
+
+        try {
+            clearAllFieldMsgs();
+            const response = await fetch(`${API_BASE}/members/checkDuplicate?loginId=${encodeURIComponent(id)}`);
+            if (response.ok) {
+                const isDuplicate = await response.json(); // 백엔드에서 true/false 반환
+                if (isDuplicate) {
+                    showFieldMsg('signupIdMsg', '이미 사용 중인 아이디입니다.');
+                    isIdVerified = false;
+                } else {
+                    showFieldMsg('signupIdMsg', '사용 가능한 아이디입니다.', true);
+                    isIdVerified = true;
+                }
+            } else {
+                showFieldMsg('signupIdMsg', '중복 확인에 실패했습니다.');
+            }
+        } catch (error) {
+            showFieldMsg('signupIdMsg', '서버 통신에 실패했습니다.');
+        }
+    }
+
+    let isEmailVerified = false;
+    let emailTimerInterval;
+    let emailTimeLeft = 300;
+
+    function startEmailTimer() {
+        clearInterval(emailTimerInterval);
+        emailTimeLeft = 300;
+        const timerSpan = document.getElementById('authTimer');
+        timerSpan.style.display = 'inline-block';
+        
+        function updateDisplay() {
+            const m = Math.floor(emailTimeLeft / 60).toString().padStart(2, '0');
+            const s = (emailTimeLeft % 60).toString().padStart(2, '0');
+            timerSpan.innerText = `${m}:${s}`;
+        }
+        
+        updateDisplay();
+        emailTimerInterval = setInterval(() => {
+            emailTimeLeft--;
+            updateDisplay();
+            if (emailTimeLeft <= 0) {
+                clearInterval(emailTimerInterval);
+                showFieldMsg('signupAuthCodeMsg', '인증 시간이 만료되었습니다. 인증번호를 다시 발송해주세요.');
+                document.getElementById('authCodeContainer').style.display = 'none';
+            }
+        }, 1000);
+    }
+
+    // 이메일 입력값 변경 시 인증 상태 초기화
+    document.getElementById('signupEmail').addEventListener('input', () => {
+        isEmailVerified = false;
+        clearInterval(emailTimerInterval);
+        document.getElementById('sendEmailBtn').innerText = '인증번호 발송';
+        document.getElementById('authCodeContainer').style.display = 'none';
+        document.getElementById('signupAuthCode').value = '';
+        showFieldMsg('signupEmailMsg', '');
+        showFieldMsg('signupAuthCodeMsg', '');
+    });
+
+    // 인증번호 발송 요청
+    async function sendEmailCodeBtn() {
+        const email = document.getElementById('signupEmail').value;
+
+        if (!email) {
+            showFieldMsg('signupEmailMsg', '이메일을 입력해주세요.');
+            return;
+        }
+
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(email)) {
+            showFieldMsg('signupEmailMsg', '올바른 이메일 형식을 입력해주세요.');
+            return;
+        }
+
+        try {
+            showFieldMsg('signupEmailMsg', '인증번호 발송 중... (최대 10초 소요)', true);
+            const response = await fetch(`${API_BASE}/auth/email/send`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email })
+            });
+            
+            if (response.ok) {
+                showFieldMsg('signupEmailMsg', '이메일로 인증번호가 발송되었습니다. 5분 안에 입력해주세요.', true);
+                document.getElementById('authCodeContainer').style.display = 'flex';
+                document.getElementById('sendEmailBtn').innerText = '재발송';
+                startEmailTimer();
+            } else {
+                const errorMsg = await response.text();
+                showFieldMsg('signupEmailMsg', errorMsg || '이메일 발송에 실패했습니다. 올바른 주소인지 확인해주세요.');
+            }
+        } catch (error) {
+            showFieldMsg('signupEmailMsg', '서버 통신에 실패했습니다.');
+        }
+    }
+
+    // 인증번호 확인 요청
+    async function verifyEmailCodeBtn() {
+        const email = document.getElementById('signupEmail').value;
+        const authCode = document.getElementById('signupAuthCode').value;
+
+        if (!authCode) {
+            showFieldMsg('signupAuthCodeMsg', '인증번호를 입력해주세요.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/auth/email/verify`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email, authCode: authCode })
+            });
+
+            if (response.ok) {
+                showFieldMsg('signupAuthCodeMsg', '이메일 인증이 완료되었습니다.', true);
+                isEmailVerified = true;
+                clearInterval(emailTimerInterval);
+                document.getElementById('authCodeContainer').style.display = 'none';
+                showFieldMsg('signupEmailMsg', '');
+            } else {
+                showFieldMsg('signupAuthCodeMsg', '인증 실패: 잘못된 인증번호이거나 만료되었습니다.');
+            }
+        } catch (error) {
+            showFieldMsg('signupAuthCodeMsg', '서버 통신에 실패했습니다.');
+        }
+    }
+
+    // 비밀번호 실시간 검증 함수
+    function checkPasswordMatch() {
+        const pw = document.getElementById('signupPw').value;
+        const pwConfirm = document.getElementById('signupPwConfirm').value;
+
+        if (pwConfirm.length === 0) {
+            showFieldMsg('signupPwConfirmMsg', '');
+            return;
+        }
+
+        if (pw === pwConfirm) {
+            showFieldMsg('signupPwConfirmMsg', '비밀번호가 일치합니다.', true);
+        } else {
+            showFieldMsg('signupPwConfirmMsg', '비밀번호가 서로 일치하지 않습니다.');
+        }
+    }
+
+    // Moved DOMContentLoaded to the top
+
+    // 로그인 로직
+    async function doLogin() {
+        const id = document.getElementById('loginId').value;
+        const pw = document.getElementById('loginPw').value;
+        const keep = document.getElementById('keepLogin').checked;
+
+        if(!id && !pw) {
+            showFieldMsg('loginPwMsg', '아이디와 비밀번호를 입력해주세요.');
+            return;
+        } else if(!id) {
+            showFieldMsg('loginPwMsg', '아이디를 입력해주세요.');
+            return;
+        } else if(!pw) {
+            showFieldMsg('loginPwMsg', '비밀번호를 입력해주세요.');
+            return;
+        }
+
+        try {
+            clearAllFieldMsgs();
+            const response = await fetch(`${API_BASE}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginId: id, password: pw, keepLogin: keep })
+            });
+
+            const result = await response.text();
+
+            if(response.ok) {
+                showFieldMsg('loginPwMsg', `로그인 성공! 홈 화면으로 이동합니다...`, true);
+
+                const tokenStr = result.replace("Bearer ", "").trim();
+                sessionStorage.removeItem("planslotChatbotMessages");
+                localStorage.setItem("jwtToken", tokenStr);
+                document.cookie = "jwtToken=" + tokenStr + "; path=/;";
+
+                window.location.href = "/planslot";
+            } else {
+                showFieldMsg('loginPwMsg', result || '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.');
+                document.getElementById('loginPw').value = '';
+            }
+        } catch (error) {
+            showFieldMsg('loginPwMsg', '서버 통신에 실패했습니다.');
+            document.getElementById('loginPw').value = '';
+        }
+    }
+
+    // 회원가입 로직
+    async function doSignUp() {
+        clearAllFieldMsgs();
+        
+        const id = document.getElementById('signupId').value;
+        const pw = document.getElementById('signupPw').value;
+        const pwConfirm = document.getElementById('signupPwConfirm').value;
+        const email = document.getElementById('signupEmail').value;
+        const nickname = document.getElementById('signupNickname').value;
+        const sido = document.getElementById('signupSido').value;
+        const sigungu = document.getElementById('signupSigungu').value;
+        const address = (sido && sigungu) ? `${sido} ${sigungu}` : '';
+
+        if(!id || !pw || !pwConfirm || !email || !nickname) {
+            showFieldMsg('signupNicknameMsg', '필수 항목(아이디, 비밀번호, 비밀번호 재확인, 이메일, 닉네임)을 모두 입력해주세요.');
+            return;
+        }
+
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(email)) {
+            showFieldMsg('signupEmailMsg', '올바른 이메일 형식을 입력해주세요.');
+            return;
+        }
+
+        if(nickname.trim().length < 2 || nickname.trim().length > 20) {
+            showFieldMsg('signupNicknameMsg', '닉네임은 2자 이상 20자 이하로 입력해주세요.');
+            return;
+        }
+
+
+
+
+        if(!isIdVerified) {
+            showFieldMsg('signupIdMsg', '아이디 중복 확인을 먼저 진행해주세요.');
+            return;
+        }
+
+        if(!isEmailVerified) {
+            showFieldMsg('signupEmailMsg', '이메일 인증을 먼저 진행해주세요.');
+            return;
+        }
+
+        if(pw !== pwConfirm) {
+            showFieldMsg('signupPwConfirmMsg', '비밀번호가 서로 일치하지 않습니다.');
+            return;
+        }
+
+        // 기존에는 API를 호출했으나, 약관 동의 페이지로 이동시킴
+        const signupData = {
+            loginId: id,
+            password: pw,
+            email: email,
+            nickname: nickname,
+            address: address
+        };
+        sessionStorage.setItem('signupData', JSON.stringify(signupData));
+        window.location.href = '/auth/terms?social=false';
+    }
+
+    let findIdInterval;
+    let findPwInterval;
+    
+    function startFindTimer(type) {
+        const timerSpan = type === 'find-id' ? document.getElementById('findIdAuthTimer') : document.getElementById('findPwAuthTimer');
+        let timeLeft = 300; // 5분
+        timerSpan.style.display = 'block';
+
+        const updateText = () => {
+            const m = Math.floor(timeLeft / 60);
+            const s = timeLeft % 60;
+            timerSpan.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        };
+        updateText();
+        
+        let interval = setInterval(() => {
+            timeLeft--;
+            updateText();
+            if (timeLeft <= 0) {
+                clearInterval(interval);
+                timerSpan.textContent = "시간 초과";
+            }
+        }, 1000);
+        
+        if(type === 'find-id') findIdInterval = interval;
+        else findPwInterval = interval;
+    }
+
+    async function sendFindAuthCodeBtn(type) {
+        const emailInput = type === 'find-id' ? document.getElementById('findIdEmail') : document.getElementById('findPwEmail');
+        const msg = type === 'find-id' ? 'findIdEmailMsg' : 'findPwEmailMsg';
+        const container = type === 'find-id' ? document.getElementById('findIdAuthCodeContainer') : document.getElementById('findPwAuthCodeContainer');
+        const btn = type === 'find-id' ? document.getElementById('findIdSendBtn') : document.getElementById('findPwSendBtn');
+
+        const email = emailInput.value.trim();
+        if (!email) {
+            showFieldMsg(msg, '이메일을 입력해주세요.', false);
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.textContent = '발송 중...';
+
+        try {
+            const res = await fetch('/auth/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, type: 'find' })
+            });
+
+            if (res.ok) {
+                showFieldMsg(msg, '인증번호가 발송되었습니다.', true);
+                container.style.display = 'flex';
+                btn.textContent = '재발송';
+                btn.disabled = false;
+                startFindTimer(type);
+            } else {
+                const text = await res.text();
+                showFieldMsg(msg, text || '이메일 발송에 실패했습니다.', false);
+                btn.textContent = '인증 발송';
+                btn.disabled = false;
+            }
+        } catch (error) {
+            showFieldMsg(msg, '서버 통신 오류가 발생했습니다.', false);
+            btn.textContent = '인증 발송';
+            btn.disabled = false;
+        }
+    }
+    
+    async function doFindId() {
+        const email = document.getElementById('findIdEmail').value.trim();
+        const authCode = document.getElementById('findIdAuthCode').value.trim();
+        const msg = 'findIdAuthCodeMsg';
+        
+        if(!authCode) {
+            showFieldMsg(msg, '인증번호를 입력해주세요.', false);
+            return;
+        }
+        
+        try {
+            const res = await fetch('/auth/find-id', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, authCode })
+            });
+            const text = await res.text();
+            if(res.ok) {
+                if(findIdInterval) clearInterval(findIdInterval);
+                document.getElementById('findIdAuthTimer').style.display = 'none';
+                showFieldMsg(msg, `가입하신 아이디는 '${text}' 입니다.`, true);
+            } else {
+                showFieldMsg(msg, text || '인증에 실패했습니다.', false);
+            }
+        } catch(e) {
+            showFieldMsg(msg, '서버 통신 오류가 발생했습니다.', false);
+        }
+    }
+    
+    async function doFindPw() {
+        const loginId = document.getElementById('findPwId').value.trim();
+        const email = document.getElementById('findPwEmail').value.trim();
+        const authCode = document.getElementById('findPwAuthCode').value.trim();
+        const msg = 'findPwAuthCodeMsg';
+        
+        if(!loginId) {
+            showFieldMsg(msg, '아이디를 입력해주세요.', false);
+            return;
+        }
+        if(!authCode) {
+            showFieldMsg(msg, '인증번호를 입력해주세요.', false);
+            return;
+        }
+        
+        try {
+            const res = await fetch('/auth/find-pw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ loginId, email, authCode })
+            });
+            const text = await res.text();
+            if(res.ok) {
+                if(findPwInterval) clearInterval(findPwInterval);
+                document.getElementById('findPwAuthTimer').style.display = 'none';
+                showFieldMsg(msg, text, true);
+            } else {
+                showFieldMsg(msg, text || '인증에 실패했습니다.', false);
+            }
+        } catch(e) {
+            showFieldMsg(msg, '서버 통신 오류가 발생했습니다.', false);
+        }
+    }
+
+window.addEventListener('DOMContentLoaded', () => {
+        if (typeof initRegionSelects === 'function') {
+            initRegionSelects('signupSido', 'signupSigungu');
+        }
+    });

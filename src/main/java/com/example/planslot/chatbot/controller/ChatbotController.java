@@ -33,10 +33,11 @@ public class ChatbotController {
     public ResponseEntity<ChatbotResponseDTO> sendMessage(
             Authentication authentication,
             HttpServletRequest httpRequest,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @RequestHeader(value = "X-Chatbot-Client-Id", required = false) String clientId,
             @RequestBody ChatbotRequestDTO request) {
         try {
-            String requesterKey = resolveRequesterKey(authentication, httpRequest, clientId);
+            String requesterKey = resolveRequesterKey(authentication, httpRequest, authorizationHeader, clientId);
             return ResponseEntity.ok(chatbotService.ask(requesterKey, request));
         } catch (ChatbotException e) {
             return ResponseEntity.status(e.getStatus())
@@ -48,8 +49,11 @@ public class ChatbotController {
         }
     }
 
-    private String resolveRequesterKey(Authentication authentication, HttpServletRequest request, String clientId) {
-        if (authentication != null && authentication.isAuthenticated()
+    private String resolveRequesterKey(Authentication authentication, HttpServletRequest request, String authorizationHeader, String clientId) {
+        boolean bearerRequest = authorizationHeader != null && authorizationHeader.startsWith("Bearer ")
+                && !authorizationHeader.substring(7).isBlank();
+        if (bearerRequest
+                && authentication != null && authentication.isAuthenticated()
                 && !(authentication instanceof AnonymousAuthenticationToken)
                 && authentication.getName() != null
                 && !authentication.getName().isBlank()

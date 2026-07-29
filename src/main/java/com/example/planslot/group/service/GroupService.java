@@ -45,7 +45,7 @@ public interface GroupService {
     List<GroupDTO.CalendarScheduleInfo> getGroupSchedules(Long groupId, Long memberId, LocalDateTime start, LocalDateTime end);
 
     // 모임 캘린더에 일정 추가
-    void addGroupSchedule(Long groupId, Long memberId, String title, String dateStr, String timeStr, String visibility, String endDateStr, String endTimeStr);
+    void addGroupSchedule(Long groupId, Long memberId, String title, String dateStr, String timeStr, String visibility, String endDateStr, String endTimeStr, String scheduleType, String recurrenceEndDate);
 
     // 타인에게 내 일정 공유하기
     void shareSchedulesWithPeers(Long groupId, Long sharerId, List<Long> scheduleIds, List<Long> targetMemberIds);

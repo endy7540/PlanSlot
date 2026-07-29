@@ -1,4 +1,4 @@
-﻿/* ===== 전역 상태 ===== */
+/* ===== 전역 상태 ===== */
 (function checkGroupAuth() {
   const token = localStorage.getItem('jwtToken');
   if (!token) {
@@ -228,6 +228,23 @@ function renderHead(){
 
 }
 
+function getMemberColor(member) {
+  if (member.id === group.myMemberId) {
+    return member.color || '#E2E8F0';
+  }
+  const overrides = JSON.parse(localStorage.getItem(`planslot_group_colors_${group.id}`) || '{}');
+  return overrides[member.id] || '#9CA3AF'; // 기존 #4B5563에서 좀 더 연하고 중간 채도인 회색으로 변경
+}
+
+function setMemberColorOverride(memberId, color) {
+  const overrides = JSON.parse(localStorage.getItem(`planslot_group_colors_${group.id}`) || '{}');
+  overrides[memberId] = color;
+  localStorage.setItem(`planslot_group_colors_${group.id}`, JSON.stringify(overrides));
+  renderMembers();
+  renderDynamicCalendar();
+  renderTodaySchedules();
+}
+
 function renderTodaySchedules() {
   const list = document.getElementById('myScheduleList');
   list.innerHTML = '';
@@ -260,7 +277,8 @@ function renderTodaySchedules() {
       bgColor = '#E0F2FE';
       borderColor = '#bae6fd';
     } else {
-      const memberColor = group.members.find(m => m.name === s.nickname)?.color || '#E2E8F0';
+      const mObj = group.members.find(m => m.name === s.nickname);
+      const memberColor = mObj ? getMemberColor(mObj) : '#E2E8F0';
       bgColor = memberColor;
       borderColor = memberColor;
     }
@@ -318,20 +336,39 @@ function renderMembers(){
     const row = document.createElement('div');
     row.className = 'member-row';
     const canKick = owner && m.id !== group.myMemberId;
+    const isMe = m.id === group.myMemberId;
+    const displayColor = getMemberColor(m);
+    
     const avatarHtml = m.profileImageUrl
       ? `<img src="${m.profileImageUrl}" alt="${m.name}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
       : `<div style="width:100%; height:100%; background: #e2e8f0; border-radius:50%; display:flex; justify-content:center; align-items:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>`;
+
+    let colorPickerHtml = '';
+    if (!isMe) {
+      colorPickerHtml = `<input type="color" class="member-color-picker" data-id="${m.id}" value="${displayColor}" title="이 모임원의 색상 변경 (내 화면에서만 적용됨)" style="width:24px; height:24px; padding:0; border:none; border-radius:4px; cursor:pointer; background:none; appearance:none;">`;
+    } else {
+      colorPickerHtml = `<div style="width:24px; height:24px; border-radius:4px; background:${displayColor}; border:1px solid var(--border);" title="내 색상은 설정 탭에서 변경 가능합니다"></div>`;
+    }
 
     row.innerHTML = `
       <div class="avatar">${avatarHtml}</div>
       <div class="member-info">
         <div class="member-name-row">
-          <b class="nick-label">${m.name}${m.id === group.myMemberId ? ' (나)' : ''}</b>
+          <b class="nick-label">${m.name}${isMe ? ' (나)' : ''}</b>
           <button class="edit-nick" title="이 모임에서만 보이는 별명 수정">✎ 별명 수정</button>
         </div>
         <span>${m.role === 'owner' ? '방장' : '모임원'}</span>
       </div>
-      <div class="member-actions">${canKick ? '<button class="btn btn-danger btn-sm">추방</button>' : ''}</div>`;
+      <div class="member-actions" style="display:flex; align-items:center; gap:8px;">
+        ${colorPickerHtml}
+        ${canKick ? '<button class="btn btn-danger btn-sm">추방</button>' : ''}
+      </div>`;
+
+    if (!isMe) {
+      row.querySelector('.member-color-picker').addEventListener('change', (e) => {
+        setMemberColorOverride(m.id, e.target.value);
+      });
+    }
 
     row.querySelector('.edit-nick').addEventListener('click', ()=>{
       const label = row.querySelector('.nick-label');
@@ -825,13 +862,41 @@ async function fetchGroupDetail() {
 fetchGroupDetail();
 
 // === 동적 캘린더 로직 ===
+const HOLIDAYS = {
+  // 2025년
+  "2025-01-01": "신정", "2025-01-28": "설날", "2025-01-29": "설날", "2025-01-30": "설날",
+  "2025-03-01": "삼일절", "2025-03-03": "대체공휴일", "2025-05-05": "어린이날", "2025-05-06": "부처님오신날",
+  "2025-06-06": "현충일", "2025-08-15": "광복절", "2025-10-03": "개천절", "2025-10-05": "추석",
+  "2025-10-06": "추석", "2025-10-07": "추석", "2025-10-08": "대체공휴일", "2025-10-09": "한글날",
+  "2025-12-25": "크리스마스",
+  // 2026년
+  "2026-01-01": "신정", "2026-02-16": "설날 연휴", "2026-02-17": "설날", "2026-02-18": "설날 연휴",
+  "2026-03-01": "삼일절", "2026-03-02": "대체공휴일", "2026-05-05": "어린이날", "2026-05-24": "부처님오신날",
+  "2026-05-25": "대체공휴일", "2026-06-06": "현충일", "2026-07-17": "제헌절", "2026-08-15": "광복절",
+  "2026-08-17": "대체공휴일", "2026-09-24": "추석 연휴", "2026-09-25": "추석", "2026-09-26": "추석 연휴",
+  "2026-09-28": "대체공휴일", "2026-10-03": "개천절", "2026-10-05": "대체공휴일", "2026-10-09": "한글날",
+  "2026-12-25": "크리스마스",
+  // 2027년
+  "2027-01-01": "신정", "2027-02-06": "설날 연휴", "2027-02-07": "설날", "2027-02-08": "설날 연휴",
+  "2027-02-09": "대체공휴일", "2027-03-01": "삼일절", "2027-05-05": "어린이날", "2027-05-13": "부처님오신날",
+  "2027-06-06": "현충일", "2027-06-07": "대체공휴일", "2027-08-15": "광복절", "2027-08-16": "대체공휴일",
+  "2027-09-14": "추석 연휴", "2027-09-15": "추석", "2027-09-16": "추석 연휴", "2027-10-03": "개천절",
+  "2027-10-04": "대체공휴일", "2027-10-09": "한글날", "2027-10-11": "대체공휴일", "2027-12-25": "크리스마스",
+  "2027-12-27": "대체공휴일"
+};
+
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 let groupSchedules = [];
 
 async function fetchGroupSchedules() {
   try {
-    const res = await fetchApi(`/group/${group.id}/schedules`);
+    const startObj = new Date(calYear, calMonth - 1, 15);
+    const endObj = new Date(calYear, calMonth + 2, 15);
+    const startStr = startObj.getFullYear() + '-' + String(startObj.getMonth() + 1).padStart(2, '0') + '-' + String(startObj.getDate()).padStart(2, '0') + 'T00:00:00';
+    const endStr = endObj.getFullYear() + '-' + String(endObj.getMonth() + 1).padStart(2, '0') + '-' + String(endObj.getDate()).padStart(2, '0') + 'T23:59:59';
+    
+    const res = await fetchApi(`/group/${group.id}/schedules?start=${startStr}&end=${endStr}`);
     if(res.ok) {
       groupSchedules = await res.json();
       renderDynamicCalendar();
@@ -846,7 +911,7 @@ function changeCalMonth(delta) {
   if(calMonth > 11) { calMonth = 0; calYear++; }
   currentDetailDate = null;
   document.getElementById('dayDetailContainer').style.display = 'none';
-  renderDynamicCalendar();
+  fetchGroupSchedules();
 }
 
 function renderDynamicCalendar() {
@@ -968,8 +1033,19 @@ function renderDynamicCalendar() {
     const dateStr = dateKeys[cellIdx];
     const isToday = (calYear === today.getFullYear() && calMonth === today.getMonth() && c.day === today.getDate() && !c.otherMonth);
 
+    const isSunday = cellIdx % 7 === 0;
+    const isSaturday = cellIdx % 7 === 6;
+    const mmdd = dateStr.slice(5);
+    const isSolarHoliday = ["01-01", "03-01", "05-05", "06-06", "07-17", "08-15", "10-03", "10-09", "12-25"].includes(mmdd);
+    const isHoliday = !!HOLIDAYS[dateStr] || isSolarHoliday;
+    const isRedDay = isSunday || isHoliday;
+
     if (c.otherMonth) {
-      html += `<div class="date" style="background:#FAFCFE; opacity:0.5"><b style="color:#A0AEC0; background:transparent;">${c.day}</b></div>`;
+      let dayColor = 'color: #A0AEC0;';
+      if (isRedDay) dayColor = 'color: #FC8181;';
+      else if (isSaturday) dayColor = 'color: #93C5FD;';
+      
+      html += `<div class="date" style="background:#FAFCFE; opacity:0.5"><b style="${dayColor} background:transparent;">${c.day}</b></div>`;
       return;
     }
 
@@ -1026,7 +1102,8 @@ function renderDynamicCalendar() {
             bgColor = '#E0F2FE';
             colorStyle = 'color: #0284C7;';
         } else {
-            const memberColor = group.members.find(m => m.name === s.nickname)?.color || '#E2E8F0';
+            const mObj = group.members.find(m => m.name === s.nickname);
+            const memberColor = mObj ? getMemberColor(mObj) : '#E2E8F0';
             bgColor = memberColor;
             colorStyle = 'color: white; text-shadow: 0px 1px 2px rgba(0,0,0,0.3);';
             if (s.isPublic === 'N') colorStyle += ' opacity: 0.5;';
@@ -1050,7 +1127,13 @@ function renderDynamicCalendar() {
       eventsHtml += `<span style="display:block;font-size:10px;color:var(--muted);text-align:center;margin-top:2px" onclick="event.stopPropagation(); showDayDetail('${dateStr}')">+${moreCount}개 더보기</span>`;
     }
 
-    html += `<div class="date ${isToday ? 'today' : ''}" style="cursor:pointer;" onclick="showDayDetail('${dateStr}')"><b>${c.day}</b>${eventsHtml}</div>`;
+    let dayColor = '';
+    if (!isToday) {
+      if (isRedDay) dayColor = 'color: var(--danger);';
+      else if (isSaturday) dayColor = 'color: var(--sky);';
+    }
+    
+    html += `<div class="date ${isToday ? 'today' : ''}" style="cursor:pointer;" onclick="showDayDetail('${dateStr}')"><b style="${dayColor}">${c.day}</b>${eventsHtml}</div>`;
   });
 
   document.getElementById('groupCalendarContainer').innerHTML = html;

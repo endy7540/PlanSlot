@@ -1,3 +1,39 @@
+
+    
+
+    // iframe 내부 로드 시 공통 헤더 숨기기 및 레이아웃 최적화
+    (function optimizeForIframe() {
+        if (window.self !== window.top) {
+            // 상단 헤더 요소 탐색 및 숨김
+            const headers = document.querySelectorAll('header, .header, nav, .navbar, div[class*="header"]');
+            headers.forEach(h => {
+                h.style.setProperty('display', 'none', 'important');
+            });
+            
+            // wrap 컨테이너 밀착 조율
+            const wrap = document.querySelector('.wrap');
+            if (wrap) {
+                wrap.style.setProperty('padding', '0', 'important');
+                wrap.style.setProperty('margin', '0 auto', 'important');
+                wrap.style.setProperty('max-width', '100%', 'important');
+            }
+            
+            // body 스타일 제거
+            document.body.style.setProperty('background', 'transparent', 'important');
+            document.body.style.setProperty('padding', '0', 'important');
+            document.body.style.setProperty('margin', '0', 'important');
+            
+            // 패널 테두리와 그림자 제거하여 모달 컨테이너에 완전히 녹아들게 함
+            const panels = document.querySelectorAll('.panel');
+            panels.forEach(p => {
+                p.style.setProperty('border', 'none', 'important');
+                p.style.setProperty('box-shadow', 'none', 'important');
+                p.style.setProperty('padding', '10px 20px', 'important');
+                p.style.setProperty('margin', '0', 'important');
+            });
+        }
+    })();
+
 const API_BASE = window.location.origin;
     let token = '';
     let scheduleId = null;
@@ -521,7 +557,7 @@ const API_BASE = window.location.origin;
                     showToast('첫 번째 반복 일정이 분리되어 당일 일정으로 등록되었습니다.');
                     const dateKey = newDailyBody.startDate.slice(0, 10);
                     setTimeout(() => {
-                        window.location.href = `/schedule?date=${dateKey}`;
+                        if (window.parent && typeof window.parent.closeScheduleModalAndReload === 'function') { window.parent.closeScheduleModalAndReload(dateKey); } else { if (window.parent && typeof window.parent.closeScheduleModalAndReload === 'function') { window.parent.closeScheduleModalAndReload(dateKey); } else { window.location.href = `/schedule?date=${dateKey}`; }; }
                     }, 800);
                     return;
                 }
@@ -648,7 +684,7 @@ const API_BASE = window.location.origin;
                     showToast('선택한 하루 일정이 분리되어 당일 일정으로 등록되었습니다.');
                     const dateKey = newDailyBody.startDate.slice(0, 10);
                     setTimeout(() => {
-                        window.location.href = `/schedule?date=${dateKey}`;
+                        if (window.parent && typeof window.parent.closeScheduleModalAndReload === 'function') { window.parent.closeScheduleModalAndReload(dateKey); } else { if (window.parent && typeof window.parent.closeScheduleModalAndReload === 'function') { window.parent.closeScheduleModalAndReload(dateKey); } else { window.location.href = `/schedule?date=${dateKey}`; }; }
                     }, 800);
                     return;
                 }
@@ -712,7 +748,7 @@ const API_BASE = window.location.origin;
                 showToast('이 일정 및 향후 일정이 수정되었습니다. 캘린더로 이동합니다...');
                 const dateKey = newScheduleBody.startDate.slice(0, 10);
                 setTimeout(() => {
-                    window.location.href = `/schedule?date=${dateKey}`;
+                    if (window.parent && typeof window.parent.closeScheduleModalAndReload === 'function') { window.parent.closeScheduleModalAndReload(dateKey); } else { if (window.parent && typeof window.parent.closeScheduleModalAndReload === 'function') { window.parent.closeScheduleModalAndReload(dateKey); } else { window.location.href = `/schedule?date=${dateKey}`; }; }
                 }, 800);
                 return;
             }
@@ -732,7 +768,7 @@ const API_BASE = window.location.origin;
             showToast('일정이 수정되었습니다. 캘린더로 이동합니다...');
             const dateKey = body.startDate.slice(0, 10);
             setTimeout(() => {
-                window.location.href = `/schedule?date=${dateKey}`;
+                if (window.parent && typeof window.parent.closeScheduleModalAndReload === 'function') { window.parent.closeScheduleModalAndReload(dateKey); } else { if (window.parent && typeof window.parent.closeScheduleModalAndReload === 'function') { window.parent.closeScheduleModalAndReload(dateKey); } else { window.location.href = `/schedule?date=${dateKey}`; }; }
             }, 800);
 
         } catch (e) {
@@ -770,3 +806,11 @@ const API_BASE = window.location.origin;
             updateDeadlineMax();
         });
     }
+    // iframe 취소/닫기 핸들러 글로벌 노출
+    window.handleCancel = function() {
+        if (window.parent && typeof window.parent.closeScheduleIframeModal === 'function') {
+            window.parent.closeScheduleIframeModal();
+        } else {
+            history.back();
+        }
+    };

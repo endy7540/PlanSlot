@@ -752,7 +752,7 @@ const HOLIDAYS = {
 
     function openNewSchedule(dateKey) {
         if (selectedDateKey === dateKey) {
-            window.location.href = `/schedule/new?date=${dateKey}`;
+            openScheduleIframeModal(`/schedule/new?date=${dateKey}`);
         } else {
             selectedDateKey = dateKey;
             syncUrlWithDateKey(dateKey);
@@ -949,7 +949,7 @@ const HOLIDAYS = {
     }
 
     function openSchedule(scheduleId, dateKey) {
-        window.location.href = `/schedule/${scheduleId}?date=${dateKey}`;
+        openScheduleIframeModal(`/schedule/${scheduleId}?date=${dateKey}`);
     }
 
     function escapeHtml(str) {
@@ -1594,3 +1594,60 @@ const HOLIDAYS = {
         }
         return dateStr.slice(0, 10);
     }
+    /* ======================================================== */
+    /* iframe 기반 하위 페이지 모달 조작 및 부모-자식 브릿지 로직  */
+    /* ======================================================== */
+    window.openScheduleIframeModal = function(url) {
+        const modal = document.getElementById('scheduleIframeModal');
+        const iframe = document.getElementById('scheduleIframe');
+        const container = document.getElementById('scheduleIframeContainer');
+        if (modal && iframe && container) {
+            // iframe 로드 완료 후 실제 콘텐츠 높이에 맞춰 모달 크기 자동 조절
+            iframe.onload = function() {
+                try {
+                    const doc = iframe.contentDocument || iframe.contentWindow.document;
+                    // 콘텐츠 실제 높이 + 여유분
+                    const contentHeight = doc.documentElement.scrollHeight;
+                    const maxH = window.innerHeight * 0.92; // 화면의 92%까지만
+                    container.style.height = Math.min(contentHeight, maxH) + 'px';
+                } catch(e) {
+                    // cross-origin 등 에러 시 기본값
+                    container.style.height = '700px';
+                }
+            };
+            container.style.height = '0px'; // 로드 전 숨기기
+            iframe.src = url;
+            modal.style.display = 'flex';
+        }
+    };
+
+    window.closeScheduleIframeModal = function() {
+        const modal = document.getElementById('scheduleIframeModal');
+        const iframe = document.getElementById('scheduleIframe');
+        if (modal && iframe) {
+            iframe.src = '';
+            modal.style.display = 'none';
+        }
+    };
+
+    // 하위 페이지에서 등록/수정/삭제 완료 시 부모 창을 닫고 캘린더를 리프레시하기 위한 브릿지 API
+    window.closeScheduleModalAndReload = function(dateKey) {
+        closeScheduleIframeModal();
+        if (dateKey) {
+            selectedDateKey = dateKey;
+            syncUrlWithDateKey(dateKey);
+            
+            document.querySelectorAll('.cal-day').forEach(el => el.classList.remove('selected-day'));
+            const currentEl = document.querySelector(`.cal-day[data-date="${dateKey}"]`);
+            if (currentEl) {
+                currentEl.classList.add('selected-day');
+            }
+            
+            loadMonthSchedules().then(() => {
+                highlightDate(dateKey);
+                renderSelectedDateEvents(dateKey);
+            });
+        } else {
+            loadMonthSchedules();
+        }
+    };

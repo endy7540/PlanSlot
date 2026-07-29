@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PlanSlot - 캘린더</title>
-    <link rel="stylesheet" th:href="@{/css/schedule/schedule.css(v='1.0.1')}">
+    <link rel="stylesheet" th:href="@{/css/schedule/schedule.css(v='1.0.7')}">
 </head>
 <body>
 
@@ -40,16 +40,21 @@
     <!-- 캘린더 -->
     <div class="panel" id="calendarPanel" style="display:none">
         <div class="cal-nav">
-            <div class="cal-nav-left" style="display: flex; gap: 6px;">
+            <div class="cal-nav-left" style="display: flex; gap: 6px; align-items: center;">
                 <button class="ghost" onclick="goToday()">오늘</button>
-                <button class="primary" style="background: linear-gradient(135deg, #6366F1, #3B82F6); border: 0; color: white; padding: 8px 12px; font-size: 13px; border-radius: 8px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);" onclick="openAiImageModal()">
-                    <span>✨ AI 일정 자동 등록</span>
-                </button>
-                <!-- 선택한 날의 일정 전체 삭제 버튼 시작 -->
+                
+                <!-- 제목 검색 영역 -->
+                <div style="display: flex; gap: 6px; align-items: center; margin-right: 6px;">
+                    <input id="scheduleSearchInput" type="text" placeholder="제목 검색..." style="width: 140px; padding: 8px 12px; font-size: 13px; border: 1px solid var(--border); border-radius: 12px; font-weight: 700; color: var(--ink); background: var(--surface); transition: all 0.2s;" onkeyup="handleSearchKeyup(event)">
+                    <button class="ghost" id="searchNextBtn" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; display: none;" onclick="goToNextMatch()">다음</button>
+                    <button class="primary" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; border: 0;" onclick="performSearch()">검색</button>
+                    <button class="ghost" id="searchClearBtn" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; display: none;" onclick="clearSearch()">X</button>
+                </div>
+
+                <!-- 선택한 날의 일정 전체 삭제 버튼 -->
                 <button class="ghost" style="color: #EF4444; border-color: #FEE2E2; background: #FEF2F2; font-weight: 800;" onclick="deleteSelectedDateSchedules()">
                     <span>🗑️ 현재 일정 삭제</span>
                 </button>
-                <!-- 선택한 날의 일정 전체 삭제 버튼 끝 -->
             </div>
             <div class="cal-nav-center">
                 <button class="ghost" onclick="moveMonth(-1)">◀</button>
@@ -58,19 +63,10 @@
             </div>
             <div class="cal-nav-right">
                 <div style="display: flex; gap: 6px; align-items: center;">
-                    <!-- 구글 동기화 버튼들 -->
-                    <div style="display: flex; align-items: center; gap: 8px; background: var(--surface-deep); padding: 4px 12px; border-radius: 12px; border: 1px solid var(--border);">
-                        <span style="font-size: 13px; font-weight: 700; color: #075985;">구글 연동</span>
-                        <label class="toggle-switch" style="margin: 0;">
-                            <input type="checkbox" id="googleSyncToggle" onchange="toggleGoogleSync(this.checked)">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    
-                    <input id="scheduleSearchInput" type="text" placeholder="제목 검색..." style="width: 140px; padding: 8px 12px; font-size: 13px; border: 1px solid var(--border); border-radius: 12px; font-weight: 700; color: var(--ink); background: var(--surface); transition: all 0.2s;" onkeyup="handleSearchKeyup(event)">
-                    <button class="ghost" id="searchNextBtn" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; display: none;" onclick="goToNextMatch()">다음</button>
-                    <button class="primary" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; border: 0;" onclick="performSearch()">검색</button>
-                    <button class="ghost" id="searchClearBtn" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; display: none;" onclick="clearSearch()">X</button>
+                    <!-- AI 일정 자동 등록 버튼 (구글 연동 제거 완료) -->
+                    <button class="primary" style="background: linear-gradient(135deg, #6366F1, #3B82F6); border: 0; color: white; padding: 8px 12px; font-size: 13px; border-radius: 8px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);" onclick="openAiImageModal()">
+                        <span>✨ AI 일정 자동 등록</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -108,13 +104,13 @@
 
 <div class="toast" id="toast"></div>
 
-<script th:src="@{/js/schedule/schedule.js(v='1.0.1')}"></script>
+<script th:src="@{/js/schedule/schedule.js(v='1.0.7')}"></script>
 
 <!-- AI 이미지 일정 등록 모달 HTML -->
-<div id="aiImageModal" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;">
-    <div class="panel" style="width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto; border-radius: 16px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.5); padding: 24px; position: relative;">
+<div id="aiImageModal" class="modal-backdrop">
+    <div class="ai-modal-panel">
         <!-- 닫기 버튼 -->
-        <button style="position: absolute; top: 16px; right: 16px; background: none; border: 0; font-size: 20px; color: #64748B; cursor: pointer; font-weight: bold;" onclick="discardAiImageAnalysis()">×</button>
+        <button class="ai-modal-close" onclick="discardAiImageAnalysis()">×</button>
         
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
             <span style="font-size: 24px;">🔮</span>
@@ -207,8 +203,8 @@
 </div>
 
 <!-- 연속 일정 부분/전체 삭제 선택 모달 HTML -->
-<div id="deleteConfirmModal" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;">
-    <div class="panel" style="width: 100%; max-width: 440px; border-radius: 16px; background: white; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid #E2E8F0; padding: 24px; text-align: center;">
+<div id="deleteConfirmModal" class="modal-backdrop">
+    <div class="delete-confirm-panel">
         <span style="font-size: 32px; display: block; margin-bottom: 12px;">📅</span>
         <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #1E293B;">연속 일정 삭제 선택</h3>
         <p id="deleteConfirmModalMsg" style="color: #64748B; font-size: 13.5px; margin: 0 0 20px; line-height: 1.6; word-break: keep-all;">
@@ -228,6 +224,16 @@
     </div>
 </div>
 
+
+
+<!-- iframe 기반 하위 페이지 로드 모달 HTML -->
+<div id="scheduleIframeModal" class="modal-backdrop iframe-modal-backdrop">
+    <div id="scheduleIframeContainer" class="iframe-modal-container modal-form">
+        <!-- 닫기 버튼 -->
+        <button class="iframe-modal-close" onclick="closeScheduleIframeModal()">×</button>
+        <iframe id="scheduleIframe" src="" class="iframe-modal-frame"></iframe>
+    </div>
+</div>
 
 </body>
 </html>

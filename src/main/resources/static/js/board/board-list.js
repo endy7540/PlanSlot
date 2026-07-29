@@ -26,7 +26,7 @@ function getBoardListStateFromUrl() {
     keyword
   };
 }
-function applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButton, recruitingButton) {
+function applyBoardListState(searchTypeSelect, searchInput, sortSelect, allButton, mineButton, recruitingButton) {
   const state = getBoardListStateFromUrl();
   currentListPage = state.page;
   currentListSearchType = state.searchType;
@@ -42,22 +42,23 @@ function applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButt
     sortSelect.value = currentListSort;
     sortSelect.boardDropdownSync?.();
   }
-  updateBoardMineButton(mineButton);
-  updateBoardRecruitingButton(recruitingButton);
+  updateBoardFilterButtons(allButton, mineButton, recruitingButton);
 }
-function updateBoardMineButton(button) {
-  if (!button) return;
+function updateBoardFilterButtons(allButton, mineButton, recruitingButton) {
+  const allActive = !currentListMine && !currentListRecruitingOnly;
 
-  button.classList.toggle('active', currentListMine);
-  button.setAttribute('aria-pressed', String(currentListMine));
-  button.textContent = currentListMine ? '전체 글 보기' : '내 글 보기';
-}
-function updateBoardRecruitingButton(button) {
-  if (!button) return;
-
-  button.classList.toggle('active', currentListRecruitingOnly);
-  button.setAttribute('aria-pressed', String(currentListRecruitingOnly));
-  button.textContent = currentListRecruitingOnly ? '전체 상태 보기' : '모집 중만 보기';
+  if (allButton) {
+    allButton.classList.toggle('active', allActive);
+    allButton.setAttribute('aria-pressed', String(allActive));
+  }
+  if (mineButton) {
+    mineButton.classList.toggle('active', currentListMine);
+    mineButton.setAttribute('aria-pressed', String(currentListMine));
+  }
+  if (recruitingButton) {
+    recruitingButton.classList.toggle('active', currentListRecruitingOnly);
+    recruitingButton.setAttribute('aria-pressed', String(currentListRecruitingOnly));
+  }
 }
 function resetBoardListFilters(searchTypeSelect, searchInput, sortSelect) {
   currentListPage = 0;
@@ -104,10 +105,11 @@ async function initializeBoardList() {
   const searchInput = document.getElementById('boardSearchInput');
   const searchButton = document.getElementById('boardSearchButton');
   const sortSelect = document.getElementById('boardSortSelect');
+  const allButton = document.getElementById('boardAllButton');
   const mineButton = document.getElementById('boardMineButton');
   const recruitingButton = document.getElementById('boardRecruitingButton');
 
-  applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButton, recruitingButton);
+  applyBoardListState(searchTypeSelect, searchInput, sortSelect, allButton, mineButton, recruitingButton);
 
   if (currentListMine && !currentBoardMember) {
     requireBoardLogin();
@@ -156,12 +158,23 @@ async function initializeBoardList() {
     await loadBoardList();
   });
 
+  allButton?.addEventListener('click', async () => {
+    if (!currentListMine && !currentListRecruitingOnly) return;
+
+    currentListMine = false;
+    currentListRecruitingOnly = false;
+    currentListPage = 0;
+    updateBoardFilterButtons(allButton, mineButton, recruitingButton);
+    updateBoardListUrl('push');
+    await loadBoardList();
+  });
+
   mineButton?.addEventListener('click', async () => {
     if (!currentListMine && !requireBoardLogin()) return;
 
     currentListMine = !currentListMine;
     currentListPage = 0;
-    updateBoardMineButton(mineButton);
+    updateBoardFilterButtons(allButton, mineButton, recruitingButton);
     updateBoardListUrl('push');
     await loadBoardList();
   });
@@ -169,13 +182,13 @@ async function initializeBoardList() {
   recruitingButton?.addEventListener('click', async () => {
     currentListRecruitingOnly = !currentListRecruitingOnly;
     currentListPage = 0;
-    updateBoardRecruitingButton(recruitingButton);
+    updateBoardFilterButtons(allButton, mineButton, recruitingButton);
     updateBoardListUrl('push');
     await loadBoardList();
   });
 
   window.addEventListener('popstate', async () => {
-    applyBoardListState(searchTypeSelect, searchInput, sortSelect, mineButton, recruitingButton);
+    applyBoardListState(searchTypeSelect, searchInput, sortSelect, allButton, mineButton, recruitingButton);
     updateBoardSearchPlaceholder(searchTypeSelect, searchInput);
     if (currentListMine && !currentBoardMember) {
       requireBoardLogin();

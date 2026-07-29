@@ -100,11 +100,18 @@ let group = null;
 
 function renderHead(){
   document.getElementById('groupTitle').textContent = group.name;
+  const myMemberInfo = group.members.find(m => m.id === group.myMemberId);
+  const myColor = myMemberInfo && myMemberInfo.color ? myMemberInfo.color : '#bae6fd';
+
   document.getElementById('groupMeta').innerHTML = `
     <span style="display:inline-flex; align-items:center;">참여자 ${group.members.length}명</span>
-    <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; margin-left:12px; color:var(--muted);">
-      <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#E0F2FE; border:1px solid #bae6fd;"></span> 공개
-      <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#F1F5F9; border:1px solid #cbd5e1; margin-left:4px;"></span> 비공개
+    <span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; margin-left:14px; color:#f8fafc;">
+      <span style="display:inline-flex; align-items:center; gap:4px;">
+        <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${myColor};"></span> 공개
+      </span>
+      <span style="display:inline-flex; align-items:center; gap:4px; margin-left:4px;">
+        <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:color-mix(in srgb, ${myColor} 50%, white);"></span> 비공개
+      </span>
     </span>
   `;
   document.getElementById('settingsGroupName').value = group.name;
@@ -134,7 +141,6 @@ function renderHead(){
     document.getElementById('settingsGroupName').disabled = !owner;
   }
 
-  const myMemberInfo = group.members.find(m => m.id === group.myMemberId);
   const settingsMyColor = document.getElementById('settingsMyColor');
   const paletteContainer = document.getElementById('colorPaletteContainer');
   if(settingsMyColor && myMemberInfo && paletteContainer) {
@@ -187,13 +193,16 @@ function renderHead(){
   }
 
   document.getElementById('ownerLeaveHint').style.display = owner ? 'block' : 'none';
-  document.getElementById('btnGoAi').href = linkToAi(group.id);
+  const btnGoAi = document.getElementById('btnGoAi');
+  if (btnGoAi) btnGoAi.href = linkToAi(group.id);
   const btnGoChat = document.getElementById('btnGoChat');
   if (btnGoChat) btnGoChat.href = '/groupChat/' + group.id;
 
   if (isWaiting) {
     document.getElementById('btnLeave').style.display = 'none';
     document.getElementById('waitingActions').style.display = 'flex';
+    if (btnGoChat) btnGoChat.style.display = 'none';
+    if (btnGoAi) btnGoAi.style.display = 'none';
 
     // 초대받은 상태(대기 중)일 때는 인원 관리 탭만 보이도록 처리
     document.querySelector('.tab-btn[data-tab="schedule"]').style.display = 'none';
@@ -212,6 +221,8 @@ function renderHead(){
     btnLeave.style.color = 'var(--danger)';
     btnLeave.disabled = false;
     document.getElementById('waitingActions').style.display = 'none';
+    if (btnGoChat) btnGoChat.style.display = 'inline-block';
+    if (btnGoAi) btnGoAi.style.display = 'inline-flex';
 
     // 정상 참여 중일 때는 모든 탭 보이도록
     document.querySelector('.tab-btn[data-tab="schedule"]').style.display = 'inline-block';
@@ -262,8 +273,8 @@ function renderTodaySchedules() {
   todays.forEach(s => {
     const isPrivate = s.isPublic === 'N';
     const badge = isPrivate
-      ? `<span style="font-size:10px; padding:2px 6px; background:#e2e8f0; color:#475569; border-radius:4px; margin-left:6px;">비공개</span>`
-      : `<span style="font-size:10px; padding:2px 6px; background:#bae6fd; color:#0369a1; border-radius:4px; margin-left:6px;">공개</span>`;
+      ? `<span style="font-size:10px; padding:3px 7px; background:#e2e8f0; color:#1e293b; font-weight:800; border-radius:4px; margin-left:6px;">비공개</span>`
+      : `<span style="font-size:10px; padding:3px 7px; background:#bae6fd; color:#0369a1; font-weight:800; border-radius:4px; margin-left:6px;">공개</span>`;
 
     let isShared = false;
     let dispTitle = s.title;
@@ -284,8 +295,18 @@ function renderTodaySchedules() {
     }
 
     if (isPrivate) {
-      bgColor = '#F1F5F9';
-      borderColor = '#E2E8F0';
+      borderColor = `color-mix(in srgb, ${borderColor} 50%, white)`;
+    }
+
+    let displayTime = s.time || '';
+    if (s.endDate) {
+      const endObj = new Date(s.endDate);
+      const eHours = String(endObj.getHours()).padStart(2, '0');
+      const eMins = String(endObj.getMinutes()).padStart(2, '0');
+      const eTimeStr = `${eHours}:${eMins}`;
+      if (eTimeStr !== '00:00' && eTimeStr !== displayTime) {
+        displayTime = `${displayTime} ~ ${eTimeStr}`;
+      }
     }
 
     const row = document.createElement('div');
@@ -299,6 +320,7 @@ function renderTodaySchedules() {
     row.style.borderRadius = '6px';
     row.style.marginBottom = '6px';
     row.style.background = '#ffffff';
+    row.style.background = '#ffffff';
 
     row.innerHTML = `
       <div>
@@ -308,7 +330,7 @@ function renderTodaySchedules() {
         </div>
         <div style="font-size:11px; color:#64748B; margin-top:2px;">${s.nickname}</div>
       </div>
-      <div style="font-size:12px; font-weight:600; color:${timeColor};">${s.time}</div>
+      <div style="font-size:12px; font-weight:600; color:#000;">${displayTime}</div>
     `;
     list.appendChild(row);
   });
@@ -339,9 +361,11 @@ function renderMembers(){
     const isMe = m.id === group.myMemberId;
     const displayColor = getMemberColor(m);
     
-    const avatarHtml = m.profileImageUrl
-      ? `<img src="${m.profileImageUrl}" alt="${m.name}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
-      : `<div style="width:100%; height:100%; background: #e2e8f0; border-radius:50%; display:flex; justify-content:center; align-items:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>`;
+    const fallbackSvg = `<div style="width:100%; height:100%; background: #e2e8f0; border-radius:50%; display:flex; justify-content:center; align-items:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>`;
+    
+    const avatarHtml = (m.profileImageUrl && m.profileImageUrl !== 'null' && m.profileImageUrl.trim() !== '')
+      ? `<img src="${m.profileImageUrl}" alt="${m.name}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" onerror="this.outerHTML='${fallbackSvg.replace(/'/g, "\\'")}'">`
+      : fallbackSvg;
 
     let colorPickerHtml = '';
     if (!isMe) {
@@ -499,23 +523,39 @@ document.getElementById('btnAddSchedule').addEventListener('click', async ()=>{
   const title = document.getElementById('scheduleTitle').value.trim();
   const date = document.getElementById('scheduleDate').value;
   const time = document.getElementById('scheduleTime').value;
+  const endTime = document.getElementById('scheduleEndTime').value || null;
   const visibility = document.getElementById('scheduleVisibility').value;
-  if(!title || !date || !time){ showToast('제목, 날짜, 시간을 모두 입력해주세요.'); return; }
+  const editId = document.getElementById('editScheduleId')?.value;
+
+  if(!title || !date || !time){ showToast('제목, 날짜, 시작 시간을 모두 입력해주세요.'); return; }
 
   try {
-    const res = await fetchApi(`/group/${group.id}/schedules`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, date, time, visibility })
-    });
-    if(res.ok) {
-      document.getElementById('scheduleTitle').value = '';
-      document.getElementById('scheduleDate').value = '';
-      document.getElementById('scheduleTime').value = '';
-      showToast('일정을 등록하고 공유했어요.');
-      fetchGroupDetail(); // 데이터를 다시 불러와서 화면을 갱신합니다.
+    if (editId) {
+      const res = await fetchApi(`/schedule/${editId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, date, time, endTime, visibility })
+      });
+      if (res.ok) {
+        document.getElementById('scheduleModal').classList.remove('open');
+        showToast('일정이 수정되었습니다.');
+        fetchGroupDetail();
+      } else {
+        showToast('일정 수정 중 오류가 발생했습니다.');
+      }
     } else {
-      showToast('일정 등록 중 오류가 발생했습니다.');
+      const res = await fetchApi(`/group/${group.id}/schedules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, date, time, endTime, visibility })
+      });
+      if(res.ok) {
+        document.getElementById('scheduleModal').classList.remove('open');
+        showToast('일정을 등록하고 공유했어요.');
+        fetchGroupDetail();
+      } else {
+        showToast('일정 등록 중 오류가 발생했습니다.');
+      }
     }
   } catch(e) { console.error(e); }
 });
@@ -882,11 +922,101 @@ const HOLIDAYS = {
   "2027-06-06": "현충일", "2027-06-07": "대체공휴일", "2027-08-15": "광복절", "2027-08-16": "대체공휴일",
   "2027-09-14": "추석 연휴", "2027-09-15": "추석", "2027-09-16": "추석 연휴", "2027-10-03": "개천절",
   "2027-10-04": "대체공휴일", "2027-10-09": "한글날", "2027-10-11": "대체공휴일", "2027-12-25": "크리스마스",
-  "2027-12-27": "대체공휴일"
+"2027-12-27": "대체공휴일"
 };
 
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
+let currentDetailDate = null;
+let currentSearchQuery = '';
+let searchMatches = [];
+let searchMatchIndex = 0;
+
+function goToday() {
+  const d = new Date();
+  calYear = d.getFullYear();
+  calMonth = d.getMonth();
+  const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  currentDetailDate = dateStr;
+  fetchGroupSchedules();
+}
+
+function handleSearchKeyup(e) {
+  if (e.key === 'Enter') performSearch();
+}
+
+function clearSearch() {
+  document.getElementById('scheduleSearchInput').value = '';
+  currentSearchQuery = '';
+  searchMatches = [];
+  searchMatchIndex = 0;
+  document.getElementById('searchNextBtn').style.display = 'none';
+  document.getElementById('searchClearBtn').style.display = 'none';
+  renderDynamicCalendar();
+  if (currentDetailDate) showDayDetail(currentDetailDate);
+}
+
+function performSearch() {
+  const input = document.getElementById('scheduleSearchInput');
+  if (!input) return;
+  const q = input.value.trim();
+  if (!q) {
+    clearSearch();
+    return;
+  }
+  
+  currentSearchQuery = q;
+  document.getElementById('searchClearBtn').style.display = 'inline-block';
+  
+  searchMatches = groupSchedules.filter(s => s.title && s.title.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+  
+  if (searchMatches.length === 0) {
+    showToast('검색 결과와 일치하는 일정이 없습니다.');
+    document.getElementById('searchNextBtn').style.display = 'none';
+    renderDynamicCalendar();
+    if (currentDetailDate) showDayDetail(currentDetailDate);
+    return;
+  }
+  
+  document.getElementById('searchNextBtn').style.display = 'inline-block';
+  
+  const today = new Date();
+  let closestIdx = 0;
+  let minDiff = Infinity;
+  searchMatches.forEach((s, idx) => {
+    if(!s.startDate) return;
+    const d = new Date(s.startDate);
+    const diff = Math.abs(d.getTime() - today.getTime());
+    if (diff < minDiff) {
+      minDiff = diff;
+      closestIdx = idx;
+    }
+  });
+  
+  searchMatchIndex = closestIdx;
+  jumpToMatch();
+}
+
+function goToNextMatch() {
+  if (searchMatches.length === 0) return;
+  searchMatchIndex = (searchMatchIndex + 1) % searchMatches.length;
+  jumpToMatch();
+}
+
+function jumpToMatch() {
+  const target = searchMatches[searchMatchIndex];
+  if (!target || !target.startDate) return;
+  
+  const d = new Date(target.startDate);
+  calYear = d.getFullYear();
+  calMonth = d.getMonth();
+  
+  const dateStr = target.startDate.slice(0, 10);
+  renderDynamicCalendar();
+  showDayDetail(dateStr);
+}
+
 let groupSchedules = [];
 
 async function fetchGroupSchedules() {
@@ -901,6 +1031,7 @@ async function fetchGroupSchedules() {
       groupSchedules = await res.json();
       renderDynamicCalendar();
       renderTodaySchedules();
+      if (currentDetailDate) showDayDetail(currentDetailDate, true);
     }
   } catch(e) { console.error("일정 불러오기 실패", e); }
 }
@@ -915,7 +1046,7 @@ function changeCalMonth(delta) {
 }
 
 function renderDynamicCalendar() {
-  document.getElementById('calendarMonthLabel').textContent = `${calYear}년 ${calMonth + 1}월 일정`;
+  document.getElementById('calendarMonthLabel').textContent = `${calYear}년 ${calMonth + 1}월`;
 
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -977,7 +1108,7 @@ function renderDynamicCalendar() {
 
   const allEvents = Array.from(uniqueEventsMap.values());
 
-  // 우선순위 정렬 (기간이 긴 일정, 시작일이 빠른 일정 우선)
+  // 우선순위 정렬 (기간이 긴 일정, 시작일이 빠른 일정 우선, 그 다음 시간 순)
   allEvents.sort((a, b) => {
     const aStart = a.startDate.slice(0, 10);
     const aEnd = a.endDate ? a.endDate.slice(0, 10) : aStart;
@@ -992,6 +1123,9 @@ function renderDynamicCalendar() {
     }
     if (aStart !== bStart) {
       return aStart.localeCompare(bStart);
+    }
+    if (a.time !== b.time) {
+      return (a.time || '').localeCompare(b.time || '');
     }
     return (a.title || '').localeCompare(b.title || '');
   });
@@ -1093,6 +1227,11 @@ function renderDynamicCalendar() {
         cls += durationClass;
         if (s.isTemp) cls += ' blink-slow';
 
+        if (currentSearchQuery) {
+          const matched = s.title && s.title.toLowerCase().includes(currentSearchQuery.toLowerCase());
+          cls += matched ? ' search-match' : ' search-mismatch';
+        }
+
         const tooltip = `${s.title} (${s.nicknames ? s.nicknames.join(', ') : (s.nickname || '공통')})`;
         const displayTime = s.title.startsWith('모임 일정') ? '' : ` ${s.time || ''}`;
 
@@ -1133,15 +1272,14 @@ function renderDynamicCalendar() {
       else if (isSaturday) dayColor = 'color: var(--sky);';
     }
     
-    html += `<div class="date ${isToday ? 'today' : ''}" style="cursor:pointer;" onclick="showDayDetail('${dateStr}')"><b style="${dayColor}">${c.day}</b>${eventsHtml}</div>`;
+    html += `<div class="date ${isToday ? 'today' : ''}" data-date="${dateStr}" style="cursor:pointer;" onclick="showDayDetail('${dateStr}')"><b style="${dayColor}">${c.day}</b>${eventsHtml}</div>`;
   });
 
   document.getElementById('groupCalendarContainer').innerHTML = html;
 }
 
-let currentDetailDate = null;
 
-function showDayDetail(dateStr) {
+function showDayDetail(dateStr, forceOpen = false) {
   const container = document.getElementById('dayDetailContainer');
   const title = document.getElementById('dayDetailTitle');
   const list = document.getElementById('dayDetailList');
@@ -1149,11 +1287,17 @@ function showDayDetail(dateStr) {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 
-  // 오늘 날짜를 클릭했거나, 이미 열려있는 날짜를 다시 클릭하면 닫기
-  if (dateStr === todayStr || currentDetailDate === dateStr) {
+  if (!forceOpen && currentDetailDate === dateStr) {
     container.style.display = 'none';
     currentDetailDate = null;
+    document.querySelectorAll('#groupCalendarContainer .date').forEach(el => el.classList.remove('selected-day'));
     return;
+  }
+
+  document.querySelectorAll('#groupCalendarContainer .date').forEach(el => el.classList.remove('selected-day'));
+  const currentEl = document.querySelector(`#groupCalendarContainer .date[data-date="${dateStr}"]`);
+  if (currentEl) {
+    currentEl.classList.add('selected-day');
   }
 
   currentDetailDate = dateStr;
@@ -1177,11 +1321,14 @@ function showDayDetail(dateStr) {
     }
 
     if (!mergedMap.has(key)) {
-      mergedMap.set(key, { ...s, nicknames: [displayNick] });
+      mergedMap.set(key, { ...s, nicknames: [displayNick], myScheduleId: (s.nickname === myName) ? s.id : null });
     } else {
       const existing = mergedMap.get(key);
       if (displayNick && !existing.nicknames.includes(displayNick)) {
         existing.nicknames.push(displayNick);
+      }
+      if (s.nickname === myName) {
+        existing.myScheduleId = s.id;
       }
       if (s.isPublic === 'Y') {
         existing.isPublic = 'Y';
@@ -1189,6 +1336,9 @@ function showDayDetail(dateStr) {
     }
   });
   let toRender = Array.from(mergedMap.values());
+
+  // 시간 순서대로 정렬 (시간이 없을 경우 빈 문자열로 처리)
+  toRender.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
   // 일정이 없을 때
   if(toRender.length === 0) {
@@ -1201,31 +1351,120 @@ function showDayDetail(dateStr) {
   list.innerHTML = toRender.map(s => {
     const isPrivate = s.isPublic === 'N';
     const badge = isPrivate
-      ? `<span style="font-size:10px; padding:2px 6px; background:#e2e8f0; color:#475569; border-radius:4px; margin-left:6px;">비공개</span>`
-      : `<span style="font-size:10px; padding:2px 6px; background:#bae6fd; color:#0369a1; border-radius:4px; margin-left:6px;">공개</span>`;
-
-    const bgColor = isPrivate ? '#F1F5F9' : '#E0F2FE';
-    const borderColor = isPrivate ? '#E2E8F0' : '#bae6fd';
-    const timeColor = isPrivate ? '#64748B' : '#0284C7';
+      ? `<span style="font-size:10px; padding:3px 7px; background:#e2e8f0; color:#1e293b; font-weight:800; border-radius:4px; margin-left:6px;">비공개</span>`
+      : `<span style="font-size:10px; padding:3px 7px; background:#bae6fd; color:#0369a1; font-weight:800; border-radius:4px; margin-left:6px;">공개</span>`;
 
     // 여러 명이 공유한 일정일 경우 이름 목록 표시
     const namesDisplay = s.nicknames && s.nicknames.length > 0 ? s.nicknames.join(', ') : '알 수 없음';
+    
+    const isShared = s.nicknames && s.nicknames.length > 1;
+    let borderColor = '#bae6fd';
+    
+    if (isShared) {
+      borderColor = '#bae6fd';
+    } else {
+      // s.nicknames[0]의 이름에서 "(나-비공개)" 같은 접미사를 제거한 원래 닉네임 추출
+      let firstNick = s.nicknames && s.nicknames.length > 0 ? s.nicknames[0] : s.nickname;
+      if (firstNick && firstNick.includes(' (나-비공개)')) {
+        firstNick = firstNick.replace(' (나-비공개)', '');
+      }
+      const mObj = group.members.find(m => m.name === firstNick);
+      const memberColor = mObj ? getMemberColor(mObj) : '#E2E8F0';
+      borderColor = memberColor;
+    }
+
+    if (isPrivate) {
+      borderColor = `color-mix(in srgb, ${borderColor} 50%, white)`;
+    }
+
+    let actionsHtml = '';
+    if (s.myScheduleId) {
+      actionsHtml = `
+        <div style="display:flex; gap:4px; margin-left:8px;">
+          <button class="btn btn-ghost btn-sm" style="font-size:12px; padding:4px 8px; color:#0284C7;" onclick="event.stopPropagation(); editMySchedule('${s.myScheduleId}')">수정</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:12px; padding:4px 8px; color:#EF4444;" onclick="event.stopPropagation(); deleteMySchedule('${s.myScheduleId}')">삭제</button>
+        </div>
+      `;
+    }
+
+    let displayTime = s.time || '';
+    if (s.endDate) {
+      const endObj = new Date(s.endDate);
+      const eHours = String(endObj.getHours()).padStart(2, '0');
+      const eMins = String(endObj.getMinutes()).padStart(2, '0');
+      const eTimeStr = `${eHours}:${eMins}`;
+      if (eTimeStr !== '00:00' && eTimeStr !== displayTime) {
+        displayTime = `${displayTime} ~ ${eTimeStr}`;
+      }
+    }
 
     return `
-      <div style="background:${bgColor}; padding:8px 12px; border-radius:6px; border:1px solid ${borderColor}; display:flex; justify-content:space-between; align-items:center;">
-        <div>
+      <div class="sched-item" style="border:1px solid ${borderColor}; border-left:5px solid ${borderColor}; background:#ffffff; border-radius:6px; padding:8px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; flex-direction:column;">
           <div style="display:flex; align-items:center;">
             <b style="font-size:13px; color:#1E293B;">${s.title}</b>
             ${badge}
           </div>
           <div style="font-size:11px; color:#64748B; margin-top:2px;">${namesDisplay}</div>
         </div>
-        <div style="font-size:12px; font-weight:600; color:${timeColor};">${s.time}</div>
+        <div style="display:flex; align-items:center;">
+          <div style="font-size:12px; font-weight:600; color:#000;">${displayTime}</div>
+          ${actionsHtml}
+        </div>
       </div>
     `;
   }).join('');
   container.style.display = 'block';
 }
+
+window.openScheduleModal = function() {
+  const t = document.getElementById('scheduleModalTitle');
+  if(t) t.textContent = '새 모임 일정';
+  document.getElementById('editScheduleId').value = '';
+  document.getElementById('scheduleTitle').value = '';
+  document.getElementById('scheduleDate').value = currentDetailDate || '';
+  document.getElementById('scheduleTime').value = '';
+  document.getElementById('scheduleEndTime').value = '';
+  document.getElementById('scheduleVisibility').value = 'public';
+  document.getElementById('scheduleModal').classList.add('open');
+};
+
+window.editMySchedule = function(id) {
+  const s = groupSchedules.find(x => String(x.id) === String(id));
+  if (!s) return;
+  const t = document.getElementById('scheduleModalTitle');
+  if(t) t.textContent = '모임 일정 수정';
+  document.getElementById('editScheduleId').value = s.id;
+  document.getElementById('scheduleTitle').value = s.title;
+  document.getElementById('scheduleDate').value = s.startDate ? s.startDate.slice(0, 10) : '';
+  document.getElementById('scheduleTime').value = s.time || '';
+  
+  let endTimeVal = '';
+  if (s.endDate) {
+    const endObj = new Date(s.endDate);
+    const eHours = String(endObj.getHours()).padStart(2, '0');
+    const eMins = String(endObj.getMinutes()).padStart(2, '0');
+    endTimeVal = `${eHours}:${eMins}`;
+  }
+  document.getElementById('scheduleEndTime').value = endTimeVal;
+  
+  document.getElementById('scheduleVisibility').value = s.isPublic === 'Y' ? 'public' : 'private';
+  document.getElementById('scheduleModal').classList.add('open');
+};
+
+window.deleteMySchedule = async function(id) {
+  if(!confirm('정말 이 일정을 삭제하시겠습니까?')) return;
+  try {
+    const res = await fetchApi(`/schedule/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      showToast('일정이 삭제되었습니다.');
+      fetchGroupDetail(); // 새로고침
+    } else {
+      showToast('일정 삭제에 실패했습니다.');
+    }
+  } catch(e) { console.error(e); }
+};
+
 // === 공유 일정(Peer) 로직 ===
 let peerSchedules = [];
 
@@ -1468,8 +1707,8 @@ function renderSchedulesSharedByMe() {
   Object.values(grouped).forEach(group => {
     const isPublic = group.isPublic === 'Y';
     const badge = isPublic
-      ? `<span style="font-size:10px; padding:2px 6px; background:#bae6fd; color:#0369a1; border-radius:4px; margin-left:6px; vertical-align:middle;">공개</span>`
-      : `<span style="font-size:10px; padding:2px 6px; background:#e2e8f0; color:#475569; border-radius:4px; margin-left:6px; vertical-align:middle;">비공개</span>`;
+      ? `<span style="font-size:10px; padding:3px 7px; background:#bae6fd; color:#0369a1; font-weight:800; border-radius:4px; margin-left:6px; vertical-align:middle;">공개</span>`
+      : `<span style="font-size:10px; padding:3px 7px; background:#e2e8f0; color:#1e293b; font-weight:800; border-radius:4px; margin-left:6px; vertical-align:middle;">비공개</span>`;
 
     let recurBadge = '';
     if (group.scheduleType === 'WEEKLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px; vertical-align:middle;">매주 반복</span>`;
@@ -1565,8 +1804,8 @@ async function toggleShareMyScheduleContainer() {
           const timeStr = s.startDate ? s.startDate.split('T')[1].substring(0,5) : '';
           const isPublic = s.isPublic === true || s.isPublic === 'true' || s.isPublic === 'Y';
           const badge = isPublic
-            ? `<span style="font-size:10px; padding:2px 6px; background:#bae6fd; color:#0369a1; border-radius:4px; margin-left:6px;">공개</span>`
-            : `<span style="font-size:10px; padding:2px 6px; background:#e2e8f0; color:#475569; border-radius:4px; margin-left:6px;">비공개</span>`;
+            ? `<span style="font-size:10px; padding:3px 7px; background:#bae6fd; color:#0369a1; font-weight:800; border-radius:4px; margin-left:6px;">공개</span>`
+            : `<span style="font-size:10px; padding:3px 7px; background:#e2e8f0; color:#1e293b; font-weight:800; border-radius:4px; margin-left:6px;">비공개</span>`;
 
           let recurBadge = '';
           if (s.scheduleType === 'WEEKLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px;">매주 반복</span>`;

@@ -11,13 +11,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.planslot.auth.service.EmailService;
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
     private final MemberService memberService;
-    private final com.example.planslot.auth.service.EmailService emailService;
+    private final EmailService emailService;
 
     @PostMapping("/signup")
     public ResponseEntity<String> signUp(@RequestBody MemberRequestDTO.SignUp request) {

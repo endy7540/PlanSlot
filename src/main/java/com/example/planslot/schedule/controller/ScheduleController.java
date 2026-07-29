@@ -18,6 +18,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.example.planslot.schedule.entity.Schedule;
+
 @Controller
 @RequestMapping("/schedule")
 @RequiredArgsConstructor
@@ -52,7 +54,7 @@ public class ScheduleController {
 
     @ResponseBody
     @GetMapping(value = "/debug", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<com.example.planslot.schedule.entity.Schedule>> debugSchedules(
+    public ResponseEntity<List<Schedule>> debugSchedules(
             Authentication authentication
     ) {
         Long memberId = extractMemberId(authentication);

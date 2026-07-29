@@ -12,6 +12,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.SimpleMailMessage;
 import java.util.UUID;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -36,7 +38,7 @@ public class AuthServiceImpl implements AuthService{
         }
 
         if (member.getStatus() == Member.Status.SUSPENDED) {
-            if (member.getSuspendedUntil() != null && java.time.LocalDateTime.now().isAfter(member.getSuspendedUntil())) {
+            if (member.getSuspendedUntil() != null && LocalDateTime.now().isAfter(member.getSuspendedUntil())) {
                 member.updateStatus(Member.Status.ACTIVE, null);
             }
         }

@@ -8,6 +8,7 @@ import java.util.List;
 
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"sender"})
     List<ChatMessage> findByGroupChatRoom_IdOrderByCreatedAtAsc(Long groupChatRoomId);
     
     ChatMessage findTopByGroupChatRoom_Group_IdOrderByCreatedAtDesc(Long groupId);

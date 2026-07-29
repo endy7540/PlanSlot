@@ -21,26 +21,27 @@
 <div th:replace="~{global/header :: headerFragment}"></div>
 
 <div class="chat-layout">
-  <!-- 중앙 메인 대화창 -->
-  <div class="chat-main">
-    <div class="chat-header">
-      <button style="border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:20px; margin-right:12px; display:flex; align-items:center;" title="모임 캘린더로 돌아가기" th:onclick="|location.href='/group/read?id=${groupId}'|">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+  <div class="chat-header">
+    <button style="border:none; background:none; cursor:pointer; color:rgba(255,255,255,0.9); font-size:20px; margin-right:12px; display:flex; align-items:center; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.9'" title="모임 캘린더로 돌아가기" th:onclick="|location.href='/group/read?id=${groupId}'|">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+    </button>
+    
+    <h2 style="flex:1;" th:text="${group.name}">모임 방 이름</h2>
+    
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button id="btnAiSummary" class="chat-sidebar-btn ai-summary-btn" title="AI 요약" style="font-weight: 700; display:flex; align-items:center; gap:4px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        AI 요약
       </button>
-      
-      <h2 style="flex:1;" th:text="${group.name}">모임 방 이름</h2>
-      
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button id="btnAiSummary" class="chat-sidebar-btn" title="AI 요약" style="background-color: var(--primary); color: white; border: none; font-weight: 500; display:flex; align-items:center; gap:4px; padding: 6px 12px; border-radius: 6px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-          AI 요약
-        </button>
-        <button id="btnToggleLeftSidebar" class="chat-sidebar-btn" title="모임방 목록">모임방 목록</button>
-        <button id="btnToggleRightSidebar" class="chat-sidebar-btn active" title="채팅방 인원">채팅방 인원</button>
-      </div>
+      <button id="btnToggleLeftSidebar" class="chat-sidebar-btn" title="모임방 목록">모임방 목록</button>
+      <button id="btnToggleRightSidebar" class="chat-sidebar-btn active" title="채팅방 인원">채팅방 인원</button>
     </div>
+  </div>
 
-    <div class="chat-messages" id="chatMessages">
+  <div class="chat-body">
+    <!-- 중앙 메인 대화창 -->
+    <div class="chat-main">
+      <div class="chat-messages" id="chatMessages">
       <!-- 과거 채팅 내역 렌더링 -->
       <th:block th:each="msg : ${chatHistory}">
         <div th:if="${msg.type.name() == 'ENTER'}" class="message system msg-item" th:data-date="${#temporals.format(msg.createdAt, 'yyyy-MM-dd')}" th:text="${msg.content}"></div>
@@ -166,6 +167,8 @@
       </a>
     </div>
   </div>
+  </div> <!-- end of chat-body -->
+
 </div>
 
 

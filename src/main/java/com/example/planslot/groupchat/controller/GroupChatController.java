@@ -29,6 +29,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.example.planslot.groupchat.repository.GroupReportRepository;
+import com.example.planslot.groupchat.dto.GroupReportDTO;
+
 @Controller
 @RequestMapping("/groupChat")
 @RequiredArgsConstructor
@@ -40,7 +43,7 @@ public class GroupChatController {
     private final GroupMemberRepository groupMemberRepository;
     private final SimpMessageSendingOperations messagingTemplate;
     private final GroupChatAiService groupChatAiService;
-    private final com.example.planslot.groupchat.repository.GroupReportRepository groupReportRepository;
+    private final GroupReportRepository groupReportRepository;
 
     private Long getAuthenticatedMemberId(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -101,7 +104,7 @@ public class GroupChatController {
     @ResponseBody
     public ResponseEntity<String> reportMessage(
             @PathVariable Long groupId, 
-            @RequestBody com.example.planslot.groupchat.dto.GroupReportDTO.Request request, 
+            @RequestBody GroupReportDTO.Request request, 
             Authentication authentication) {
         try {
             Long memberId = getAuthenticatedMemberId(authentication);

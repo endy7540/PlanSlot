@@ -21,7 +21,7 @@
     font-size: 13px;
     font-weight: 600;
     padding: 6px 12px;
-    border-radius: 16px;
+    border-radius: 10px;
     transition: all 0.2s;
   }
   .chat-sidebar-btn:hover { background: #e2e8f0; }
@@ -36,23 +36,34 @@
     padding: 0;
     width: 100vw;
     height: 100vh;
-    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
     background: var(--bg);
     color: var(--ink);
-    overflow: hidden; /* Prevent page scrolling, only chat area scrolls */
+    overflow: hidden;
+  }
+  
+  .chat-layout, .chat-layout * {
+    font-family: 'Malgun Gothic', sans-serif !important;
   }
 
   .chat-layout {
     display: flex;
-    height: calc(100vh - 110px); /* Leave space for header and margins */
-    max-width: 1200px;
-    width: calc(100% - 40px); /* 좌우 여백 확보 */
+    flex-direction: column;
+    height: calc(100vh - 110px);
+    max-width: 1132px;
+    width: calc(100% - 48px);
     margin: 20px auto;
     background: var(--panel);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.08); /* Deeper shadow for floating effect */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
     border-radius: 24px;
     overflow: hidden;
     border: 1px solid var(--line);
+  }
+
+  .chat-body {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    overflow: hidden;
   }
 
   /* 왼쪽 (채팅창) */
@@ -62,30 +73,60 @@
     flex-direction: column;
     background: var(--bg);
     position: relative;
+    overflow: hidden;
   }
 
   .chat-header {
-    background: var(--panel);
-    height: 64px;
-    padding: 0 24px;
-    border-bottom: 1px solid var(--line);
+    background: linear-gradient(90deg, rgba(7, 89, 133, 0.98), rgba(14, 116, 144, 0.90));
+    height: 76px;
+    padding: 0 28px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     box-sizing: border-box;
     z-index: 10;
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
   }
 
   .chat-header h2 {
     margin: 0;
-    font-size: 18px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
+    justify-content: flex-start;
+    gap: 10px;
+    letter-spacing: -0.3px;
   }
 
-  .chat-header h2 span { color: var(--ink-soft); font-size: 14px; font-weight: normal; }
+  .chat-header h2 span { color: #e0f2fe; font-size: 14px; font-weight: normal; }
+
+  /* 헤더 내부 버튼들 (어두운 배경에 맞게 스타일 조정) */
+  .chat-header .chat-sidebar-btn {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+  }
+  .chat-header .chat-sidebar-btn:hover { background: rgba(255, 255, 255, 0.25); }
+  .chat-header .chat-sidebar-btn.active {
+    background: #fff;
+    color: #075985;
+    border-color: #fff;
+  }
+
+  .chat-header .ai-summary-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+  .chat-header .ai-summary-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  }
 
   /* 메시지 스크롤 영역 */
   .chat-messages {
@@ -242,7 +283,7 @@
     border: 1px solid var(--line);
     border-radius: 12px;
     padding: 12px 16px;
-    font-family: Pretendard, sans-serif;
+    font-family: 'Malgun Gothic', sans-serif !important;
     font-size: 14px;
     resize: none;
     outline: none;

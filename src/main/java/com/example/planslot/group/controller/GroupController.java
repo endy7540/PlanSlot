@@ -157,7 +157,7 @@ public class GroupController {
                 if (originalFilename != null && originalFilename.contains(".")) {
                     extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
                 }
-                String newFilename = java.util.UUID.randomUUID().toString() + extension;
+                String newFilename = UUID.randomUUID().toString() + extension;
                 
                 java.nio.file.Path uploadPath = java.nio.file.Paths.get(System.getProperty("user.dir"), "uploads", "group");
                 if (!java.nio.file.Files.exists(uploadPath)) {

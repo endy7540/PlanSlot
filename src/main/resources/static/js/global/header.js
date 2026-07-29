@@ -1,3 +1,17 @@
+// Global Fetch Interceptor for Sliding Session
+const originalFetch = window.fetch;
+window.fetch = async function() {
+    let response = await originalFetch.apply(this, arguments);
+    if (response.headers && response.headers.has('New-Token')) {
+        const newToken = response.headers.get('New-Token');
+        if (newToken) {
+            localStorage.setItem('jwtToken', newToken);
+            document.cookie = "jwtToken=" + newToken + "; path=/;";
+        }
+    }
+    return response;
+};
+
 window.addEventListener("DOMContentLoaded", function() {
     const token = localStorage.getItem("jwtToken");
     const loginBtn = document.getElementById("loginBtn");

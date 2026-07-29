@@ -53,6 +53,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -444,8 +447,8 @@ public class BoardServiceImpl implements BoardService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "영구 정지된 회원은 커뮤니티 기능을 이용할 수 없습니다.");
         }
         if (member.getStatus() == Member.Status.SUSPENDED) {
-            if (member.getSuspendedUntil() != null && java.time.LocalDateTime.now().isBefore(member.getSuspendedUntil())) {
-                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+            if (member.getSuspendedUntil() != null && LocalDateTime.now().isBefore(member.getSuspendedUntil())) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "일시 정지 상태입니다. 정지 해제일: " + member.getSuspendedUntil().format(formatter));
             } else {
                 member.updateStatus(Member.Status.ACTIVE, null);

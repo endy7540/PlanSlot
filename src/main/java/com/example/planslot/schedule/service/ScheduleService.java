@@ -5,6 +5,8 @@ import com.example.planslot.schedule.dto.ScheduleDTO;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.example.planslot.schedule.entity.Schedule;
+
 public interface ScheduleService {
 
     ScheduleDTO createSchedule(Long memberId, ScheduleDTO requestDTO);
@@ -12,7 +14,7 @@ public interface ScheduleService {
     List<ScheduleDTO> getScheduleList(Long memberId);
 
     List<ScheduleDTO> getScheduleListByPeriod(Long memberId, LocalDateTime start, LocalDateTime end);
-    List<com.example.planslot.schedule.entity.Schedule> debugGetAllSchedules(Long memberId);
+    List<Schedule> debugGetAllSchedules(Long memberId);
 
     ScheduleDTO getSchedule(Long scheduleId, Long memberId);
 

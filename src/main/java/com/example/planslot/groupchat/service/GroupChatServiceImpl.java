@@ -21,6 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.example.planslot.group.repository.GroupRepository;
+import com.example.planslot.group.entity.Group;
+import com.example.planslot.groupchat.dto.GroupReportDTO;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -29,7 +33,7 @@ public class GroupChatServiceImpl implements GroupChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final GroupChatRoomRepository groupChatRoomRepository;
     private final MemberRepository memberRepository;
-    private final com.example.planslot.group.repository.GroupRepository groupRepository;
+    private final GroupRepository groupRepository;
     private final GroupReportRepository groupReportRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final NotificationService notificationService;
@@ -39,7 +43,7 @@ public class GroupChatServiceImpl implements GroupChatService {
     public ChatMessageDTO saveMessage(ChatMessageDTO messageDTO) {
         GroupChatRoom chatRoom = groupChatRoomRepository.findByGroup_Id(messageDTO.getGroupId())
                 .orElseGet(() -> {
-                    com.example.planslot.group.entity.Group group = groupRepository.findById(messageDTO.getGroupId())
+                    Group group = groupRepository.findById(messageDTO.getGroupId())
                             .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
                     GroupChatRoom newRoom = GroupChatRoom.builder().group(group).build();
                     return groupChatRoomRepository.save(newRoom);
@@ -81,7 +85,7 @@ public class GroupChatServiceImpl implements GroupChatService {
     public List<ChatMessageDTO> getChatHistory(Long groupId) {
         GroupChatRoom chatRoom = groupChatRoomRepository.findByGroup_Id(groupId)
                 .orElseGet(() -> {
-                    com.example.planslot.group.entity.Group group = groupRepository.findById(groupId)
+                    Group group = groupRepository.findById(groupId)
                             .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
                     GroupChatRoom newRoom = GroupChatRoom.builder().group(group).build();
                     return groupChatRoomRepository.save(newRoom);
@@ -96,7 +100,7 @@ public class GroupChatServiceImpl implements GroupChatService {
 
     @Override
     @Transactional
-    public void reportMessage(Long memberId, com.example.planslot.groupchat.dto.GroupReportDTO.Request request) {
+    public void reportMessage(Long memberId, GroupReportDTO.Request request) {
         ChatMessage message = chatMessageRepository.findById(request.getMessageId())
                 .orElseThrow(() -> new IllegalArgumentException("메시지를 찾을 수 없습니다."));
         Member reporter = memberRepository.findById(memberId)

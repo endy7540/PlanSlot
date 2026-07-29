@@ -9,6 +9,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
+import java.time.LocalDate;
+
 @Entity
 @Table(name = "schedule")
 @Getter
@@ -62,7 +64,7 @@ public class Schedule {
     private String location;
 
     @Column(name = "recurrence_end_date")
-    private java.time.LocalDate recurrenceEndDate;
+    private LocalDate recurrenceEndDate;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -79,7 +81,7 @@ public class Schedule {
 
     public void update(String title, String description, ScheduleType scheduleType,
                        LocalDateTime startDate, LocalDateTime endDate,
-                       String isPublic, String location, java.time.LocalDate recurrenceEndDate) {
+                       String isPublic, String location, LocalDate recurrenceEndDate) {
         this.title = title;
         this.description = description;
         this.scheduleType = scheduleType;

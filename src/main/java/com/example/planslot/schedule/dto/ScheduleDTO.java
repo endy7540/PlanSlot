@@ -12,6 +12,8 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+import java.time.LocalDate;
+
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -54,9 +56,9 @@ public class ScheduleDTO {
 
     private LocalDateTime updatedAt;
 
-    private java.time.LocalDate deadlineDate;
+    private LocalDate deadlineDate;
     private Integer notifyDaysBefore;
-    private java.time.LocalDate recurrenceEndDate;
+    private LocalDate recurrenceEndDate;
 
     // ===== 변환 메서드 =====
 

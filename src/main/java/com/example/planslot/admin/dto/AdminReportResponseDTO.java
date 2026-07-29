@@ -6,6 +6,9 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 
+import com.example.planslot.groupchat.entity.GroupReport;
+import com.example.planslot.boardreport.entity.BoardReportReasonCode;
+
 @Getter
 @Builder
 public class AdminReportResponseDTO {
@@ -37,10 +40,10 @@ public class AdminReportResponseDTO {
                 .targetBody(targetBody)
                 .build();
     }
-    public static AdminReportResponseDTO fromGroupEntity(com.example.planslot.groupchat.entity.GroupReport report) {
+    public static AdminReportResponseDTO fromGroupEntity(GroupReport report) {
         String translatedReason = report.getReason();
         try {
-            translatedReason = com.example.planslot.boardreport.entity.BoardReportReasonCode.valueOf(report.getReason()).getDescription();
+            translatedReason = BoardReportReasonCode.valueOf(report.getReason()).getDescription();
         } catch (Exception e) {
             // ignore and use raw string
         }

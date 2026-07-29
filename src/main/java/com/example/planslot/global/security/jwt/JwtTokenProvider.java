@@ -53,4 +53,54 @@ public class JwtTokenProvider {
                 .getPayload()
                 .getSubject();
     }
+
+    public boolean shouldRenewToken(String token) {
+        try {
+            var claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+            long issuedAt = claims.getIssuedAt().getTime();
+            long expiration = claims.getExpiration().getTime();
+            long now = System.currentTimeMillis();
+
+            long totalLifespan = expiration - issuedAt;
+            long passedTime = now - issuedAt;
+
+            // 1. 30일(자동 로그인) 토큰인 경우: 발급된 지 1일(24시간)이 지났을 때만 갱신
+            if (totalLifespan > (24L * 60 * 60 * 1000)) {
+                return passedTime > (24L * 60 * 60 * 1000);
+            }
+
+            // 2. 1시간 기본 토큰인 경우: 발급된 지 5분이 지났으면 무조건 갱신
+            // (동시성 문제를 방지하기 위해 최소 5분의 쿨타임을 부여)
+            return passedTime > (5 * 60 * 1000);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public String renewToken(String token) {
+        try {
+            var claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+            long issuedAt = claims.getIssuedAt().getTime();
+            long expiration = claims.getExpiration().getTime();
+            long totalLifespan = expiration - issuedAt;
+            
+            // 기존 토큰의 수명이 24시간을 초과하면 '로그인 유지(keepLogin)'로 간주
+            boolean keepLogin = totalLifespan > (24L * 60 * 60 * 1000);
+            
+            return createAccessToken(claims.getSubject(), claims.get("role", String.class), keepLogin);
+        } catch (Exception e) {
+            return token;
+        }
+    }
+    
+    public boolean isKeepLogin(String token) {
+        try {
+            var claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+            long issuedAt = claims.getIssuedAt().getTime();
+            long expiration = claims.getExpiration().getTime();
+            return (expiration - issuedAt) > (24L * 60 * 60 * 1000);
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

@@ -61,44 +61,6 @@ public class GroupController {
         return "group/ai-recommend";
     }
 
-    // AI 추천 찜 목록 화면 반환
-    @GetMapping("/ai-favorites")
-    public String groupAiFavorites() {
-        return "group/ai-favorites";
-    }
-
-    // AI 추천 찜하기 API
-    @PostMapping("/{groupId}/ai-recommendations/bookmark")
-    @ResponseBody
-    public ResponseEntity<Void> bookmarkAiRecommendation(
-            @PathVariable Long groupId,
-            @RequestBody GroupDTO.RecInfo recInfo,
-            Authentication authentication) {
-        try {
-            Long memberId = getAuthenticatedMemberId(authentication);
-            groupRecommendationService.bookmarkRecommendation(groupId, memberId, recInfo);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).build();
-        }
-    }
-
-    // AI 추천 찜 목록 조회 API
-    @GetMapping("/{groupId}/ai-recommendations/favorites")
-    @ResponseBody
-    public ResponseEntity<List<GroupDTO.BookmarkResponse>> getBookmarkedRecommendations(
-            @PathVariable Long groupId,
-            Authentication authentication) {
-        Long memberId = getAuthenticatedMemberId(authentication);
-        List<GroupDTO.BookmarkResponse> result = groupRecommendationService
-                .getBookmarkedRecommendations(groupId, memberId)
-                .stream()
-                .map(GroupDTO.BookmarkResponse::from)
-                .toList();
-        return ResponseEntity.ok(result);
-    }
-
 
     // AI 추천 데이터 동기 API (기존 유지)
     @GetMapping("/{groupId}/ai-recommendations")
@@ -407,7 +369,7 @@ public class GroupController {
             @RequestBody Map<String, String> body,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        groupService.addGroupSchedule(groupId, memberId, body.get("title"), body.get("date"), body.get("time"), body.get("visibility"), body.get("endDate"), body.get("endTime"));
+        groupService.addGroupSchedule(groupId, memberId, body.get("title"), body.get("date"), body.get("time"), body.get("visibility"), body.get("endDate"), body.get("endTime"), body.get("scheduleType"), body.get("recurrenceEndDate"));
         return ResponseEntity.ok().build();
     }
 

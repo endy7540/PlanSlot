@@ -1,4 +1,4 @@
-﻿/* ===== 전역 상태 ===== */
+/* ===== 전역 상태 ===== */
 (function checkGroupAuth() {
   const token = localStorage.getItem('jwtToken');
   if (!token) {
@@ -98,7 +98,7 @@ function fetchApi(url, options = {}) {
 /* Inline JS from HTML */
 const groupId = getQueryParam('id');
   let heatmapEl, recList, registerBtn, heatLegend, btnRecommend, dayLabels, registerNote;
-  let bookmarkBtn, actionBtnGroup;
+  let actionBtnGroup;
   let selectedRec = null;
 
   let heatData = [];
@@ -138,7 +138,6 @@ const groupId = getQueryParam('id');
     heatmapEl = document.getElementById('heatmap');
     recList = document.getElementById('recList');
     registerBtn = document.getElementById('btnRegisterRec');
-    bookmarkBtn = document.getElementById('btnBookmarkRec');
     actionBtnGroup = document.getElementById('actionBtnGroup');
     heatLegend = document.getElementById('heatLegend');
     btnRecommend = document.getElementById('btnRecommend');
@@ -182,11 +181,33 @@ const groupId = getQueryParam('id');
         }
       }
 
+      document.getElementById('exactRegTitle').value = selectedRec.title || `[추천] ${selectedRec.label}`;
       document.getElementById('regModal').style.display = 'flex';
     });
 
     document.getElementById('btnCancelReg').addEventListener('click', () => {
       document.getElementById('regModal').style.display = 'none';
+    });
+
+    document.getElementById('exactRegAllDay').addEventListener('change', (e) => {
+      const timeInputs = document.getElementById('exactTimeInputs');
+      if(e.target.checked) {
+        timeInputs.style.opacity = '0.4';
+        timeInputs.style.pointerEvents = 'none';
+      } else {
+        timeInputs.style.opacity = '1';
+        timeInputs.style.pointerEvents = 'auto';
+      }
+    });
+
+    document.getElementById('exactRegScheduleType').addEventListener('change', (e) => {
+      const recurRow = document.getElementById('exactRecurRow');
+      if(e.target.value !== 'DAILY') {
+        recurRow.style.display = 'block';
+      } else {
+        recurRow.style.display = 'none';
+        document.getElementById('exactRegRecurEndDate').value = '';
+      }
     });
 
     document.getElementById('btnConfirmReg').addEventListener('click', async () => {
@@ -196,12 +217,18 @@ const groupId = getQueryParam('id');
         return;
       }
 
-      const startTimeVal = document.getElementById('exactRegStartTime').value;
-      const endTimeVal = document.getElementById('exactRegEndTime').value;
+      const isAllDay = document.getElementById('exactRegAllDay').checked;
+      let startTimeVal = document.getElementById('exactRegStartTime').value;
+      let endTimeVal = document.getElementById('exactRegEndTime').value;
 
-      if (!startTimeVal || !endTimeVal) {
+      if (!isAllDay && (!startTimeVal || !endTimeVal)) {
         alert("시간을 모두 입력해주세요.");
         return;
+      }
+
+      if (isAllDay) {
+        startTimeVal = "00:00";
+        endTimeVal = "23:59";
       }
 
       const finalStartDate = flatpickr.formatDate(dates[0], "Y-m-d");
@@ -217,11 +244,13 @@ const groupId = getQueryParam('id');
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            title: selectedRec.title || `[추천] ${selectedRec.label}`,
+            title: document.getElementById('exactRegTitle').value.trim(),
             date: finalStartDate,
             time: finalStartTime,
             endDate: finalEndDate,
             endTime: finalEndTime,
+            scheduleType: document.getElementById('exactRegScheduleType').value,
+            recurrenceEndDate: document.getElementById('exactRegRecurEndDate').value || null,
             visibility: 'public'
           })
         });
@@ -237,30 +266,6 @@ const groupId = getQueryParam('id');
         confirmBtn.textContent = '확인 및 등록';
       }
     });
-
-    bookmarkBtn.addEventListener('click', async ()=>{
-      if (!selectedRec) {
-        alert('찜할 추천 일정을 먼저 선택해주세요.');
-        return;
-      }
-      try {
-        const res = await fetchApi(`/group/${groupId}/ai-recommendations/bookmark`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(selectedRec)
-        });
-        if(res.ok) {
-          showToast('추천 일정을 찜했습니다! 찜 목록 페이지에서 확인할 수 있습니다.');
-        } else {
-          showToast('찜하기에 실패했습니다.');
-        }
-      } catch(e) {
-        console.error(e);
-        showToast('찜하기 중 오류가 발생했습니다.');
-      }
-    });
-
-    document.getElementById('linkAiFavorites').href = `/group/ai-favorites?id=${groupId}`;
 
     btnRecommend.addEventListener('click', loadAiRecommendations);
 
@@ -457,8 +462,28 @@ const groupId = getQueryParam('id');
       heatmapEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--ink-soft); font-size:14px;">아직 공유된 일정이 없어서 분석할 수 없어요.</div>';
       document.getElementById('heatPagination').style.display = 'none';
     } else {
-      heatData = data.heat;
-      heatStartDateStr = startDateStrForHeat;
+      let processedHeat = JSON.parse(JSON.stringify(data.heat));
+      let startD = new Date(startDateStrForHeat);
+      let dayOfWeek = startD.getDay(); // 0(Sun) ~ 6(Sat)
+      
+      if (dayOfWeek > 0) {
+        processedHeat.forEach(r => {
+          for(let i=0; i<dayOfWeek; i++) r.row.unshift('empty');
+        });
+        startD.setDate(startD.getDate() - dayOfWeek);
+      }
+      
+      let totalLen = processedHeat[0].row.length;
+      let remainder = totalLen % 7;
+      if (remainder > 0) {
+        let padEnd = 7 - remainder;
+        processedHeat.forEach(r => {
+          for(let i=0; i<padEnd; i++) r.row.push('empty');
+        });
+      }
+      
+      heatData = processedHeat;
+      heatStartDateStr = startD.getFullYear() + "-" + String(startD.getMonth()+1).padStart(2, '0') + "-" + String(startD.getDate()).padStart(2, '0');
       renderHeatmapPage(0);
     }
 
@@ -468,11 +493,11 @@ const groupId = getQueryParam('id');
     } else {
       data.recs.forEach(r => {
         const el = document.createElement('div');
-        el.className = 'rank-card' + (r.rank === 1 ? ' rank1' : '');
+        el.className = 'rank-card';
         el.innerHTML = `
         <div class="ghost-num">${r.rank}</div>
         <div class="rank-date">${r.label}</div>
-        <span class="fit-badge ${r.rank > 1 ? 'partial' : ''}">${r.tag}</span>
+        <span class="fit-badge ${!r.tag.includes('전원') ? 'partial' : ''}">${r.tag}</span>
         <div class="tag-row" style="margin-top:10px;">
           <span class="tag">${r.sub}</span>
         </div>`;
@@ -508,8 +533,10 @@ const groupId = getQueryParam('id');
 
     const totalRow = [];
     for(let c = startCol; c < endCol; c++){
+      const isEmpty = heatData.every(r => r.row[c] === 'empty');
       const freeCount = heatData.filter(r => r.row[c] === 'free').length;
-      if(freeCount === heatData.length) totalRow.push('free');
+      if(isEmpty) totalRow.push('empty');
+      else if(freeCount === heatData.length) totalRow.push('free');
       else if(freeCount >= Math.ceil(heatData.length/2)) totalRow.push('mid');
       else totalRow.push('busy');
     }
@@ -517,6 +544,7 @@ const groupId = getQueryParam('id');
     let html = `<div class="ribbon-row total">
     <span class="name">전체</span>
     ${totalRow.map(v => {
+      if (v === 'empty') return '<div class="day-cell" style="background:transparent; border:1px dashed var(--line);"></div>';
       if (v === 'free') return '<div class="day-cell free"></div>';
       if (v === 'mid') return '<div class="day-cell partial"></div>';
       return '<div class="day-cell"></div>';
@@ -527,6 +555,7 @@ const groupId = getQueryParam('id');
       html += `<div class="ribbon-row">
       <span class="name">${r.name}</span>
       ${r.row.slice(startCol, endCol).map(v => {
+        if (v === 'empty') return '<div class="day-cell" style="background:transparent; border:1px dashed var(--line);"></div>';
         if (v === 'free') return '<div class="day-cell free"></div>';
         if (v === 'mid') return '<div class="day-cell partial"></div>';
         return '<div class="day-cell"></div>';
@@ -536,18 +565,20 @@ const groupId = getQueryParam('id');
 
     heatmapEl.innerHTML = html;
 
+    const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
     let labelHtml = '<span></span>';
     let startD = heatStartDateStr ? new Date(heatStartDateStr) : new Date();
     startD.setDate(startD.getDate() + startCol);
     for(let i=0; i<colsToShow; i++) {
       let d = new Date(startD); d.setDate(d.getDate() + i);
-      labelHtml += `<span>${d.getMonth()+1}/${d.getDate()}</span>`;
+      const isSunday = d.getDay() === 0;
+      const colorStyle = isSunday ? 'color: var(--danger);' : '';
+      labelHtml += `<span style="${colorStyle}">${d.getMonth()+1}/${d.getDate()} <span style="font-size:11px; font-weight:normal;">(${weekDays[d.getDay()]})</span></span>`;
     }
     dayLabels.innerHTML = labelHtml;
 
     heatLegend.style.display = 'flex';
     dayLabels.style.display = 'grid';
-    dayLabels.style.gridTemplateColumns = `80px repeat(${colsToShow}, 1fr)`;
 
     const heatPagination = document.getElementById('heatPagination');
     if (totalPages > 1) {

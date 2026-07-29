@@ -6,8 +6,6 @@ import com.example.planslot.schedule.repository.ScheduleRepository;
 import com.example.planslot.group.entity.GroupMember;
 import com.example.planslot.group.repository.GroupMemberRepository;
 import com.example.planslot.group.entity.GroupMemberStatus;
-import com.example.planslot.group.entity.GroupRecommendation;
-import com.example.planslot.group.repository.GroupRecommendationRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +34,6 @@ public class GroupRecommendationService {
     private final GroupMemberRepository groupMemberRepository;
     private final ScheduleRepository scheduleRepository;
     private final com.example.planslot.group.repository.GroupRepository groupRepository;
-    private final GroupRecommendationRepository groupRecommendationRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -92,10 +89,24 @@ public class GroupRecommendationService {
                 List<Schedule> schedules = scheduleRepository.findAllByMemberIdAndPeriodCandidate(gm.getMember().getId(), start, end);
                 boolean hasSchedule = false;
                 for (Schedule s : schedules) {
-                    if (s.getScheduleType() == null || s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.DAILY) {
+                    if (s.getScheduleType() == null || s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.DAILY || s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.NONE) {
                         LocalDateTime schedEnd = s.getEndDate() != null ? s.getEndDate() : s.getStartDate();
+                        if (schedEnd.equals(s.getStartDate())) {
+                            schedEnd = s.getStartDate().plusHours(1);
+                        }
                         if (s.getStartDate() != null && !s.getStartDate().isAfter(end) && !schedEnd.isBefore(start)) {
-                            promptBuilder.append("- ").append(s.getStartDate()).append(" to ").append(schedEnd).append("\n");
+                            LocalDate sStart = s.getStartDate().toLocalDate();
+                            LocalDate sEnd = schedEnd.toLocalDate();
+                            if (sStart.equals(sEnd)) {
+                                promptBuilder.append("- ").append(s.getStartDate()).append(" to ").append(schedEnd).append("\n");
+                            } else {
+                                for (LocalDate d = sStart; !d.isAfter(sEnd); d = d.plusDays(1)) {
+                                    if (d.isBefore(start.toLocalDate()) || d.isAfter(end.toLocalDate())) continue;
+                                    LocalDateTime dayStart = d.equals(sStart) ? s.getStartDate() : d.atStartOfDay();
+                                    LocalDateTime dayEnd = d.equals(sEnd) ? schedEnd : d.atTime(23, 59, 59);
+                                    promptBuilder.append("- ").append(dayStart).append(" to ").append(dayEnd).append("\n");
+                                }
+                            }
                             hasSchedule = true;
                         }
                     } else {
@@ -111,7 +122,10 @@ public class GroupRecommendationService {
                             if (s.getScheduleType() == com.example.planslot.schedule.entity.ScheduleType.YEARLY && date.getMonthValue() == limitStart.getMonthValue() && date.getDayOfMonth() == limitStart.getDayOfMonth()) matches = true;
                             
                             if (matches) {
-                                promptBuilder.append("- ").append(date.atTime(s.getStartDate().toLocalTime())).append("\n");
+                                long durationMinutes = java.time.Duration.between(s.getStartDate(), s.getEndDate() != null ? s.getEndDate() : s.getStartDate()).toMinutes();
+                                java.time.LocalDateTime startDateTime = date.atTime(s.getStartDate().toLocalTime());
+                                java.time.LocalDateTime endDateTime = startDateTime.plusMinutes(durationMinutes);
+                                promptBuilder.append("- ").append(startDateTime).append(" to ").append(endDateTime).append("\n");
                                 hasSchedule = true;
                             }
                         }
@@ -135,16 +149,17 @@ public class GroupRecommendationService {
                     .append("    // For each member, \"row\" array length MUST match the number of days exactly (").append(daysBetween + 1).append(" elements)\n")
                     .append("  ],\n")
                     .append("  \"recs\": [\n");
-        promptBuilder.append("    { \"rank\": 1, \"label\": \"날짜 (요일) 시작시간-종료시간\", \"sub\": \"이유 및 겹치는 일정 안내\", \"tag\": \"전원 가능\", \"date\": \"YYYY-MM-DD\", \"time\": \"HH:mm\", \"title\": \"모임 일정: 오전 ?시 - 오후 ?시\" }\n");
+        promptBuilder.append("    { \"rank\": 1, \"label\": \"날짜 (요일) 시작시간-종료시간\", \"sub\": \"이유 및 겹치는 일정 안내\", \"tag\": \"전원 가능\", \"date\": \"YYYY-MM-DD (For multi-day, use YYYY-MM-DD~YYYY-MM-DD)\", \"time\": \"HH:mm\", \"title\": \"모임 일정: 오전 ?시 - 오후 ?시\" }\n");
         promptBuilder.append("  ]\n");
         promptBuilder.append("}\n");
         promptBuilder.append("The 'row' array in 'heat' should have exactly ").append(daysBetween + 1).append(" elements, representing ").append(fromDate).append(" to ").append(toDate).append(".\n");
         promptBuilder.append("EACH element in the 'row' array MUST be EXACTLY the string literal \"free\", \"busy\", or \"mid\". Absolutely NO expressions (like \"a\"==\"b\").\n");
         promptBuilder.append("If someone has a schedule on a day, mark 'busy'. If no schedule, 'free'. If somewhat free, 'mid'.\n");
-        promptBuilder.append("Provide up to 3 recommendations in 'recs'.\n");
+        promptBuilder.append("You MUST provide EXACTLY 3 recommendations in 'recs'. If you cannot find 3 perfect matches, provide the next best alternative times to ensure exactly 3 are returned.\n");
         promptBuilder.append("Each 'label' MUST include both start and end time (e.g. '7월 25일 (토) 오후 2시 - 오후 4시').\n");
         promptBuilder.append("IMPORTANT TIME RANGE RULE: If the user selects multiple adjacent time periods (e.g., '오후' + '저녁' or '저녁' + '새벽'), you MUST treat them as a SINGLE CONTINUOUS time window. Specifically, if '저녁(18~24시)' and '새벽(00~06시)' are BOTH selected, you MUST be able to recommend a time slot that spans past midnight (e.g., Today 22:00 to Tomorrow 02:00).\n");
         promptBuilder.append("IMPORTANT MULTI-DAY RULE: If the user's preference includes '하루종일' (All day) or multi-day durations like '1박 2일' (1 Night 2 Days) or '2박 3일' (2 Nights 3 Days), you MUST find completely free, full, and consecutive days where EVERYONE is marked 'free'. For example, '1박 2일' requires 2 consecutive completely free days. In this case, ignore the time-of-day constraints and return a recommendation that covers the entire span (e.g. '8월 1일 (금) - 8월 2일 (토)').\n");
+        promptBuilder.append("IMPORTANT RECOMMENDATION PRIORITIZATION RULE: When recommending dates, HIGHLY PRIORITIZE dates where BOTH the day before and the day after the recommended date are completely free ('free' for everyone). If there are multiple such dates that satisfy this condition, prioritize the dates that are closest to the current date (today). If no such perfect dates exist, just find the closest possible dates.\n");
 
         String typeInstruction = "User's meeting preference - " + type;
         promptBuilder.append(typeInstruction).append("\n");
@@ -161,9 +176,12 @@ public class GroupRecommendationService {
 
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", aiModel);
-            requestBody.put("max_tokens", 8192);
+            requestBody.put("max_tokens", 16384); // 넉넉하게 16384로 확장
 
-            // Removed thinking and output_config to save tokens and prevent truncation
+            // 모델 스펙에 맞게 고민(thinking) 강도를 낮춤 (low)
+            Map<String, Object> outputConfig = new HashMap<>();
+            outputConfig.put("effort", "low");
+            requestBody.put("output_config", outputConfig);
 
             requestBody.put("system", "You are an AI that finds common free time for meetings. " +
                     "Output strictly valid JSON and nothing else. " +
@@ -249,39 +267,4 @@ public class GroupRecommendationService {
         return new GroupDTO.AiResponse(heat, recs);
     }
 
-    @Transactional
-    public void bookmarkRecommendation(Long groupId, Long memberId, GroupDTO.RecInfo rec) {
-        com.example.planslot.group.entity.Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 모임입니다."));
-        com.example.planslot.member.entity.Member member = groupMemberRepository.findByGroup_Id(groupId).stream()
-                .filter(gm -> gm.getMember().getId().equals(memberId) && gm.getMemberStatus() == GroupMemberStatus.ACTIVE)
-                .map(GroupMember::getMember)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("모임원이 아닙니다."));
-
-        GroupRecommendation recommendation = GroupRecommendation.builder()
-                .group(group)
-                .requestedBy(member)
-                .rank(rec.rank())
-                .label(rec.label())
-                .sub(rec.sub())
-                .tag(rec.tag())
-                .date(rec.date())
-                .time(rec.time())
-                .title(rec.title())
-                .build();
-
-        groupRecommendationRepository.save(recommendation);
-    }
-
-    @Transactional(readOnly = true)
-    public List<GroupRecommendation> getBookmarkedRecommendations(Long groupId, Long memberId) {
-        List<GroupMember> groupMembers = groupMemberRepository.findByGroup_Id(groupId);
-        boolean isMember = groupMembers.stream()
-                .anyMatch(gm -> gm.getMember().getId().equals(memberId) && gm.getMemberStatus() == GroupMemberStatus.ACTIVE);
-        if (!isMember) {
-            throw new IllegalArgumentException("모임원이 아닙니다.");
-        }
-        return groupRecommendationRepository.findAllByGroup_IdAndRequestedBy_IdOrderByBookmarkedAtDesc(groupId, memberId);
-    }
 }

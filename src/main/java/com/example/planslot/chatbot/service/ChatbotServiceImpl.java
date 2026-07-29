@@ -10,6 +10,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -17,7 +18,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +32,6 @@ import java.util.regex.Pattern;
 @Slf4j
 @Service
 public class ChatbotServiceImpl implements ChatbotService {
-
     private static final String GENERAL_ERROR_MESSAGE = "현재 답변을 불러올 수 없어요. 잠시 후 다시 질문해 주세요.";
     private static final String TIMEOUT_MESSAGE = "답변이 예상보다 오래 걸리고 있어요. 잠시 후 다시 질문해 주세요.";
     private static final String REQUEST_IN_PROGRESS_MESSAGE = "답변을 준비 중이에요. 잠시만 기다려 주세요.";
@@ -36,7 +39,10 @@ public class ChatbotServiceImpl implements ChatbotService {
     private static final Pattern EMOJI_PATTERN = Pattern.compile("[\\x{1F300}-\\x{1FAFF}\\x{2600}-\\x{27BF}\\x{FE0F}]", Pattern.UNICODE_CHARACTER_CLASS);
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Object rateLimitLock = new Object();
     private final Set<String> activeRequests = ConcurrentHashMap.newKeySet();
+    private final Map<String, Deque<Instant>> requesterRequestHistory = new HashMap<>();
+    private final Map<String, Instant> lastCompletedAt = new HashMap<>();
     private HttpClient httpClient;
 
     @Value("${ai.url:https://api.anthropic.com/v1/messages}")
@@ -51,7 +57,7 @@ public class ChatbotServiceImpl implements ChatbotService {
     @Value("${ai.model:claude-3-haiku-20240307}")
     private String claudeModel;
 
-    @Value("${chatbot.max-tokens:300}")
+    @Value("${chatbot.max-tokens:1000}")
     private int maxTokens;
 
     @Value("${chatbot.timeout-seconds:15}")
@@ -62,6 +68,18 @@ public class ChatbotServiceImpl implements ChatbotService {
 
     @Value("${chatbot.history-rounds:5}")
     private int historyRounds;
+
+    @Value("${chatbot.cooldown-seconds:3}")
+    private int cooldownSeconds;
+
+    @Value("${chatbot.guest-request-limit:5}")
+    private int guestRequestLimit;
+
+    @Value("${chatbot.member-request-limit:10}")
+    private int memberRequestLimit;
+
+    @Value("${chatbot.request-limit-minutes:10}")
+    private int requestLimitMinutes;
 
     @PostConstruct
     private void initializeHttpClient() {
@@ -78,12 +96,17 @@ public class ChatbotServiceImpl implements ChatbotService {
 
         String message = validateAndNormalizeRequest(request);
         if (!activeRequests.add(memberKey)) {
-            throw new ChatbotException(HttpStatus.CONFLICT, "CHATBOT_REQUEST_IN_PROGRESS", REQUEST_IN_PROGRESS_MESSAGE);
+            throw new ChatbotException(HttpStatus.TOO_MANY_REQUESTS, "CHATBOT_REQUEST_IN_PROGRESS", REQUEST_IN_PROGRESS_MESSAGE);
         }
 
+        boolean countedRequest = false;
         try {
-            return ChatbotResponseDTO.success(callClaude(message, request.getHistory()));
+            enforceAndRegisterRateLimit(memberKey);
+            countedRequest = true;
+            boolean loggedIn = memberKey.startsWith("member:");
+            return ChatbotResponseDTO.success(callClaude(message, request.getHistory(), loggedIn));
         } finally {
+            if (countedRequest) recordCompletion(memberKey);
             activeRequests.remove(memberKey);
         }
     }
@@ -137,7 +160,58 @@ public class ChatbotServiceImpl implements ChatbotService {
         return message;
     }
 
-    private String callClaude(String message, List<ChatbotRequestDTO.HistoryMessage> history) {
+    private void enforceAndRegisterRateLimit(String requesterKey) {
+        Instant now = Instant.now();
+        boolean guest = requesterKey.startsWith("guest:");
+        int requesterLimit = guest ? guestRequestLimit : memberRequestLimit;
+
+        synchronized (rateLimitLock) {
+            Instant completedAt = lastCompletedAt.get(requesterKey);
+            if (completedAt != null && now.isBefore(completedAt.plusSeconds(cooldownSeconds))) {
+                throw new ChatbotException(HttpStatus.TOO_MANY_REQUESTS, "CHATBOT_COOLDOWN",
+                        "질문을 연속으로 보낼 수 없어요. " + cooldownSeconds + "초 후 다시 시도해 주세요.");
+            }
+
+            Instant requesterWindowStart = now.minus(Duration.ofMinutes(requestLimitMinutes));
+            Deque<Instant> requesterHistory = requesterRequestHistory.get(requesterKey);
+            if (requesterHistory == null) requesterHistory = new ArrayDeque<>();
+            trimExpired(requesterHistory, requesterWindowStart);
+            if (requesterHistory.size() >= requesterLimit) {
+                String userType = guest ? "비로그인 사용자는" : "로그인 사용자는";
+                throw new ChatbotException(HttpStatus.TOO_MANY_REQUESTS, "CHATBOT_RATE_LIMIT",
+                        userType + " AI 도우미를 " + requestLimitMinutes + "분 동안 최대 " + requesterLimit + "회 이용할 수 있습니다. 잠시 후 다시 시도해 주세요.");
+            }
+
+            requesterHistory.addLast(now);
+            requesterRequestHistory.put(requesterKey, requesterHistory);
+        }
+    }
+
+    private void recordCompletion(String requesterKey) {
+        synchronized (rateLimitLock) {
+            lastCompletedAt.put(requesterKey, Instant.now());
+        }
+    }
+
+    private void trimExpired(Deque<Instant> history, Instant windowStart) {
+        while (!history.isEmpty() && !history.peekFirst().isAfter(windowStart)) history.pollFirst();
+    }
+
+    @Scheduled(fixedDelayString = "${chatbot.cleanup-interval-millis:600000}")
+    public void cleanupRateLimitState() {
+        Instant now = Instant.now();
+        Instant requesterWindowStart = now.minus(Duration.ofMinutes(requestLimitMinutes));
+
+        synchronized (rateLimitLock) {
+            requesterRequestHistory.entrySet().removeIf(entry -> {
+                trimExpired(entry.getValue(), requesterWindowStart);
+                return entry.getValue().isEmpty();
+            });
+            lastCompletedAt.entrySet().removeIf(entry -> !entry.getValue().plusSeconds(cooldownSeconds).isAfter(now));
+        }
+    }
+
+    private String callClaude(String message, List<ChatbotRequestDTO.HistoryMessage> history, boolean loggedIn) {
         if (claudeApiKey == null || claudeApiKey.isBlank()) {
             log.error("[CHATBOT] Claude API key is missing");
             throw new ChatbotException(HttpStatus.SERVICE_UNAVAILABLE, "CHATBOT_CONFIGURATION_ERROR", GENERAL_ERROR_MESSAGE);
@@ -155,7 +229,9 @@ public class ChatbotServiceImpl implements ChatbotService {
             Map<String, Object> payload = new HashMap<>();
             payload.put("model", claudeModel);
             payload.put("max_tokens", maxTokens);
-            payload.put("system", ChatbotPrompt.SYSTEM_PROMPT);
+            String previousUserMessage = findPreviousUserMessage(history);
+            String systemPrompt = ChatbotPrompt.buildSystemPrompt(message, previousUserMessage, loggedIn);
+            payload.put("system", systemPrompt);
             payload.put("messages", messages);
 
             String requestBody = objectMapper.writeValueAsString(payload);
@@ -193,6 +269,17 @@ public class ChatbotServiceImpl implements ChatbotService {
             log.error("[CHATBOT] Claude request failed. errorType={}", e.getClass().getSimpleName());
             throw new ChatbotException(HttpStatus.BAD_GATEWAY, "CHATBOT_CLAUDE_ERROR", GENERAL_ERROR_MESSAGE);
         }
+    }
+
+    private String findPreviousUserMessage(List<ChatbotRequestDTO.HistoryMessage> history) {
+        if (history == null) return null;
+        for (int i = history.size() - 1; i >= 0; i--) {
+            ChatbotRequestDTO.HistoryMessage historyMessage = history.get(i);
+            if (historyMessage != null && "user".equals(historyMessage.getRole())) {
+                return historyMessage.getContent();
+            }
+        }
+        return null;
     }
 
     private String extractAnswer(String responseBody) throws Exception {

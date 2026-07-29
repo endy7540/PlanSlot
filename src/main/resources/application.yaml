@@ -33,3 +33,8 @@ chatbot:
   timeout-seconds: 15
   max-question-length: 100
   history-rounds: 5
+  cooldown-seconds: 3
+  guest-request-limit: 5
+  member-request-limit: 10
+  request-limit-minutes: 10
+  cleanup-interval-millis: 600000

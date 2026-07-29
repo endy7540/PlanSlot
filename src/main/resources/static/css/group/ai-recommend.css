@@ -378,9 +378,6 @@ h1{ font-size:30px; margin:2px 0 6px; letter-spacing:-0.02em; color:var(--navy-d
     .ribbon-row.total{ margin-bottom:14px; padding-bottom:16px; border-bottom:1px dashed var(--line); }
     .ribbon-row.total .name{ color:var(--teal-deep); font-weight:800; }
     .ribbon-row.total .day-cell{ height:60px; }
-    .ribbon-row.total .day-cell{ background:#CBD5E1; } /* 회색 진하게 */
-    .ribbon-row.total .day-cell.partial{ background:#7DD3FC; } /* 연한 하늘색 진하게 */
-    .ribbon-row.total .day-cell.free{ background:#2563EB; } /* 파란색 진하게 */
 
     .ribbons-wrap{
       position:relative; padding-top:30px; padding-bottom:4px;

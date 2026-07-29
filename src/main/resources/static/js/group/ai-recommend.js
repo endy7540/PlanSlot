@@ -341,12 +341,10 @@ const groupId = getQueryParam('id');
       const detailRes = await fetchApi(`/group/${groupId}`);
       if (detailRes.ok) {
         const groupData = await detailRes.json();
-        document.getElementById('groupTitle').textContent = `AI 시간 추천 · ${groupData.name}`;
-        document.getElementById('crumbGroup').textContent = groupData.name;
+        document.getElementById('groupTitle').textContent = `${groupData.name} - AI 시간 추천`;
       }
     } catch(e) { console.error(e); }
 
-    document.getElementById('crumbGroup').href = linkToDetail(groupId);
     document.getElementById('btnBack').href = linkToDetail(groupId);
   }
 

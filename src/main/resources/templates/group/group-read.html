@@ -11,14 +11,16 @@
 <body>
 <div th:replace="~{global/header :: headerFragment}"></div>
 <div class="app" style="display:none;">
-  <div class="breadcrumb"><a th:href="@{/group/list}" href="group-list.html">← 내 모임</a></div>
+  <!-- breadcrumb relocated -->
   <div class="page-head">
     <div>
-      <div class="brand"><b>PlanSlot</b> · 모임 캘린더</div>
+      <div class="brand"><b>Group Calendar</b> · 모임 캘린더</div>
       <h1 id="groupTitle">모임</h1>
       <p id="groupMeta">참여자 - 명</p>
     </div>
-    <div class="head-actions" id="headActions">
+    <div class="head-actions" id="headActions" style="display:flex; align-items:center; gap:8px;">
+      <a class="btn btn-ghost" href="/group/list" style="text-decoration:none; background:rgba(255,255,255,0.1); color:#fff; border-color:rgba(255,255,255,0.34);">← 내 모임</a>
+      <a class="btn btn-teal" id="btnGoAi" href="#" style="display:none; font-weight:800; border:none; box-shadow:none; text-decoration:none;">✨ AI 시간 추천</a>
       <div id="waitingActions" style="display:none; gap: 8px;">
         <button class="btn btn-teal" id="btnAcceptInvite">초대 수락</button>
         <button class="btn btn-ghost" id="btnRejectInvite">초대 거절</button>
@@ -35,37 +37,40 @@
       </div>
       <!-- 일정 탭 -->
       <div class="tab-panel active" id="panel-schedule">
-        <div class="section-row" style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-          <h3 id="calendarMonthLabel" style="margin:0;">모임 일정</h3>
-          <div style="display:flex;gap:8px; align-items:center;">
-            <a class="btn btn-teal btn-sm" id="btnGoAi" href="#" style="font-size:12px; padding:6px 12px; border-radius:13px; font-weight:800; border:none; box-shadow:none;">✨ AI 시간 추천 보러가기</a>
-            <a class="btn btn-sky btn-sm" id="btnGoChat" href="#" style="font-size:12px; padding:6px 12px; border-radius:13px; margin-right:4px;">💬 모임 채팅방</a>
-            <div style="display:flex;gap:4px">
-              <button class="btn btn-ghost btn-sm" onclick="changeCalMonth(-1)">이전 달 ◀</button>
-              <button class="btn btn-ghost btn-sm" onclick="changeCalMonth(1)">▶ 다음 달</button>
+        <div class="section-row" style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; gap:8px; flex: 1; align-items:center;">
+            <button class="btn btn-ghost btn-sm" onclick="goToday()">오늘</button>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <input id="scheduleSearchInput" type="text" placeholder="제목 검색..." style="width: 140px; padding: 6px 10px; font-size: 13px; border: 2px solid #DCEFFC; border-radius: 8px; font-weight: 700; color: #075985; transition: all 0.2s;" onkeyup="handleSearchKeyup(event)">
+              <button class="btn btn-ghost btn-sm" id="searchNextBtn" style="display: none;" onclick="goToNextMatch()">다음</button>
+              <button class="btn btn-primary btn-sm" style="padding: 6px 12px; border: 0;" onclick="performSearch()">검색</button>
+              <button class="btn btn-ghost btn-sm" id="searchClearBtn" style="display: none;" onclick="clearSearch()">X</button>
             </div>
           </div>
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px; flex: 1;">
+            <button class="btn btn-ghost btn-sm" style="font-size:16px; padding:4px 8px; font-weight:bold;" onclick="changeCalMonth(-1)">◀</button>
+            <h2 id="calendarMonthLabel" style="margin:0; font-size: 22px; font-weight: 800; color: #075985;"></h2>
+            <button class="btn btn-ghost btn-sm" style="font-size:16px; padding:4px 8px; font-weight:bold;" onclick="changeCalMonth(1)">▶</button>
+          </div>
+          <div style="flex: 1; text-align:right; display:flex; justify-content:flex-end; gap:8px;">
+            <a class="btn btn-sky btn-sm" id="btnGoChat" href="#" style="display:none; font-size:12px; padding:6px 12px; text-decoration:none;">💬 모임 채팅방 입장</a>
+            <button class="btn btn-primary btn-sm" style="font-size:12px; padding:6px 12px;" onclick="openScheduleModal()">+ 새 일정 추가</button>
+          </div>
         </div>
-        <span style="display:block;margin-bottom:12px;color:var(--muted);font-size:11.5px">공개 일정만 모임원 전체에게 보여요</span>
+        <div style="text-align: right; margin-bottom: 12px;">
+          <span style="color:var(--muted); font-size:11.5px;">공개 일정만 모임원 전체에게 보여요</span>
+        </div>
         <div class="calendar" id="groupCalendarContainer">
           <!-- JS로 달력이 렌더링됩니다 -->
         </div>
         <div id="dayDetailContainer" style="display:none; margin:16px 0; padding:12px; background:#F8FAFC; border-radius:8px; border:1px solid #E2E8F0;">
-          <div class="section-row" style="margin-bottom:8px;"><h4 id="dayDetailTitle" style="margin:0;">선택한 날짜 상세</h4></div>
+          <div class="section-row" style="margin-bottom:8px;">
+            <h4 id="dayDetailTitle" style="margin:0;">선택한 날짜 상세</h4>
+          </div>
           <div id="dayDetailList" style="display:flex; flex-direction:column; gap:6px;"></div>
         </div>
         <div class="section-row"><h3>오늘의 일정</h3></div>
         <div class="my-schedule-list" id="myScheduleList"></div>
-        <div class="share-form">
-          <input id="scheduleTitle" placeholder="일정 제목">
-          <input id="scheduleDate" type="date">
-          <input id="scheduleTime" type="time">
-          <select id="scheduleVisibility">
-            <option value="public">공개</option>
-            <option value="private">비공개</option>
-          </select>
-          <button class="btn btn-primary" id="btnAddSchedule">등록</button>
-        </div>
       </div>
       <!-- 공유 일정 탭 -->
       <div class="tab-panel" id="panel-shared">
@@ -236,6 +241,48 @@
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+<div class="modal-overlay" id="scheduleModal">
+  <div class="modal-box" style="max-width:350px;">
+    <h3 style="margin-top:0; margin-bottom:16px;" id="scheduleModalTitle">새 모임 일정</h3>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <input type="hidden" id="editScheduleId" value="">
+      <input id="scheduleTitle" type="text" placeholder="일정 제목" class="form-input">
+      <input id="scheduleDate" type="date" class="form-input">
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input id="scheduleTime" type="time" class="form-input" style="flex:1;">
+        <span>~</span>
+        <input id="scheduleEndTime" type="time" class="form-input" style="flex:1;">
+      </div>
+      <select id="scheduleVisibility" class="form-input">
+        <option value="public">공개</option>
+        <option value="private">비공개</option>
+      </select>
+    </div>
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn btn-ghost" onclick="document.getElementById('scheduleModal').classList.remove('open')">취소</button>
+      <button class="btn btn-primary" id="btnAddSchedule">등록</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.form-input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; }
+.form-input:focus { outline: none; border-color: var(--primary); }
+
+.calendar .date.selected-day {
+  background-color: #E0F2FE !important;
+  border: 1px solid #7DD3FC !important;
+}
+
+.search-match {
+  box-shadow: 0 0 0 2px #FDE047 !important;
+  z-index: 10;
+}
+.search-mismatch {
+  opacity: 0.15 !important;
+}
+</style>
 
 <script src="/js/group/group-read.js"></script>
 </body>

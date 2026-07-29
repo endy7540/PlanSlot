@@ -31,6 +31,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
             SecurityContextHolder.getContext().setAuthentication(authentication);
+            
+            // 토큰 수명이 절반 이하로 남았으면 자동 갱신 (Sliding Session)
+            if (jwtTokenProvider.shouldRenewToken(token)) {
+                String newToken = jwtTokenProvider.renewToken(token);
+                
+                // 쿠키 갱신
+                jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("jwtToken", newToken);
+                cookie.setPath("/");
+                cookie.setHttpOnly(true);
+                cookie.setMaxAge(jwtTokenProvider.isKeepLogin(newToken) ? 30 * 24 * 60 * 60 : 60 * 60);
+                response.addCookie(cookie);
+                
+                // 헤더 갱신 (API 클라이언트용)
+                response.setHeader("New-Token", newToken);
+            }
         }
         filterChain.doFilter(request, response);
     }

@@ -480,7 +480,7 @@ public class GroupServiceImpl implements GroupService {
             endDateTime = LocalDateTime.parse(endDateStr + "T" + (endTimeStr.length() == 5 ? endTimeStr + ":00" : endTimeStr));
         }
         
-        boolean isPublic = "public".equals(visibility);
+        boolean isPublic = "public".equalsIgnoreCase(visibility) || "PUBLIC".equalsIgnoreCase(visibility);
 
         Schedule schedule = Schedule.builder()
                 .member(member)

@@ -59,7 +59,7 @@
             <div class="cal-nav-right">
                 <div style="display: flex; gap: 6px; align-items: center;">
                     <!-- 구글 동기화 버튼들 -->
-                    <div style="display: flex; align-items: center; gap: 8px; background: #F0F9FF; padding: 4px 12px; border-radius: 8px; border: 1px solid #BAE6FD;">
+                    <div style="display: flex; align-items: center; gap: 8px; background: var(--surface-deep); padding: 4px 12px; border-radius: 12px; border: 1px solid var(--border);">
                         <span style="font-size: 13px; font-weight: 700; color: #075985;">구글 연동</span>
                         <label class="toggle-switch" style="margin: 0;">
                             <input type="checkbox" id="googleSyncToggle" onchange="toggleGoogleSync(this.checked)">
@@ -67,7 +67,7 @@
                         </label>
                     </div>
                     
-                    <input id="scheduleSearchInput" type="text" placeholder="제목 검색..." style="width: 140px; padding: 8px 12px; font-size: 13px; border: 2px solid #DCEFFC; border-radius: 8px; font-weight: 700; color: #075985; transition: all 0.2s;" onkeyup="handleSearchKeyup(event)">
+                    <input id="scheduleSearchInput" type="text" placeholder="제목 검색..." style="width: 140px; padding: 8px 12px; font-size: 13px; border: 1px solid var(--border); border-radius: 12px; font-weight: 700; color: var(--ink); background: var(--surface); transition: all 0.2s;" onkeyup="handleSearchKeyup(event)">
                     <button class="ghost" id="searchNextBtn" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; display: none;" onclick="goToNextMatch()">다음</button>
                     <button class="primary" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; border: 0;" onclick="performSearch()">검색</button>
                     <button class="ghost" id="searchClearBtn" style="padding: 8px 12px; font-size: 13px; border-radius: 8px; display: none;" onclick="clearSearch()">X</button>

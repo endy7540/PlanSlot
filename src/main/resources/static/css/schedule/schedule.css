@@ -234,8 +234,8 @@
         }
         .cal-day .date-num.red-day{color:#ef4444}
         .cal-day.other-month .date-num.red-day{color:#fca5a5}
-        .cal-day .date-num.blue-day{color:#2563EB}
-        .cal-day.other-month .date-num.blue-day{color:#93c5fd}
+        .cal-day .date-num.blue-day{color:#B9DDEB}
+        .cal-day.other-month .date-num.blue-day{color:#93C5FD}
         .cal-day.just-added{animation:pulse-highlight 2.5s ease}
         @keyframes pulse-highlight{
             0%{background:#FEF9C3;}

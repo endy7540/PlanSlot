@@ -494,8 +494,8 @@ const HOLIDAYS = {
             const isHoliday = !!HOLIDAYS[dateKey] || isSolarHoliday;
             const isRedDay = isSunday || isHoliday;
             
-            // 토요일 판정
-            const isSaturday = new Date(c.y, c.m, c.day).getDay() === 6;
+            // 토요일 판정 (일요일/공휴일과 겹치지 않을 때만 파란색 적용)
+            const isSaturday = (new Date(c.y, c.m, c.day).getDay() === 6) && !isRedDay;
             const isSelected = dateKey === selectedDateKey;
 
             // 슬롯 렌더링

@@ -136,6 +136,8 @@ body[data-board-page="list"] .board-page-head .board-btn-primary:hover{backgroun
 .board-btn-ghost:hover{background:var(--board-surface)}
 .board-btn-danger{background:#fff;border-color:#FECACA;color:var(--board-danger)}
 .board-btn-danger:hover{background:var(--board-danger-bg)}
+#boardReportButton.board-btn-reported{background:#F8FAFC;border-color:#CBD5E1;color:#94A3B8}
+#boardReportButton.board-btn-reported:hover{background:#F1F5F9;border-color:#CBD5E1;color:#94A3B8}
 .board-btn-small{min-height:32px;padding:6px 10px;border-radius:8px;font-size:11.5px}
 .board-btn:disabled{opacity:.45;cursor:not-allowed}
 

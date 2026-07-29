@@ -493,6 +493,9 @@ const HOLIDAYS = {
             const isSolarHoliday = ["01-01", "03-01", "05-05", "06-06", "07-17", "08-15", "10-03", "10-09", "12-25"].includes(mmdd);
             const isHoliday = !!HOLIDAYS[dateKey] || isSolarHoliday;
             const isRedDay = isSunday || isHoliday;
+            
+            // 토요일 판정
+            const isSaturday = new Date(c.y, c.m, c.day).getDay() === 6;
             const isSelected = dateKey === selectedDateKey;
 
             // 슬롯 렌더링
@@ -559,7 +562,7 @@ const HOLIDAYS = {
 
             return `
         <div class="cal-day${c.otherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}${isSelected ? ' selected-day' : ''}" data-date="${dateKey}" onclick="openNewSchedule('${dateKey}')">
-          <div class="date-num${isRedDay ? ' red-day' : ''}">${c.day}</div>
+          <div class="date-num${isRedDay ? ' red-day' : ''}${isSaturday ? ' blue-day' : ''}">${c.day}</div>
           ${chips}
           ${more}
         </div>`;

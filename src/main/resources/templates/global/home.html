@@ -155,6 +155,24 @@
 
     <div class="chatbot-messages" id="chatbotMessages" role="log" aria-live="polite"></div>
 
+    <div class="chatbot-quick-tools">
+      <div class="chatbot-quick-panel" id="chatbotQuickPanel" aria-label="빠른 질문" hidden>
+        <div class="chatbot-quick-panel-title">빠른 질문을 선택해 보세요</div>
+        <div class="chatbot-quick-list">
+          <button class="chatbot-quick-question" type="button" data-question="플랜슬롯은 어떤 서비스야?">플랜슬롯은 어떤 서비스야?</button>
+          <button class="chatbot-quick-question" type="button" data-question="일정은 어떻게 등록해?">일정은 어떻게 등록해?</button>
+          <button class="chatbot-quick-question" type="button" data-question="모임은 어떻게 만들어?">모임은 어떻게 만들어?</button>
+          <button class="chatbot-quick-question" type="button" data-question="게시판 모집은 어떻게 이용해?">게시판 모집은 어떻게 이용해?</button>
+          <button class="chatbot-quick-question" type="button" data-question="신고는 어떻게 하고 처리돼?">신고는 어떻게 하고 처리돼?</button>
+        </div>
+      </div>
+      <button class="chatbot-quick-toggle" id="chatbotQuickToggle" type="button" aria-expanded="false" aria-controls="chatbotQuickPanel">
+        <span class="chatbot-quick-toggle-icon" aria-hidden="true">?</span>
+        <span>빠른 질문</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"></path></svg>
+      </button>
+    </div>
+
     <div class="chatbot-compose">
       <div class="chatbot-input-wrap">
         <textarea class="chatbot-input" id="chatbotInput" maxlength="100" rows="1" placeholder="플랜슬롯 기능을 질문해 주세요."></textarea>

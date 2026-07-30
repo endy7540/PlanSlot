@@ -50,26 +50,30 @@ public class ChatbotController {
     }
 
     private String resolveRequesterKey(Authentication authentication, HttpServletRequest request, String authorizationHeader, String clientId) {
-        boolean bearerRequest = authorizationHeader != null && authorizationHeader.startsWith("Bearer ")
+        boolean hasAuthorizationHeader = authorizationHeader != null && !authorizationHeader.isBlank();
+        boolean bearerRequest = hasAuthorizationHeader && authorizationHeader.startsWith("Bearer ")
                 && !authorizationHeader.substring(7).isBlank();
-        if (bearerRequest
-                && authentication != null && authentication.isAuthenticated()
-                && !(authentication instanceof AnonymousAuthenticationToken)
-                && authentication.getName() != null
-                && !authentication.getName().isBlank()
-                && !"anonymousUser".equals(authentication.getName())) {
+
+        if (hasAuthorizationHeader && !bearerRequest) {
+            throw new ChatbotException(HttpStatus.UNAUTHORIZED, "CHATBOT_INVALID_TOKEN", "로그인 정보가 올바르지 않아요. 다시 로그인해 주세요.");
+        }
+        if (bearerRequest) {
+            if (authentication == null || !authentication.isAuthenticated()
+                    || authentication instanceof AnonymousAuthenticationToken
+                    || authentication.getName() == null || authentication.getName().isBlank()
+                    || "anonymousUser".equals(authentication.getName())) {
+                throw new ChatbotException(HttpStatus.UNAUTHORIZED, "CHATBOT_INVALID_TOKEN", "로그인 정보가 만료되었어요. 다시 로그인해 주세요.");
+            }
             return "member:" + authentication.getName();
         }
 
         String normalizedClientId = clientId == null ? "" : clientId.trim();
         if (!CLIENT_ID_PATTERN.matcher(normalizedClientId).matches()) {
-            normalizedClientId = "anonymous-browser";
+            throw new ChatbotException(HttpStatus.BAD_REQUEST, "CHATBOT_INVALID_CLIENT_ID", "비로그인 사용자 정보를 확인할 수 없어요. 페이지를 새로고침한 뒤 다시 시도해 주세요.");
         }
 
         String remoteAddress = request.getRemoteAddr();
-        if (remoteAddress == null || remoteAddress.isBlank()) {
-            remoteAddress = "unknown";
-        }
+        if (remoteAddress == null || remoteAddress.isBlank()) remoteAddress = "unknown";
         return "guest:" + remoteAddress + ":" + normalizedClientId;
     }
 }

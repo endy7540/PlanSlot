@@ -54,15 +54,23 @@
     }
 
     function getClientId() {
-        let clientId = sessionStorage.getItem(CLIENT_ID_KEY);
-        if (clientId && /^[A-Za-z0-9_-]{16,80}$/.test(clientId)) return clientId;
+        const clientIdPattern = /^[A-Za-z0-9_-]{16,80}$/;
+        let clientId = localStorage.getItem(CLIENT_ID_KEY);
+        if (clientId && clientIdPattern.test(clientId)) return clientId;
+
+        const previousSessionClientId = sessionStorage.getItem(CLIENT_ID_KEY);
+        if (previousSessionClientId && clientIdPattern.test(previousSessionClientId)) {
+            localStorage.setItem(CLIENT_ID_KEY, previousSessionClientId);
+            sessionStorage.removeItem(CLIENT_ID_KEY);
+            return previousSessionClientId;
+        }
 
         if (window.crypto && typeof window.crypto.randomUUID === 'function') {
             clientId = window.crypto.randomUUID();
         } else {
             clientId = `guest-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`;
         }
-        sessionStorage.setItem(CLIENT_ID_KEY, clientId);
+        localStorage.setItem(CLIENT_ID_KEY, clientId);
         return clientId;
     }
 

@@ -31,7 +31,7 @@ async function initializeBoardRegister() {
   const imageSelectButton = document.getElementById('boardRegisterImageSelect');
 
   document.getElementById('boardRegisterCategory').textContent = BOARD_TYPE_INFO[type].label;
-  document.getElementById('boardRegisterPageTitle').textContent = boardId ? '게시글 수정' : '새 게시글 작성';
+  document.title = `PlanSlot - ${BOARD_TYPE_INFO[type].label} ${boardId ? '게시글 수정' : '게시글 작성'}`;
   document.getElementById('boardRegisterSubmit').textContent = boardId ? '수정 완료' : '등록하기';
   document.getElementById('boardRegisterListLink').href = returnTo;
   document.getElementById('boardRegisterCancel').addEventListener('click', () => {

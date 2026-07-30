@@ -124,7 +124,7 @@ public class NotificationServiceImpl implements NotificationService {
         Member receiver = findReceiver(receiverId);
         NotificationSetting setting = getOrCreateNotificationSetting(receiver);
 
-        if (!setting.isAllEnabled() || !setting.isGroupEnabled()) {
+        if (!setting.isAllEnabled() || !setting.isApplicationEnabled()) {
             return;
         }
 

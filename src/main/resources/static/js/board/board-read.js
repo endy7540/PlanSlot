@@ -100,7 +100,14 @@ async function initializeBoardRead() {
     return;
   }
 
-  document.getElementById('boardCommentSubmit')?.addEventListener('click', event => createBoardComment(boardId, null, null, event.currentTarget));
+  const commentSubmitButton = document.getElementById('boardCommentSubmit');
+  const commentTextarea = document.getElementById('boardCommentContent');
+  commentSubmitButton?.addEventListener('click', event => createBoardComment(boardId, null, null, event.currentTarget));
+  commentTextarea?.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) return;
+    event.preventDefault();
+    createBoardComment(boardId, null, null, commentSubmitButton);
+  });
   document.getElementById('boardBackButton')?.addEventListener('click', () => location.href = getBoardReturnUrl());
   document.getElementById('boardCommentList')?.addEventListener('click', event => handleCommentAction(event, boardId));
   updateBoardCommentFormState();
@@ -553,6 +560,13 @@ function showCommentInlineForm(commentElement, mode, boardId) {
     else createBoardComment(boardId, commentId, textarea.value, buttons[0]);
   });
   buttons[1].addEventListener('click', () => slot.innerHTML = '');
+  if (mode === 'reply') {
+    textarea.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) return;
+      event.preventDefault();
+      createBoardComment(boardId, commentId, textarea.value, buttons[0]);
+    });
+  }
   textarea.focus();
 }
 async function updateBoardComment(commentId, content, boardId, button) {

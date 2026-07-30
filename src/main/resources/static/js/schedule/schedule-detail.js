@@ -191,49 +191,13 @@ const API_BASE = window.location.origin;
     async function deleteCurrentSchedule() {
         const params = new URLSearchParams(window.location.search);
         const targetDateParam = params.get('date');
+        const title = document.getElementById('detail-title-val').textContent;
 
-        try {
-            const origRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, { headers: authHeaders() });
-            if (!origRes.ok) {
-                showToast('일정 정보 조회 실패', true);
-                return;
-            }
-            const origSchedule = await origRes.json();
-            const originalType = origSchedule.scheduleType;
-            const isOrigRecurrent = (originalType && originalType !== 'DAILY');
-
-            const startDateStr = getDateOnly(origSchedule.startDate);
-            const endDateStr = origSchedule.endDate ? getDateOnly(origSchedule.endDate) : startDateStr;
-            const isMultiDay = startDateStr !== endDateStr;
-
-            // 1) 연속 일정 판정 분기
-            if (isMultiDay && targetDateParam) {
-                const choice = await askMultiDayDeleteChoice(targetDateParam);
-                if (choice === 'cancel') return;
-
-                if (choice === 'all') {
-                    await performDeleteAll(scheduleId);
-                } else if (choice === 'single') {
-                    await deleteSingleDayOfMultiDaySchedule(origSchedule, targetDateParam);
-                }
-                return;
-            }
-
-            if (!isOrigRecurrent || !targetDateParam) {
-                if (!confirm('정말 이 일정을 삭제하시겠습니까?')) return;
-                await performDeleteAll(scheduleId);
-                return;
-            }
-
-            const choice = await askDeleteChoice(targetDateParam);
-            if (choice === 'future') {
-                await deleteFutureSchedules(origSchedule, targetDateParam);
-            } else if (choice === 'day') {
-                await deleteSingleDaySchedule(origSchedule, targetDateParam);
-            }
-        } catch (e) {
-            console.error(e);
-            showToast('삭제 요청 처리 중 오류가 발생했습니다.', true);
+        if (window.parent && typeof window.parent.deleteSingleSchedule === 'function') {
+            window.parent.deleteSingleSchedule(scheduleId, title, targetDateParam);
+        } else {
+            if (!confirm(`'${title}' 일정을 삭제하시겠습니까?`)) return;
+            await performDeleteAll(scheduleId);
         }
     }
 

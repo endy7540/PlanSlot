@@ -159,7 +159,21 @@ const API_BASE = window.location.origin;
         } catch (e) {
             console.error(e);
             showToast('일정 정보를 가져오는 중 오류가 발생했습니다.', true);
+        } finally {
+            // 데이터 렌더링 완료 후 부모에게 실제 높이 전달
+            notifyParentResize();
         }
+    }
+
+    function notifyParentResize() {
+        if (window.self === window.top) return;
+        try {
+            const h = document.documentElement.scrollHeight + 40; // 여유값 40px
+            const maxH = window.parent.innerHeight * 0.92;
+            const finalH = Math.min(h, maxH);
+            const container = window.parent.document.getElementById('scheduleIframeContainer');
+            if (container) container.style.height = finalH + 'px';
+        } catch(e) {}
     }
 
     function goToEdit() {

@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
-    <link rel="stylesheet" th:href="@{/css/schedule/schedule-register.css}">
+    <link rel="stylesheet" th:href="@{/css/schedule/schedule-register.css(v='1.1.0')}">
 
     <!-- iframe 모달 내부 감지 시 헤더 숨김 및 레이아웃 최적화 -->
     <script>
@@ -55,8 +55,10 @@
                 <input id="f-title" placeholder="일정 제목 (최대 50자)">
             </div>
             <div>
-                <label>설명</label>
-                <textarea id="f-description" placeholder="일정 상세 설명"></textarea>
+                <label>설명 <span id="desc-counter" style="font-weight:500; color:#94A3B8;">0 / 400</span></label>
+                <textarea id="f-description" placeholder="일정 상세 설명 (최대 400자)" maxlength="400"
+                    oninput="updateDescCounter(this)"></textarea>
+                <div id="desc-warn" style="display:none; color:#EF4444; font-size:11px; font-weight:700; margin-top:4px;">⚠️ 설명은 400자를 초과할 수 없습니다.</div>
             </div>
             <div class="form-row">
                 <div>
@@ -82,19 +84,25 @@
                 </div>
             </div>
             <!-- 기간 선택 버튼 그룹 / 하루종일 토글 스위치 행 -->
-            <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
+            <div class="form-row" style="margin-bottom: 16px;">
                 <!-- 기간 선택 버튼 그룹 -->
-                <div class="period-btn-group" style="flex: 1.2; min-width: 180px; display: flex; background: #EEF2F6; padding: 4px; border-radius: 10px;">
-                    <button id="btn-single-day" type="button" class="active" style="flex: 1; padding: 10px; border-radius: 8px; font-size: 13.5px; font-weight: 800; cursor: pointer; transition: all 0.2s;" onclick="setPeriodMode(false)">하루 일정</button>
-                    <button id="btn-range-day" type="button" style="flex: 1; padding: 10px; border-radius: 8px; font-size: 13.5px; font-weight: 800; cursor: pointer; transition: all 0.2s;" onclick="setPeriodMode(true)">기간 일정</button>
+                <div>
+                    <label>일정 기간 유형 *</label>
+                    <div class="period-btn-group" style="display: flex; background: #EEF2F6; padding: 4px; border-radius: 10px; height: 46px; box-sizing: border-box;">
+                        <button id="btn-single-day" type="button" class="active" style="flex: 1; padding: 10px; border-radius: 8px; font-size: 13.5px; font-weight: 800; cursor: pointer; transition: all 0.2s;" onclick="setPeriodMode(false)">하루 일정</button>
+                        <button id="btn-range-day" type="button" style="flex: 1; padding: 10px; border-radius: 8px; font-size: 13.5px; font-weight: 800; cursor: pointer; transition: all 0.2s;" onclick="setPeriodMode(true)">기간 일정</button>
+                    </div>
                 </div>
                 <!-- 하루종일 토글 -->
-                <div style="flex: 0.8; min-width: 130px; display: flex; align-items: center; justify-content: space-between; background: #F3FAFF; border: 2px solid #DCEFFC; border-radius: 10px; padding: 8px 14px; height: 46px; box-sizing: border-box;">
-                    <span style="font-size: 13.5px; font-weight: 700; color: #075985;">하루종일</span>
-                    <label class="toggle-switch" style="margin: 0;">
-                        <input id="f-allDay" type="checkbox" onchange="toggleAllDay(this.checked)">
-                        <span class="slider"></span>
-                    </label>
+                <div>
+                    <label>시간 설정 *</label>
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: #F3FAFF; border: 2px solid #DCEFFC; border-radius: 10px; padding: 0 14px; height: 46px; box-sizing: border-box;">
+                        <span style="font-size: 13.5px; font-weight: 700; color: #075985;">하루종일</span>
+                        <label class="toggle-switch" style="margin: 0;">
+                            <input id="f-allDay" type="checkbox" onchange="toggleAllDay(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -162,6 +170,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script th:src="@{/js/schedule/schedule-register.js}"></script>
+<script th:src="@{/js/schedule/schedule-register.js(v='1.1.2')}"></script>
 </body>
 </html>

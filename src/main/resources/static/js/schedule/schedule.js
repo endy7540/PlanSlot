@@ -818,8 +818,8 @@ const HOLIDAYS = {
                 : `<span style="font-size: 11px; font-weight: 800; color: #6B21A8; background: #F3E8FF; padding: 2px 6px; border-radius: 4px; margin-right: 6px; display: inline-flex; align-items: center; gap: 2px; line-height: 1;">비공개</span>`;
 
             return `
-                <div class="selected-event-item${searchClass}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #E2E8F0; cursor: default;">
-                    <div style="display: flex; align-items: center; flex: 1; min-width: 0; cursor: pointer;" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
+                <div class="selected-event-item${searchClass}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; cursor: pointer;" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
+                    <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
                         ${visibilityBadge}
                         <span class="selected-event-title" style="font-weight: 700; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(s.title)}</span>
                     </div>
@@ -848,6 +848,8 @@ const HOLIDAYS = {
         currentSearchQuery = q;
         const clearBtn = document.getElementById('searchClearBtn');
         clearBtn.style.display = 'inline-block';
+        const searchBtn = document.getElementById('searchBtn');
+        if (searchBtn) searchBtn.style.display = 'none';
         
         try {
             const currentYear = new Date().getFullYear();
@@ -867,6 +869,7 @@ const HOLIDAYS = {
             
             if (searchMatches.length === 0) {
                 showToast('검색 결과와 일치하는 일정이 없습니다.', false);
+                document.getElementById('searchPrevBtn').style.display = 'none';
                 document.getElementById('searchNextBtn').style.display = 'none';
                 renderCalendar();
                 if (selectedDateKey) {
@@ -875,6 +878,7 @@ const HOLIDAYS = {
                 return;
             }
 
+            document.getElementById('searchPrevBtn').style.display = 'inline-block';
             document.getElementById('searchNextBtn').style.display = 'inline-block';
 
             const today = new Date();
@@ -921,7 +925,45 @@ const HOLIDAYS = {
     async function goToNextMatch() {
         if (searchMatches.length === 0 || searchMatchIndex === -1) return;
 
-        searchMatchIndex = (searchMatchIndex + 1) % searchMatches.length;
+        if (searchMatchIndex >= searchMatches.length - 1) {
+            showToast('더 이상 다음 검색 결과가 없습니다.', false);
+            return;
+        }
+
+        searchMatchIndex++;
+        const targetSchedule = searchMatches[searchMatchIndex];
+        if (!targetSchedule || !targetSchedule.startDate) return;
+
+        const targetDate = new Date(targetSchedule.startDate);
+        const padStr = (n) => String(n).padStart(2, '0');
+        const targetDateKey = `${targetDate.getFullYear()}-${padStr(targetDate.getMonth()+1)}-${padStr(targetDate.getDate())}`;
+
+        const isInCurrentMonth = targetDate.getFullYear() === viewYear && targetDate.getMonth() === viewMonth;
+        selectedDateKey = targetDateKey;
+
+        if (!isInCurrentMonth) {
+            viewYear = targetDate.getFullYear();
+            viewMonth = targetDate.getMonth();
+            await loadMonthSchedules();
+            highlightDate(targetDateKey);
+        } else {
+            renderCalendar();
+            highlightDate(targetDateKey);
+            renderSelectedDateEvents(targetDateKey);
+        }
+
+        showToast(`[${searchMatchIndex + 1}/${searchMatches.length}] 번째 매칭 일정으로 이동했습니다.`, false);
+    }
+
+    async function goToPrevMatch() {
+        if (searchMatches.length === 0 || searchMatchIndex === -1) return;
+
+        if (searchMatchIndex <= 0) {
+            showToast('더 이상 이전 검색 결과가 없습니다.', false);
+            return;
+        }
+
+        searchMatchIndex--;
         const targetSchedule = searchMatches[searchMatchIndex];
         if (!targetSchedule || !targetSchedule.startDate) return;
 
@@ -954,7 +996,10 @@ const HOLIDAYS = {
         searchMatchIndex = -1;
         
         document.getElementById('searchClearBtn').style.display = 'none';
+        document.getElementById('searchPrevBtn').style.display = 'none';
         document.getElementById('searchNextBtn').style.display = 'none';
+        const searchBtn = document.getElementById('searchBtn');
+        if (searchBtn) searchBtn.style.display = 'inline-block';
         renderCalendar();
         if (selectedDateKey) {
             renderSelectedDateEvents(selectedDateKey);
@@ -1031,7 +1076,6 @@ const HOLIDAYS = {
         const el = document.querySelector(`.cal-day[data-date="${dateKey}"]`);
         if (!el) return;
         el.classList.add('just-added');
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
         setTimeout(() => el.classList.remove('just-added'), 2500);
     }
 

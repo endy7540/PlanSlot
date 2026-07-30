@@ -44,6 +44,21 @@ const API_BASE = window.location.origin;
         setTimeout(() => t.classList.remove('show'), 2200);
     }
 
+    function updateDescCounter(el) {
+        const max = 400;
+        const len = el.value.length;
+        const counter = document.getElementById('desc-counter');
+        const warn = document.getElementById('desc-warn');
+        if (counter) {
+            counter.textContent = len + ' / ' + max;
+            counter.style.color = len >= max ? '#EF4444' : '#94A3B8';
+            counter.style.fontWeight = len >= max ? '800' : '500';
+        }
+        if (warn) warn.style.display = len >= max ? 'block' : 'none';
+        if (len >= max) el.style.borderColor = '#FCA5A5';
+        else el.style.borderColor = '';
+    }
+
     function checkAuth() {
         token = localStorage.getItem('jwtToken') || '';
         const notice = document.getElementById('authNotice');
@@ -68,6 +83,7 @@ const API_BASE = window.location.origin;
     }
 
     let fpInstance = null;
+    let deadlineFpInstance = null;
     let selectedStartHour = "09";
     let selectedStartMin = "00";
     let selectedEndHour = "10";
@@ -101,7 +117,7 @@ const API_BASE = window.location.origin;
         });
 
         flatpickr("#f-recurrenceEndDate", { locale: "ko", dateFormat: "Y-m-d" });
-        flatpickr("#f-deadlineDate", { locale: "ko", dateFormat: "Y-m-d" });
+        deadlineFpInstance = flatpickr("#f-deadlineDate", { locale: "ko", dateFormat: "Y-m-d" });
     }
 
     // 커스텀 시간 범위 관련 구현
@@ -341,6 +357,13 @@ const API_BASE = window.location.origin;
             return;
         }
 
+        const descVal = document.getElementById('f-description').value;
+        if (descVal.length > 400) {
+            showToast('설명은 400자를 초과할 수 없습니다.', true);
+            document.getElementById('f-description').focus();
+            return;
+        }
+
         isSubmitting = true;
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) {
@@ -411,12 +434,20 @@ const API_BASE = window.location.origin;
     }
 
     function updateDeadlineMax() {
-        const { dateVal } = parseSelectedDates();
+        const { dateVal, endDateVal } = parseSelectedDates();
+        const isPeriodMode = document.getElementById('btn-range-day').classList.contains('active');
         if (dateVal) {
-            document.getElementById('f-deadlineDate').min = '';
-            document.getElementById('f-deadlineDate').max = dateVal;
-            if (!document.getElementById('f-deadlineDate').value) {
-                document.getElementById('f-deadlineDate').value = dateVal;
+            const minAllowed = dateVal;
+            const maxAllowed = (isPeriodMode && endDateVal) ? endDateVal : dateVal;
+            
+            if (deadlineFpInstance) {
+                deadlineFpInstance.set('minDate', minAllowed);
+                deadlineFpInstance.set('maxDate', maxAllowed);
+                
+                const currentVal = document.getElementById('f-deadlineDate').value;
+                if (!currentVal || currentVal > maxAllowed || currentVal < minAllowed) {
+                    deadlineFpInstance.setDate(maxAllowed);
+                }
             }
         }
     }

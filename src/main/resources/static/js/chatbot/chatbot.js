@@ -11,6 +11,8 @@
     let isRequesting = false;
     let typingRow = null;
     let storageScope = resolveStorageScope();
+    let activeRequest = null;
+    let requestSequence = 0;
 
     function getToken() {
         return localStorage.getItem('jwtToken');
@@ -77,7 +79,6 @@
     function clearAuthToken() {
         localStorage.removeItem('jwtToken');
         localStorage.removeItem('memberId');
-        document.cookie = 'jwtToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     }
 
     function isConversationExpired() {
@@ -104,12 +105,14 @@
         }
     }
 
-    function switchConversationScope() {
+    function switchConversationScope(cancelRequest = true) {
         const nextScope = resolveStorageScope();
-        if (nextScope === storageScope) return;
+        if (nextScope === storageScope) return false;
+        if (cancelRequest) cancelActiveRequest(true);
         storageScope = nextScope;
         loadMessages();
         renderMessages();
+        return true;
     }
 
     function isValidStoredMessage(message) {
@@ -194,7 +197,15 @@
         saveMessages();
     }
 
+    function removePendingMessage(index) {
+        if (!messages[index] || messages[index].type !== 'pending') return;
+        messages.splice(index, 1);
+        saveMessages();
+        renderMessages();
+    }
+
     function showTyping() {
+        hideTyping();
         const container = document.getElementById('chatbotMessages');
         if (!container) return;
         typingRow = document.createElement('div');
@@ -238,9 +249,35 @@
         const sendButton = document.getElementById('chatbotSend');
         if (input) input.disabled = requesting;
         if (sendButton) sendButton.disabled = requesting || !input || !input.value.trim();
+        document.querySelectorAll('.chatbot-quick-question').forEach(button => {
+            button.disabled = requesting;
+        });
+        const quickToggle = document.getElementById('chatbotQuickToggle');
+        if (quickToggle) quickToggle.disabled = requesting;
+        if (requesting) setQuickQuestionsOpen(false);
     }
 
-    function requestChatbot(message, history, token) {
+    function isActiveRequest(request) {
+        return activeRequest !== null && activeRequest.id === request.id;
+    }
+
+    function ensureRequestScope(request) {
+        if (request.scope === storageScope && request.scope === resolveStorageScope()) return true;
+        switchConversationScope();
+        return false;
+    }
+
+    function cancelActiveRequest(removePending) {
+        const request = activeRequest;
+        if (!request) return;
+        activeRequest = null;
+        request.controller.abort();
+        hideTyping();
+        if (removePending && request.scope === storageScope) removePendingMessage(request.userIndex);
+        setRequestState(false);
+    }
+
+    function requestChatbot(message, history, token, signal) {
         const headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
@@ -251,7 +288,8 @@
         return fetch('/api/chatbot/message', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ message, history })
+            body: JSON.stringify({ message, history }),
+            signal
         });
     }
 
@@ -265,6 +303,7 @@
         const input = document.getElementById('chatbotInput');
         if (!input || isRequesting) return;
 
+        switchConversationScope();
         expireConversationIfNeeded();
         const text = input.value.trim();
         const length = Array.from(text).length;
@@ -274,8 +313,15 @@
             return;
         }
 
+        const request = {
+            id: ++requestSequence,
+            scope: storageScope,
+            controller: new AbortController(),
+            userIndex: messages.length
+        };
+        activeRequest = request;
+
         let history = buildHistory();
-        let userIndex = messages.length;
         appendMessage({ role: 'user', type: 'pending', content: text, createdAt: Date.now() });
         input.value = '';
         updateInputState();
@@ -284,17 +330,21 @@
 
         try {
             let token = getToken();
-            let response = await requestChatbot(text, history, token);
+            let response = await requestChatbot(text, history, token, request.controller.signal);
+            if (!isActiveRequest(request) || !ensureRequestScope(request)) return;
+
             if (response.status === 401 && token) {
-                updateMessageType(userIndex, 'failed');
+                removePendingMessage(request.userIndex);
                 clearAuthToken();
-                switchConversationScope();
+                switchConversationScope(false);
+                request.scope = storageScope;
                 history = buildHistory();
-                userIndex = messages.length;
+                request.userIndex = messages.length;
                 appendMessage({ role: 'user', type: 'pending', content: text, createdAt: Date.now() });
                 showTyping();
                 token = null;
-                response = await requestChatbot(text, history, token);
+                response = await requestChatbot(text, history, token, request.controller.signal);
+                if (!isActiveRequest(request) || !ensureRequestScope(request)) return;
             }
 
             let result = null;
@@ -303,10 +353,11 @@
             } catch (e) {
                 result = null;
             }
+            if (!isActiveRequest(request) || !ensureRequestScope(request)) return;
 
             hideTyping();
             if (!response.ok || !result || !result.success) {
-                updateMessageType(userIndex, 'failed');
+                updateMessageType(request.userIndex, 'failed');
                 appendMessage({
                     role: 'assistant',
                     type: 'error',
@@ -316,17 +367,47 @@
                 return;
             }
 
-            updateMessageType(userIndex, 'normal');
+            updateMessageType(request.userIndex, 'normal');
             appendMessage({ role: 'assistant', type: 'normal', content: result.answer, createdAt: Date.now() });
         } catch (e) {
+            if (e?.name === 'AbortError' || !isActiveRequest(request)) return;
+            if (!ensureRequestScope(request)) return;
             hideTyping();
-            updateMessageType(userIndex, 'failed');
+            updateMessageType(request.userIndex, 'failed');
             appendMessage({ role: 'assistant', type: 'error', content: '현재 답변을 불러올 수 없어요. 잠시 후 다시 질문해 주세요.', createdAt: Date.now() });
         } finally {
-            hideTyping();
-            setRequestState(false);
-            if (input) input.focus();
+            if (isActiveRequest(request)) {
+                activeRequest = null;
+                hideTyping();
+                setRequestState(false);
+                input.focus();
+            }
         }
+    }
+
+    function setQuickQuestionsOpen(open) {
+        const panel = document.getElementById('chatbotQuickPanel');
+        const toggle = document.getElementById('chatbotQuickToggle');
+        if (!panel || !toggle) return;
+        panel.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+    }
+
+    function toggleQuickQuestions() {
+        const panel = document.getElementById('chatbotQuickPanel');
+        const toggle = document.getElementById('chatbotQuickToggle');
+        if (!panel || !toggle || toggle.disabled) return;
+        setQuickQuestionsOpen(panel.hidden);
+    }
+
+    function applyQuickQuestion(question) {
+        const input = document.getElementById('chatbotInput');
+        if (!input || isRequesting || !question) return;
+        input.value = question;
+        setQuickQuestionsOpen(false);
+        updateInputState();
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
     }
 
     function updateInputState() {
@@ -351,6 +432,7 @@
         switchConversationScope();
         loadMessages();
         windowElement.hidden = false;
+        setQuickQuestionsOpen(false);
         toggle.setAttribute('aria-expanded', 'true');
         toggle.style.display = 'none';
         renderMessages();
@@ -361,12 +443,14 @@
         const windowElement = document.getElementById('chatbotWindow');
         const toggle = document.getElementById('chatbotToggle');
         if (!windowElement || !toggle) return;
+        setQuickQuestionsOpen(false);
         windowElement.hidden = true;
         toggle.setAttribute('aria-expanded', 'false');
         toggle.style.display = 'flex';
     }
 
     function clearConversation() {
+        cancelActiveRequest(false);
         clearStoredMessages();
         renderMessages();
         document.getElementById('chatbotInput')?.focus();
@@ -398,12 +482,28 @@
         document.getElementById('chatbotClose')?.addEventListener('click', closeChatbot);
         document.getElementById('chatbotClear')?.addEventListener('click', clearConversation);
         document.getElementById('chatbotSend')?.addEventListener('click', sendMessage);
+        document.getElementById('chatbotQuickToggle')?.addEventListener('click', toggleQuickQuestions);
+        document.querySelectorAll('.chatbot-quick-question').forEach(button => {
+            button.addEventListener('click', () => applyQuickQuestion(button.dataset.question || button.textContent.trim()));
+        });
         document.getElementById('chatbotInput')?.addEventListener('input', updateInputState);
         document.getElementById('chatbotInput')?.addEventListener('keydown', event => {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
                 sendMessage();
             }
+        });
+        window.addEventListener('storage', event => {
+            if (event.key === 'jwtToken') switchConversationScope();
+        });
+        window.addEventListener('focus', () => switchConversationScope());
+        document.addEventListener('click', event => {
+            const tools = document.querySelector('.chatbot-quick-tools');
+            const panel = document.getElementById('chatbotQuickPanel');
+            if (tools && panel && !panel.hidden && !tools.contains(event.target)) setQuickQuestionsOpen(false);
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') setQuickQuestionsOpen(false);
         });
         updateInputState();
     }

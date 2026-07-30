@@ -552,3 +552,31 @@
         max-width: none;
     }
 }
+
+
+@media (max-width: 400px) {
+    .chatbot-shell { right: 8px; bottom: 8px; }
+
+    .chatbot-window {
+        width: calc(100vw - 16px);
+        height: calc(100dvh - 72px);
+        border-radius: 18px;
+    }
+
+    .chatbot-header {
+        min-height: 76px;
+        padding: 13px 10px 13px 13px;
+        gap: 7px;
+    }
+
+    .chatbot-header-badge { width: 38px; height: 38px; border-radius: 12px; }
+    .chatbot-header-title { gap: 8px; }
+    .chatbot-header-text strong { font-size: 15px; }
+    .chatbot-clear-btn { padding: 0 6px; font-size: 10.5px; }
+    .chatbot-icon-btn { width: 32px; height: 32px; }
+    .chatbot-messages { padding: 17px 13px 14px; }
+    .chatbot-bubble { max-width: 84%; font-size: 13.5px; }
+    .chatbot-compose { padding: 10px 11px 12px; }
+    .chatbot-quick-tools { right: 8px; }
+    .chatbot-quick-panel { width: calc(100vw - 32px); }
+}

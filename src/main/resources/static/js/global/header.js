@@ -19,6 +19,43 @@ window.addEventListener("DOMContentLoaded", function() {
     const profileBtn = document.getElementById("profileBtn");
     const profileDropdown = document.getElementById("profileDropdown");
     const logoutBtn = document.getElementById("logoutBtn");
+    const headerMenuToggle = document.getElementById("headerMenuToggle");
+    const headerMenu = document.getElementById("headerMenu");
+
+    function closeHeaderMenu() {
+        if (!headerMenuToggle || !headerMenu) return;
+        headerMenuToggle.setAttribute("aria-expanded", "false");
+        headerMenuToggle.setAttribute("aria-label", "전체 메뉴 열기");
+        headerMenu.classList.remove("open");
+    }
+
+    if (headerMenuToggle && headerMenu) {
+        headerMenuToggle.addEventListener("click", function(e) {
+            e.stopPropagation();
+            const willOpen = !headerMenu.classList.contains("open");
+
+            const profileDropdown = document.getElementById("profileDropdown");
+            const notificationDropdown = document.getElementById("notificationDropdown");
+            const notificationBell = document.getElementById("notificationBell");
+            if (profileDropdown) profileDropdown.style.display = "none";
+            if (notificationDropdown) notificationDropdown.classList.remove("open");
+            if (notificationBell) notificationBell.classList.remove("active");
+
+            headerMenu.classList.toggle("open", willOpen);
+            headerMenuToggle.setAttribute("aria-expanded", String(willOpen));
+            headerMenuToggle.setAttribute("aria-label", willOpen ? "전체 메뉴 닫기" : "전체 메뉴 열기");
+        });
+
+        headerMenu.querySelectorAll("a").forEach(link => link.addEventListener("click", closeHeaderMenu));
+
+        document.addEventListener("click", function(e) {
+            if (!headerMenu.contains(e.target) && !headerMenuToggle.contains(e.target)) closeHeaderMenu();
+        });
+
+        window.addEventListener("resize", function() {
+            if (window.innerWidth > 900) closeHeaderMenu();
+        });
+    }
     
     if (!token) {
         if (loginBtn) loginBtn.style.display = "block";

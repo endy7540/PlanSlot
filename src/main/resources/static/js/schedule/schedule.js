@@ -594,9 +594,12 @@ const HOLIDAYS = {
             }
         });
 
+        const listHtml = daySchedules.map(s => `<li style="font-weight: 700; color: #1E293B; margin-bottom: 4px; list-style-position: inside; text-align: left;">• ${escapeHtml(s.title)}</li>`).join('');
+        const btnGroup = document.getElementById('deleteModalBtnGroup');
+
         if (hasMultiDay) {
-            // 연속 일정이 있다면: 단 한 번만 모달을 띄워 물어봅니다!
-            const listHtml = daySchedules.map(s => `<li style="font-weight: 700; color: #1E293B; margin-bottom: 4px; list-style-position: inside; text-align: left;">• ${escapeHtml(s.title)}</li>`).join('');
+            // 연속 일정이 있다면: 단 한 번만 모달을 띄워 물어봅니다! (세로 3버튼)
+            document.querySelector('#deleteConfirmModal h3').textContent = '연속 일정 삭제 선택';
             document.getElementById('deleteConfirmModalMsg').innerHTML =
                 `선택한 날인 <strong>${selectedDateKey}</strong>에 등록된 일정 중 연속 일정이 포함되어 있습니다.<br><br>` +
                 `<div style="text-align: left; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; margin-bottom: 16px;">` +
@@ -604,30 +607,41 @@ const HOLIDAYS = {
                 `  <ul style="margin: 0; padding: 0; font-size: 12.5px; color: #334155; list-style: none;">${listHtml}</ul>` +
                 `</div>` +
                 `이 날의 일정만 지우시겠습니까(기간 단축)?<br>아니면 연결된 전체 일정을 삭제하시겠습니까?`;
-            document.getElementById('deleteConfirmModal').style.display = 'flex';
-        } else {
-            // 연속 일정이 없다면: 단일 일정들이므로 컨펌 창 하나만 띄우고 일괄 삭제!
-            const titlesPlain = daySchedules.map(s => `- ${s.title}`).join('\n');
-            if (!confirm(`⚠️ 정말로 ${selectedDateKey}의 모든 일정 (${daySchedules.length}개)을 삭제하시겠습니까?\n\n[삭제 대상 일정 목록]\n${titlesPlain}`)) {
-                return;
-            }
 
-            try {
-                showToast('일정들을 삭제하는 중입니다...');
-                for (let s of daySchedules) {
-                    await fetch(`${API_BASE}/schedule/${s.scheduleId}`, {
-                        method: 'DELETE',
-                        headers: authHeaders()
-                    });
-                }
-                showToast(`🗑️ ${selectedDateKey}의 일정이 모두 삭제되었습니다.`);
-                await loadMonthSchedules();
-                renderSelectedDateEvents(selectedDateKey);
-            } catch (e) {
-                console.error("일정 일괄 삭제 에러:", e);
-                showToast("삭제 중 오류 발생: " + e.message, true);
-            }
+            btnGroup.style.flexDirection = 'column';
+            btnGroup.innerHTML = `
+                <button id="deleteSingleBtn" class="primary" onclick="executeDeleteChoice('single')" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #3B82F6; color: white; font-weight: bold; cursor: pointer; transition: 0.15s; width: 100%;">
+                    👉 선택한 날의 일정만 삭제 (기간 단축)
+                </button>
+                <button id="deleteAllBtn" class="primary" onclick="executeDeleteChoice('all')" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer; transition: 0.15s; width: 100%;">
+                    🗑️ 연결된 전체 일정 삭제
+                </button>
+                <button class="ghost" onclick="closeDeleteConfirmModal()" style="padding: 10px; font-size: 13px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer; margin-top: 4px; width: 100%;">
+                    취소
+                </button>
+            `;
+        } else {
+            // 연속 일정이 없다면: 단일 일정들이므로 커스텀 모달창 띄우기! (가로 2버튼)
+            document.querySelector('#deleteConfirmModal h3').textContent = '일정 일괄 삭제';
+            document.getElementById('deleteConfirmModalMsg').innerHTML =
+                `선택한 날인 <strong>${selectedDateKey}</strong>의 모든 일정 (${daySchedules.length}개)을 삭제하시겠습니까?<br><br>` +
+                `<div style="text-align: left; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; margin-bottom: 16px;">` +
+                `  <span style="font-weight: 800; color: #0F172A; display: block; margin-bottom: 8px; font-size: 13.5px;">📋 선택한 날의 일정 (${daySchedules.length}개)</span>` +
+                `  <ul style="margin: 0; padding: 0; font-size: 12.5px; color: #334155; list-style: none;">${listHtml}</ul>` +
+                `</div>`;
+
+            btnGroup.style.flexDirection = 'row';
+            btnGroup.innerHTML = `
+                <button class="ghost" onclick="closeDeleteConfirmModal()" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer;">
+                    취소
+                </button>
+                <button id="deleteAllBtn" class="primary" onclick="executeDeleteChoice('all')" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer;">
+                    🗑️ 모든 일정 삭제 확정
+                </button>
+            `;
         }
+        document.getElementById('deleteConfirmModal').style.display = 'flex';
+
     }
 
     // 사용자가 모달에서 결정을 내리면, 이 함수가 단 한 번 호출되어 일괄적으로 적용합니다!
@@ -827,7 +841,7 @@ const HOLIDAYS = {
                         <span class="selected-event-time" style="font-size: 12px; color: #64748B; font-weight: 500; white-space: nowrap;">${timeText}</span>
                         <div style="display:flex; gap:4px;">
                             <button class="btn-edit" onclick="event.stopPropagation(); openScheduleModify(${s.scheduleId}, '${dateKey}')">수정</button>
-                            <button class="btn-delete" onclick="event.stopPropagation(); deleteSingleSchedule(${s.scheduleId}, '${escapeHtml(s.title).replace(/'/g, "\\'")}')">삭제</button>
+                            <button class="btn-delete" onclick="event.stopPropagation(); deleteSingleSchedule(${s.scheduleId}, '${escapeHtml(s.title).replace(/'/g, "\\'")}', '${dateKey}')">삭제</button>
                         </div>
                     </div>
                 </div>
@@ -1719,23 +1733,123 @@ const HOLIDAYS = {
         }
     };
 
-    window.deleteSingleSchedule = async function(scheduleId, title) {
-        if (!confirm(`'${title}' 일정을 삭제하시겠습니까?`)) return;
+    window.deleteSingleSchedule = async function(scheduleId, title, targetDate) {
         try {
-            showToast('일정을 삭제하는 중입니다...');
-            const res = await fetch(`${API_BASE}/schedule/${scheduleId}`, {
-                method: 'DELETE',
-                headers: authHeaders()
-            });
-            if (res.ok) {
-                showToast('일정이 삭제되었습니다.');
-                await loadMonthSchedules();
-                renderSelectedDateEvents(selectedDateKey);
-            } else {
-                showToast('일정 삭제에 실패했습니다.', true);
+            const res = await fetch(`${API_BASE}/schedule/${scheduleId}`, { headers: authHeaders() });
+            if (!res.ok) {
+                showToast('일정 정보 조회 실패', true);
+                return;
             }
+            const s = await res.json();
+            const startDateStr = getDateOnly(s.startDate);
+            const endDateStr = s.endDate ? getDateOnly(s.endDate) : startDateStr;
+            const isMultiDay = startDateStr !== endDateStr;
+            const isRecurrent = s.scheduleType && s.scheduleType !== 'DAILY';
+
+            const btnGroup = document.getElementById('deleteModalBtnGroup');
+
+            if ((isMultiDay || isRecurrent) && targetDate) {
+                document.querySelector('#deleteConfirmModal h3').textContent = '연속 일정 삭제 선택';
+                document.getElementById('deleteConfirmModalMsg').innerHTML = 
+                    `'${escapeHtml(title)}' 일정은 연속/반복 일정입니다.<br>선택한 날인 <strong>${targetDate}</strong>의 일정만 삭제하시겠습니까?<br>아니면 전체 일정을 삭제하시겠습니까?`;
+                
+                btnGroup.style.flexDirection = 'column';
+                btnGroup.innerHTML = `
+                    <button id="deleteSingleBtn" class="primary" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #3B82F6; color: white; font-weight: bold; cursor: pointer; transition: 0.15s; width: 100%;">
+                        👉 선택한 날의 일정만 삭제 (기간 단축)
+                    </button>
+                    <button id="deleteAllBtn" class="primary" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer; transition: 0.15s; width: 100%;">
+                        🗑️ 연결된 전체 일정 삭제
+                    </button>
+                    <button class="ghost" onclick="closeDeleteConfirmModal()" style="padding: 10px; font-size: 13px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer; margin-top: 4px; width: 100%;">
+                        취소
+                    </button>
+                `;
+
+                document.getElementById('deleteSingleBtn').onclick = async () => {
+                    closeDeleteConfirmModal();
+                    showToast('일정 단축 처리 중...');
+                    try {
+                        if (isMultiDay) {
+                            const startD = new Date(startDateStr);
+                            const endD = new Date(endDateStr);
+                            if (targetDate === startDateStr) {
+                                startD.setDate(startD.getDate() + 1);
+                                const newStartStr = fmtLocalDateTime(startD);
+                                await updateScheduleDates(s, newStartStr, s.endDate);
+                            } else if (targetDate === endDateStr) {
+                                endD.setDate(endD.getDate() - 1);
+                                const newEndStr = fmtLocalDateTime(endD);
+                                await updateScheduleDates(s, s.startDate, newEndStr);
+                            } else {
+                                const frontEndD = new Date(targetDate);
+                                frontEndD.setDate(frontEndD.getDate() - 1);
+                                frontEndD.setHours(23, 59, 59, 0);
+                                const frontEndStr = fmtLocalDateTime(frontEndD);
+                                await updateScheduleDates(s, s.startDate, frontEndStr);
+
+                                const backStartD = new Date(targetDate);
+                                backStartD.setDate(backStartD.getDate() + 1);
+                                backStartD.setHours(0, 0, 0, 0);
+                                const backStartStr = fmtLocalDateTime(backStartD);
+                                await createSplitSchedule(s, backStartStr, s.endDate);
+                            }
+                        }
+                        showToast('일정이 성공적으로 단축 삭제되었습니다.');
+                        if (window.closeScheduleIframeModal) closeScheduleIframeModal();
+                        await loadMonthSchedules();
+                        if (selectedDateKey) renderSelectedDateEvents(selectedDateKey);
+                    } catch (err) {
+                        console.error(err);
+                        showToast('단축 삭제 중 오류 발생', true);
+                    }
+                };
+
+                document.getElementById('deleteAllBtn').onclick = async () => {
+                    closeDeleteConfirmModal();
+                    showToast('일정을 전체 삭제하는 중입니다...');
+                    const delRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, { method: 'DELETE', headers: authHeaders() });
+                    if (delRes.ok) {
+                        showToast('일정이 성공적으로 삭제되었습니다.');
+                        if (window.closeScheduleIframeModal) closeScheduleIframeModal();
+                        await loadMonthSchedules();
+                        if (selectedDateKey) renderSelectedDateEvents(selectedDateKey);
+                    } else {
+                        showToast('삭제 실패', true);
+                    }
+                };
+            } else {
+                document.querySelector('#deleteConfirmModal h3').textContent = '일정 삭제 확인';
+                document.getElementById('deleteConfirmModalMsg').innerHTML = 
+                    `⚠️ 정말로 '${escapeHtml(title)}' 일정을 삭제하시겠습니까?`;
+                
+                btnGroup.style.flexDirection = 'row';
+                btnGroup.innerHTML = `
+                    <button class="ghost" onclick="closeDeleteConfirmModal()" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer;">
+                        취소
+                    </button>
+                    <button id="deleteAllBtn" class="primary" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer;">
+                        🗑️ 일정 삭제 확정
+                    </button>
+                `;
+
+                document.getElementById('deleteAllBtn').onclick = async () => {
+                    closeDeleteConfirmModal();
+                    showToast('일정을 삭제하는 중입니다...');
+                    const delRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, { method: 'DELETE', headers: authHeaders() });
+                    if (delRes.ok) {
+                        showToast('일정이 성공적으로 삭제되었습니다.');
+                        if (window.closeScheduleIframeModal) closeScheduleIframeModal();
+                        await loadMonthSchedules();
+                        if (selectedDateKey) renderSelectedDateEvents(selectedDateKey);
+                    } else {
+                        showToast('삭제 실패', true);
+                    }
+                };
+            }
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
         } catch (e) {
-            console.error("일정 삭제 오류:", e);
-            showToast("삭제 중 오류 발생: " + e.message, true);
+            console.error(e);
+            showToast('삭제 조회 중 오류 발생', true);
         }
     };

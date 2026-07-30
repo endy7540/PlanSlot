@@ -836,7 +836,7 @@ const HOLIDAYS = {
                 : `<span style="font-size: 11px; font-weight: 800; color: #6B21A8; background: #F3E8FF; padding: 2px 6px; border-radius: 4px; margin-right: 6px; display: inline-flex; align-items: center; gap: 2px; line-height: 1;">비공개</span>`;
 
             return `
-                <div class="selected-event-item${searchClass}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; cursor: pointer;" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
+                <div class="selected-event-item${searchClass}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; cursor: pointer; border-left: 4px solid ${window.personalCalendarColor || '#3B82F6'};" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
                     <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
                         ${visibilityBadge}
                         <span class="selected-event-title" style="font-weight: 700; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(s.title)}</span>

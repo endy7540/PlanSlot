@@ -390,7 +390,8 @@ const API_BASE = window.location.origin;
         };
 
         const body = buildScheduleBody();
-        const url = `${API_BASE}/schedule`;
+        const groupId = new URLSearchParams(window.location.search).get('groupId');
+        const url = groupId ? `${API_BASE}/group/${groupId}/schedules` : `${API_BASE}/schedule`;
 
         try {
             const res = await fetch(url, {

@@ -163,7 +163,15 @@ async function fetchBoardJson(url, options = {}) {
   if (token) headers.Authorization = `Bearer ${token}`;
   if (options.body && !(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
 
-  const response = await fetch(url, { ...options, headers });
+  let response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch (error) {
+    const networkError = new Error(getBoardErrorMessage(error));
+    networkError.status = 0;
+    throw networkError;
+  }
+
   const redirectedPath = response.redirected ? new URL(response.url, location.origin).pathname : '';
 
   if (redirectedPath === '/auth/login') {
@@ -175,7 +183,7 @@ async function fetchBoardJson(url, options = {}) {
 
   if (!response.ok) {
     const message = await readBoardError(response);
-    const error = new Error(message || '요청 처리에 실패했습니다.');
+    const error = new Error(message);
 
     error.status = response.status;
     if (response.status === 401) clearBoardAuthentication();
@@ -200,23 +208,50 @@ async function fetchBoardJson(url, options = {}) {
     throw new Error('서버 응답을 처리할 수 없습니다.');
   }
 }
+function getBoardErrorMessage(error, status = error?.status || 0) {
+  const message = typeof error === 'string' ? error.trim() : String(error?.message || '').trim();
+
+  if (message && /[가-힣]/.test(message)) return message;
+  if (error?.name === 'AbortError' || /aborted|timeout|timed out/i.test(message)) {
+    return '요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.';
+  }
+  if (!status && (!message || /failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(message))) {
+    return '서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.';
+  }
+
+  const statusMessages = {
+    400: '요청 내용을 확인해 주세요.',
+    401: '로그인이 필요합니다.',
+    403: '요청 권한이 없습니다.',
+    404: '요청한 정보를 찾을 수 없습니다.',
+    405: '지원하지 않는 요청 방식입니다.',
+    409: '이미 처리되었거나 현재 상태에서는 요청할 수 없습니다.',
+    413: '첨부 파일 용량이 너무 큽니다.',
+    415: '지원하지 않는 파일 형식입니다.',
+    429: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+    500: '서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+    502: '서버가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해 주세요.',
+    503: '서버가 일시적으로 이용 불가능합니다. 잠시 후 다시 시도해 주세요.',
+    504: '서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.'
+  };
+
+  return statusMessages[status] || '요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+}
 async function readBoardError(response) {
   const text = await response.text();
 
-  if (!text) return `요청 처리에 실패했습니다. (${response.status})`;
+  if (!text) return getBoardErrorMessage('', response.status);
 
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json') && !contentType.includes('+json')) {
-    if (response.status === 401) return '로그인이 필요합니다.';
-    if (response.status === 403) return '요청 권한이 없습니다.';
-    return `요청 처리에 실패했습니다. (${response.status})`;
+    return getBoardErrorMessage('', response.status);
   }
 
   try {
     const data = JSON.parse(text);
-    return data.detail || data.message || data.error || `요청 처리에 실패했습니다. (${response.status})`;
+    return getBoardErrorMessage(data.detail || data.message || data.error || '', response.status);
   } catch (error) {
-    return `요청 처리에 실패했습니다. (${response.status})`;
+    return getBoardErrorMessage('', response.status);
   }
 }
 function storeBoardToast(message, isError = false, type = '') {

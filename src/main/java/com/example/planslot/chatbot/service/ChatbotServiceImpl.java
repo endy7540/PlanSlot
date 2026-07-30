@@ -83,8 +83,9 @@ public class ChatbotServiceImpl implements ChatbotService {
 
     @PostConstruct
     private void initializeHttpClient() {
+        int connectTimeoutSeconds = Math.max(1, Math.min(timeoutSeconds, 10));
         httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(Math.min(timeoutSeconds, 10)))
+                .connectTimeout(Duration.ofSeconds(connectTimeoutSeconds))
                 .build();
     }
 
@@ -95,6 +96,7 @@ public class ChatbotServiceImpl implements ChatbotService {
         }
 
         String message = validateAndNormalizeRequest(request);
+        validateClaudeConfiguration();
         if (!activeRequests.add(memberKey)) {
             throw new ChatbotException(HttpStatus.TOO_MANY_REQUESTS, "CHATBOT_REQUEST_IN_PROGRESS", REQUEST_IN_PROGRESS_MESSAGE);
         }
@@ -211,12 +213,29 @@ public class ChatbotServiceImpl implements ChatbotService {
         }
     }
 
-    private String callClaude(String message, List<ChatbotRequestDTO.HistoryMessage> history, boolean loggedIn) {
-        if (claudeApiKey == null || claudeApiKey.isBlank()) {
-            log.error("[CHATBOT] Claude API key is missing");
+    private void validateClaudeConfiguration() {
+        if (claudeApiKey == null || claudeApiKey.isBlank()
+                || claudeApiUrl == null || claudeApiUrl.isBlank()
+                || claudeApiVersion == null || claudeApiVersion.isBlank()
+                || claudeModel == null || claudeModel.isBlank()
+                || maxTokens <= 0 || timeoutSeconds <= 0) {
+            log.error("[CHATBOT] Claude configuration is invalid");
             throw new ChatbotException(HttpStatus.SERVICE_UNAVAILABLE, "CHATBOT_CONFIGURATION_ERROR", GENERAL_ERROR_MESSAGE);
         }
+        try {
+            URI apiUri = URI.create(claudeApiUrl.trim());
+            String scheme = apiUri.getScheme();
+            if ((scheme == null || !("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)))
+                    || apiUri.getHost() == null || apiUri.getHost().isBlank()) {
+                throw new IllegalArgumentException("Claude API URL must be an absolute HTTP(S) URL");
+            }
+        } catch (IllegalArgumentException e) {
+            log.error("[CHATBOT] Claude API URL is invalid");
+            throw new ChatbotException(HttpStatus.SERVICE_UNAVAILABLE, "CHATBOT_CONFIGURATION_ERROR", GENERAL_ERROR_MESSAGE);
+        }
+    }
 
+    private String callClaude(String message, List<ChatbotRequestDTO.HistoryMessage> history, boolean loggedIn) {
         try {
             List<Map<String, String>> messages = new ArrayList<>();
             if (history != null) {
@@ -229,8 +248,8 @@ public class ChatbotServiceImpl implements ChatbotService {
             Map<String, Object> payload = new HashMap<>();
             payload.put("model", claudeModel);
             payload.put("max_tokens", maxTokens);
-            String previousUserMessage = findPreviousUserMessage(history);
-            String systemPrompt = ChatbotPrompt.buildSystemPrompt(message, previousUserMessage, loggedIn);
+            String recentUserContext = findRecentUserContext(history, 3);
+            String systemPrompt = ChatbotPrompt.buildSystemPrompt(message, recentUserContext, loggedIn);
             payload.put("system", systemPrompt);
             payload.put("messages", messages);
 
@@ -271,15 +290,18 @@ public class ChatbotServiceImpl implements ChatbotService {
         }
     }
 
-    private String findPreviousUserMessage(List<ChatbotRequestDTO.HistoryMessage> history) {
-        if (history == null) return null;
-        for (int i = history.size() - 1; i >= 0; i--) {
+    private String findRecentUserContext(List<ChatbotRequestDTO.HistoryMessage> history, int maxMessages) {
+        if (history == null || history.isEmpty() || maxMessages <= 0) return null;
+
+        Deque<String> recentMessages = new ArrayDeque<>();
+        for (int i = history.size() - 1; i >= 0 && recentMessages.size() < maxMessages; i--) {
             ChatbotRequestDTO.HistoryMessage historyMessage = history.get(i);
-            if (historyMessage != null && "user".equals(historyMessage.getRole())) {
-                return historyMessage.getContent();
+            if (historyMessage != null && "user".equals(historyMessage.getRole())
+                    && historyMessage.getContent() != null && !historyMessage.getContent().isBlank()) {
+                recentMessages.addFirst(historyMessage.getContent());
             }
         }
-        return null;
+        return recentMessages.isEmpty() ? null : String.join(" ", recentMessages);
     }
 
     private String extractAnswer(String responseBody) throws Exception {

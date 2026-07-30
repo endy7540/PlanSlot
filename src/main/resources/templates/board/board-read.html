@@ -7,6 +7,7 @@
   <link rel="stylesheet" th:href="@{/css/notification/notification.css}" href="/css/notification/notification.css">
   <link rel="stylesheet" th:href="@{/css/board/board-common.css}" href="/css/board/board-common.css">
   <link rel="stylesheet" th:href="@{/css/board/board-read.css}" href="/css/board/board-read.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
 </head>
 <body data-board-page="read" data-board-type="">
 
@@ -100,15 +101,14 @@
   <div class="board-modal board-group-modal">
     <div class="board-group-step" id="boardGroupStep1">
       <h3>모임 만들기</h3>
-      <p>신청자를 먼저 선택합니다. 선택한 신청자는 모임 생성과 동시에 참여가 확정됩니다.</p>
+      <p>모임 이름과 프로필 사진을 설정해 주세요.</p>
       <div class="board-field">
         <label for="boardGroupName">모임 이름 <span class="board-required">*</span></label>
         <input class="board-input" id="boardGroupName" maxlength="30" type="text">
         <div class="board-field-info"><span>게시글 제목이 기본값으로 입력됩니다.</span><span id="boardGroupNameCount">0 / 30</span></div>
       </div>
-      <div class="board-group-candidate-section">
-        <strong>신청자 우선 선택</strong>
-        <div class="board-group-candidate-list" id="boardApplicantCandidates"></div>
+      <div class="board-group-profile-field">
+        <input id="boardGroupProfileImage" type="file" accept="image/*" aria-label="모임 프로필 사진">
       </div>
       <div class="board-modal-actions">
         <button class="board-btn board-btn-ghost" id="boardGroupCancelStep1" type="button">취소</button>
@@ -117,10 +117,14 @@
     </div>
 
     <div class="board-group-step" id="boardGroupStep2" hidden>
-      <h3>추가 초대 대상 선택</h3>
-      <p>신청하지 않았지만 댓글이나 대댓글을 작성한 회원에게 모임 초대를 보낼 수 있습니다.</p>
+      <h3>인원 선택</h3>
+      <p>신청자는 모임 생성과 동시에 참여가 확정되고, 댓글·대댓글 작성자는 모임 초대를 받습니다.</p>
       <div class="board-group-candidate-section">
-        <strong>댓글·대댓글 작성자</strong>
+        <strong>신청자 선택</strong>
+        <div class="board-group-candidate-list" id="boardApplicantCandidates"></div>
+      </div>
+      <div class="board-group-candidate-section board-group-invite-section">
+        <strong>댓글·대댓글 작성자 추가 초대</strong>
         <div class="board-group-candidate-list" id="boardInviteCandidates"></div>
       </div>
       <div class="board-modal-actions">
@@ -132,7 +136,21 @@
   </div>
 </div>
 
+<div class="board-modal-overlay" id="boardGroupCropModal">
+  <div class="board-modal board-group-crop-modal">
+    <h3>모임 사진 편집</h3>
+    <div class="board-group-crop-stage">
+      <img id="boardGroupCropImage" src="" alt="크롭 대상 이미지">
+    </div>
+    <div class="board-modal-actions">
+      <button class="board-btn board-btn-ghost" id="boardGroupCropCancel" type="button">취소</button>
+      <button class="board-btn board-btn-primary" id="boardGroupCropConfirm" type="button">적용</button>
+    </div>
+  </div>
+</div>
+
 <div class="board-toast" id="boardToast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 <script th:src="@{/js/board/board-common.js}" src="/js/board/board-common.js"></script>
 <script th:src="@{/js/board/board-group.js}" src="/js/board/board-group.js"></script>
 <script th:src="@{/js/board/board-read.js}" src="/js/board/board-read.js"></script>

@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
-    <link rel="stylesheet" th:href="@{/css/schedule/schedule-modify.css(v='1.0.7')}">
+    <link rel="stylesheet" th:href="@{/css/schedule/schedule-modify.css}">
 
     <!-- iframe 모달 내부 감지 시 헤더 숨김 및 레이아웃 최적화 -->
     <script>
@@ -76,7 +76,7 @@
             <div class="form-row" id="recurrenceEndDateRow" style="display: none;">
                 <div>
                     <label>반복 종료일 (선택)</label>
-                    <input id="f-recurrenceEndDate" type="date">
+                    <input id="f-recurrenceEndDate" type="text" placeholder="종료 날짜 선택" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff;">
                 </div>
                 <div>
                 </div>
@@ -137,7 +137,7 @@
             <div class="form-row">
                 <div>
                     <label>데드라인 날짜 (선택)</label>
-                    <input id="f-deadlineDate" type="date">
+                    <input id="f-deadlineDate" type="text" placeholder="마감 날짜 선택" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff;">
                 </div>
                 <div>
                     <label>며칠 전 알림 (선택)</label>
@@ -162,6 +162,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script th:src="@{/js/schedule/schedule-modify.js(v='1.0.4')}"></script>
+<script th:src="@{/js/schedule/schedule-modify.js}"></script>
 </body>
 </html>

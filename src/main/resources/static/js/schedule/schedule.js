@@ -551,7 +551,7 @@ const HOLIDAYS = {
                     ? '&nbsp;'
                     : timePrefix + escapeHtml(s.title);
 
-                return `<div class="event-chip${isPub ? ' public' : ''}${searchClass}${durationClass}" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">${displayTitle}</div>`;
+                return `<div class="event-chip${isPub ? ' public' : ''}${searchClass}${durationClass}">${displayTitle}</div>`;
             }).join('');
 
             // 더보기 개수 계산
@@ -561,7 +561,7 @@ const HOLIDAYS = {
             const more = moreCount > 0 ? `<div class="event-more">+${moreCount}개 더보기</div>` : '';
 
             return `
-        <div class="cal-day${c.otherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}${isSelected ? ' selected-day' : ''}" data-date="${dateKey}" onclick="openNewSchedule('${dateKey}')">
+        <div class="cal-day${c.otherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}${isSelected ? ' selected-day' : ''}" data-date="${dateKey}" onclick="handleDateClick('${dateKey}')">
           <div class="date-num${isRedDay ? ' red-day' : ''}${isSaturday ? ' blue-day' : ''}">${c.day}</div>
           ${chips}
           ${more}
@@ -751,8 +751,21 @@ const HOLIDAYS = {
     /* ======================================================== */
 
     function openNewSchedule(dateKey) {
+        if (!dateKey) {
+            dateKey = selectedDateKey || new Date().toISOString().slice(0, 10);
+        }
+        openScheduleIframeModal(`/schedule/new?date=${dateKey}`);
+    }
+
+    function handleDateClick(dateKey) {
         if (selectedDateKey === dateKey) {
-            openScheduleIframeModal(`/schedule/new?date=${dateKey}`);
+            selectedDateKey = null;
+            syncUrlWithDateKey(null);
+            document.querySelectorAll('.cal-day').forEach(el => el.classList.remove('selected-day'));
+            const list = document.getElementById('selectedDateEventsList');
+            const label = document.getElementById('selectedDateLabel');
+            if (list) list.innerHTML = '';
+            if (label) label.textContent = '날짜를 선택해주세요';
         } else {
             selectedDateKey = dateKey;
             syncUrlWithDateKey(dateKey);
@@ -805,12 +818,18 @@ const HOLIDAYS = {
                 : `<span style="font-size: 11px; font-weight: 800; color: #6B21A8; background: #F3E8FF; padding: 2px 6px; border-radius: 4px; margin-right: 6px; display: inline-flex; align-items: center; gap: 2px; line-height: 1;">비공개</span>`;
 
             return `
-                <div class="selected-event-item${searchClass}" onclick="openSchedule(${s.scheduleId}, '${dateKey}')" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #E2E8F0; cursor: pointer;">
-                    <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                <div class="selected-event-item${searchClass}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #E2E8F0; cursor: default;">
+                    <div style="display: flex; align-items: center; flex: 1; min-width: 0; cursor: pointer;" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
                         ${visibilityBadge}
                         <span class="selected-event-title" style="font-weight: 700; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(s.title)}</span>
                     </div>
-                    <span class="selected-event-time" style="font-size: 12px; color: #64748B; font-weight: 500; margin-left: 12px; white-space: nowrap;">${timeText}</span>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span class="selected-event-time" style="font-size: 12px; color: #64748B; font-weight: 500; white-space: nowrap;">${timeText}</span>
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn btn-ghost btn-sm" style="font-size:12px; padding:4px 8px; color:#0284C7; background:#fff; border:1px solid #DCEFFC; border-radius:6px; cursor:pointer;" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">수정</button>
+                            <button class="btn btn-ghost btn-sm" style="font-size:12px; padding:4px 8px; color:#EF4444; background:#fff; border:1px solid #FEE2E2; border-radius:6px; cursor:pointer;" onclick="event.stopPropagation(); deleteSingleSchedule(${s.scheduleId}, '${escapeHtml(s.title).replace(/'/g, "\\'")}')">삭제</button>
+                        </div>
+                    </div>
                 </div>
             `;
         }).join('');
@@ -1607,8 +1626,8 @@ const HOLIDAYS = {
                 try {
                     const doc = iframe.contentDocument || iframe.contentWindow.document;
                     // 콘텐츠 실제 높이 + 여유분
-                    const contentHeight = doc.documentElement.scrollHeight;
-                    const maxH = window.innerHeight * 0.92; // 화면의 92%까지만
+                    const contentHeight = doc.documentElement.scrollHeight + 40;
+                    const maxH = window.innerHeight * 0.96; // 화면의 92%까지만
                     container.style.height = Math.min(contentHeight, maxH) + 'px';
                 } catch(e) {
                     // cross-origin 등 에러 시 기본값
@@ -1649,5 +1668,26 @@ const HOLIDAYS = {
             });
         } else {
             loadMonthSchedules();
+        }
+    };
+
+    window.deleteSingleSchedule = async function(scheduleId, title) {
+        if (!confirm(`'${title}' 일정을 삭제하시겠습니까?`)) return;
+        try {
+            showToast('일정을 삭제하는 중입니다...');
+            const res = await fetch(`${API_BASE}/schedule/${scheduleId}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+            if (res.ok) {
+                showToast('일정이 삭제되었습니다.');
+                await loadMonthSchedules();
+                renderSelectedDateEvents(selectedDateKey);
+            } else {
+                showToast('일정 삭제에 실패했습니다.', true);
+            }
+        } catch (e) {
+            console.error("일정 삭제 오류:", e);
+            showToast("삭제 중 오류 발생: " + e.message, true);
         }
     };

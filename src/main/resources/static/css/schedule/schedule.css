@@ -261,20 +261,10 @@
             line-height: 1.3;
             margin-top: 3px;
         }
-        .event-chip:hover {
-            border-color: #C084FC;
-            background: #E9D5FF;
-            transform: scale(1.02);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
-        }
         .event-chip.public {
             background: #E0F2FE;
             color: #0369A1;
             border-left: 3px solid #38BDF8;
-        }
-        .event-chip.public:hover {
-            border-color: #38BDF8;
-            background: #BAE6FD;
         }
         .event-more{font-size:10px;color:#94A3B8;padding-left:2px}
 

@@ -102,6 +102,9 @@ const API_BASE = window.location.origin;
                 updateDeadlineMax();
             }
         });
+
+        flatpickr("#f-recurrenceEndDate", { locale: "ko", dateFormat: "Y-m-d" });
+        flatpickr("#f-deadlineDate", { locale: "ko", dateFormat: "Y-m-d" });
     }
 
     // 커스텀 시간 범위 관련 구현

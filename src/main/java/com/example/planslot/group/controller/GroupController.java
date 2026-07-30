@@ -322,8 +322,8 @@ public class GroupController {
             @RequestBody Map<String, String> body,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        // groupService.updateMyNickname(groupId, memberId, body.get("nickname"));
-        return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
+        groupService.updateMyNickname(groupId, memberId, body.get("nickname"));
+        return ResponseEntity.ok().build();
     }
 
     // 타인 닉네임 수정
@@ -335,7 +335,8 @@ public class GroupController {
             @RequestBody Map<String, String> body,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        return ResponseEntity.ok().build(); // TODO: Service 계층에 메서드 구현 필요
+        groupService.updateMemberDisplayName(groupId, targetMemberId, body.get("displayName"), memberId);
+        return ResponseEntity.ok().build();
     }
 
     // 닉네임 검색 (초대 시 자동완성 용도)

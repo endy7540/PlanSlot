@@ -56,6 +56,15 @@ public class MemberController {
         }
     }
 
+    @PatchMapping("/me/calendar-color")
+    public ResponseEntity<?> updateCalendarColor(Authentication authentication, @RequestBody Map<String, String> body) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        memberService.updateCalendarColor(authentication.getName(), body.get("calendarColor"));
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/me")
     public ResponseEntity<?> withdraw(Authentication authentication, HttpServletResponse response) {
         if (authentication == null || !authentication.isAuthenticated()) {

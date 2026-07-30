@@ -190,10 +190,26 @@ function renderHead(){
       circle.style.cursor = 'pointer';
       circle.style.border = '2px solid transparent';
       circle.title = '이 색상으로 변경';
-      circle.onclick = () => {
+      circle.onclick = async () => {
         if (window.currentPaletteMode === 'my') {
-          saveColorOverride(group.myMemberId, c);
-          showToast('내 일정 색상을 변경했습니다.');
+          try {
+            const res = await fetchApi('/members/me/calendar-color', {
+              method: 'PATCH',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ calendarColor: c })
+            });
+            if(res.ok) {
+              const overrides = loadColorOverrides();
+              if (overrides[group.myMemberId]) {
+                delete overrides[group.myMemberId];
+                localStorage.setItem(`ps_group_${group.id}_colors`, JSON.stringify(overrides));
+              }
+              showToast('내 일정 색상을 모든 캘린더에 동기화했습니다.');
+              fetchGroupDetail();
+            } else {
+              showToast('색상 변경에 실패했습니다.');
+            }
+          } catch(e) { console.error(e); }
         } else if (window.currentPaletteMode === 'others') {
           const checkedBoxes = Array.from(document.querySelectorAll('.member-color-cb:checked'));
           if (checkedBoxes.length === 0) {
@@ -220,16 +236,29 @@ function renderHead(){
     }
 
     document.getElementById('btnToggleMyColor').onclick = () => {
+      const palette = document.getElementById('paletteSection');
+      if (window.currentPaletteMode === 'my' && palette.style.display === 'block') {
+        palette.style.display = 'none';
+        window.currentPaletteMode = null;
+        return;
+      }
       window.currentPaletteMode = 'my';
-      document.getElementById('paletteSection').style.display = 'block';
+      palette.style.display = 'block';
       document.getElementById('paletteTitle').textContent = '내 일정 색상 지정';
       document.getElementById('selectAllContainer').style.display = 'none';
       document.querySelectorAll('.member-color-cb').forEach(cb => cb.parentElement.style.display = 'none');
     };
 
     document.getElementById('btnToggleOthersColor').onclick = () => {
+      const palette = document.getElementById('paletteSection');
+      if (window.currentPaletteMode === 'others' && palette.style.display === 'block') {
+        palette.style.display = 'none';
+        window.currentPaletteMode = null;
+        document.querySelectorAll('.member-color-cb').forEach(cb => cb.parentElement.style.display = 'none');
+        return;
+      }
       window.currentPaletteMode = 'others';
-      document.getElementById('paletteSection').style.display = 'block';
+      palette.style.display = 'block';
       document.getElementById('paletteTitle').textContent = '타인 일정 색상 일괄 지정';
       document.getElementById('selectAllContainer').style.display = 'flex';
       document.querySelectorAll('.member-color-cb').forEach(cb => cb.parentElement.style.display = 'flex');
@@ -314,11 +343,11 @@ function saveColorOverride(memberId, color) {
 }
 
 function getMemberColor(member) {
-  const overrides = loadColorOverrides();
-  if (overrides[member.id]) return overrides[member.id];
   if (member.id === group.myMemberId) {
     return member.color || '#3B82F6';
   }
+  const overrides = loadColorOverrides();
+  if (overrides[member.id]) return overrides[member.id];
   return '#94A3B8';
 }
 
@@ -345,12 +374,20 @@ function renderMembers(){
     row.className = 'member-row';
     const canKick = owner && m.id !== group.myMemberId;
     const isMe = m.id === group.myMemberId;
+    
+    // 로컬 별칭(내 화면에서만 변경한 타인 별명) 불러오기
+    const localAlias = localStorage.getItem(`alias_${group.id}_${m.id}`);
+    const displayNick = (!isMe && localAlias) ? localAlias : m.name;
+
+    if (isMe) {
+      row.style.borderBottom = 'none';
+    }
     const displayColor = getMemberColor(m);
     
     const fallbackSvg = `<div style="width:100%; height:100%; background: #e2e8f0; border-radius:50%; display:flex; justify-content:center; align-items:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>`;
     
     const avatarHtml = (m.profileImageUrl && m.profileImageUrl !== 'null' && m.profileImageUrl.trim() !== '')
-      ? `<img src="${m.profileImageUrl}" alt="${m.name}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" onerror="this.outerHTML=decodeURIComponent('${encodeURIComponent(fallbackSvg)}')">`
+      ? `<img src="${m.profileImageUrl}" alt="${displayNick}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" onerror="this.outerHTML=decodeURIComponent('${encodeURIComponent(fallbackSvg)}')">`
       : fallbackSvg;
 
     const cbHtml = isMe ? '' : `<input type="checkbox" class="member-color-cb" value="${m.id}" style="width:16px; height:16px; cursor:pointer;">`;
@@ -363,8 +400,8 @@ function renderMembers(){
       <div class="avatar" style="border: 2px solid ${displayColor};">${avatarHtml}</div>
       <div class="member-info">
         <div class="member-name-row">
-          <b class="nick-label">${m.name}${isMe ? ' (나)' : ''}</b>
-          <button class="edit-nick" title="이 모임에서만 보이는 별명 수정">✎ 별명 수정</button>
+          <b class="nick-label">${displayNick}${isMe ? ' (나)' : ''}</b>
+          <button class="edit-nick" title="별명 수정">✎ 별명 수정</button>
         </div>
         <span>${m.role === 'owner' ? '방장' : '모임원'}</span>
       </div>
@@ -376,17 +413,59 @@ function renderMembers(){
 
     row.querySelector('.edit-nick').addEventListener('click', ()=>{
       const label = row.querySelector('.nick-label');
-      const current = m.name;
+      const current = displayNick;
       label.outerHTML = `<input class="nick-input nick-label" value="${current}">`;
       const input = row.querySelector('.nick-input');
       input.focus();
       input.select();
-      const commit = ()=>{
-        m.name = input.value.trim() || current;
+      let isCommitting = false;
+      const commit = async ()=>{
+        if (isCommitting) return;
+        isCommitting = true;
+        const newNick = input.value.trim();
+        if (!newNick || newNick === current) {
+          renderMembers();
+          return;
+        }
+        
+        if (isMe) {
+          try {
+            let res = await fetchApi(`/group/${group.id}/nickname`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nickname: newNick })
+            });
+            if (res.ok) {
+              showToast('별명을 수정했어요.');
+              fetchGroupDetail();
+              return;
+            } else {
+              const errText = await res.text().catch(()=>'');
+              let errMsg = '별명 수정에 실패했습니다.';
+              try {
+                if(errText) {
+                  const errData = JSON.parse(errText);
+                  if(errData.message) errMsg = errData.message;
+                  else if (errData.error) errMsg = errData.error;
+                }
+              } catch(ex) {
+                errMsg = '별명 수정에 실패했습니다: ' + res.status;
+              }
+              showToast(errMsg);
+            }
+          } catch (e) {
+            console.error(e);
+            showToast('네트워크 오류가 발생했습니다: ' + e.message);
+          }
+        } else {
+          // 타인 별칭 로컬스토리지에 저장
+          localStorage.setItem(`alias_${group.id}_${m.id}`, newNick);
+          showToast('내 화면에서만 변경된 닉네임으로 보여집니다.');
+        }
+        
         renderMembers();
-        showToast('별명을 수정했어요. 이 모임 안에서만 이 이름으로 보여요.');
       };
-      input.addEventListener('keydown', e => { if(e.key === 'Enter') commit(); });
+      input.addEventListener('keydown', e => { if(e.key === 'Enter') { e.preventDefault(); input.blur(); } });
       input.addEventListener('blur', commit);
     });
 
@@ -407,6 +486,12 @@ function renderMembers(){
       });
     }
     memberList.appendChild(row);
+    if (isMe && group.members.length > 1) {
+      const divider = document.createElement('div');
+      divider.style.borderBottom = '2px dashed #CBD5E1';
+      divider.style.margin = '8px 0 16px 0';
+      memberList.appendChild(divider);
+    }
   });
 
   waitingList.innerHTML = '';
@@ -733,77 +818,22 @@ document.getElementById('btnLeave').addEventListener('click', ()=>{
   }
 });
 
-document.getElementById('btnAcceptInvite').addEventListener('click', ()=>{
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay open';
-  modal.innerHTML = `
-    <div class="modal-box" style="width:320px;">
-      <h3 style="margin-top:0;">캘린더 색상 선택</h3>
-      <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">참여할 모임에서 사용할 색상을 선택해주세요.</p>
-      <div id="acceptColorContainer" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; justify-content:center;"></div>
-      <input type="hidden" id="acceptColorValue">
-      <div style="display:flex; justify-content:flex-end; gap:8px;">
-        <button class="btn btn-ghost" id="acceptCancel">취소</button>
-        <button class="btn btn-primary" id="acceptConfirm">수락 및 입장</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-
-  const acceptColorContainer = modal.querySelector('#acceptColorContainer');
-  const acceptColorValue = modal.querySelector('#acceptColorValue');
-  const colors = ["#EF4444", "#F97316", "#F59E0B", "#10B981", "#6366F1", "#8B5CF6", "#D946EF", "#F43F5E", "#14B8A6", "#84CC16", "#059669", "#7C3AED"];
-  const usedColors = group.members.map(m => m.color);
-
-  let firstAvailable = null;
-  colors.forEach(c => {
-    const circle = document.createElement('div');
-    circle.style.width = '30px';
-    circle.style.height = '30px';
-    circle.style.borderRadius = '50%';
-    circle.style.backgroundColor = c;
-
-    if(usedColors.includes(c)) {
-      circle.style.opacity = '0.2';
-      circle.style.cursor = 'not-allowed';
-      circle.title = '다른 모임원이 사용 중입니다';
+document.getElementById('btnAcceptInvite').addEventListener('click', async ()=>{
+  try {
+    const res = await fetchApi(`/group/${group.id}/invitation/1`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ action: 'ACCEPT' })
+    });
+    if(res.ok) {
+      showToast('초대를 수락했습니다. 모임에 참여했습니다.');
+      if (typeof refreshNotificationUI === 'function') refreshNotificationUI();
+      fetchGroupDetail();
     } else {
-      circle.style.cursor = 'pointer';
-      circle.style.border = '2px solid transparent';
-      if(!firstAvailable) {
-        firstAvailable = c;
-        acceptColorValue.value = c;
-        circle.style.border = '3px solid #1E293B';
-      }
-      circle.onclick = () => {
-        acceptColorValue.value = c;
-        Array.from(acceptColorContainer.children).forEach(child => child.style.border = child.style.opacity === '0.2' ? 'none' : '2px solid transparent');
-        circle.style.border = '3px solid #1E293B';
-      };
+      const err = await res.json().catch(()=>({}));
+      showToast(err.message || '수락 중 오류가 발생했습니다.');
     }
-    acceptColorContainer.appendChild(circle);
-  });
-
-  modal.querySelector('#acceptCancel').onclick = () => modal.remove();
-  modal.querySelector('#acceptConfirm').onclick = async () => {
-    if(!acceptColorValue.value) { showToast('색상을 선택해주세요.'); return; }
-    try {
-      const res = await fetchApi(`/group/${group.id}/invitation/1`, {
-        method: 'PATCH',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ action: 'ACCEPT', color: acceptColorValue.value })
-      });
-      if(res.ok) {
-        modal.remove();
-        showToast('초대를 수락했습니다. 모임에 참여했습니다.');
-        if (typeof refreshNotificationUI === 'function') refreshNotificationUI();
-        fetchGroupDetail();
-      } else {
-        const err = await res.json().catch(()=>({}));
-        showToast(err.message || '수락 중 오류가 발생했습니다.');
-      }
-    } catch(e) { console.error(e); }
-  };
+  } catch(e) { console.error(e); }
 });
 
 document.getElementById('btnRejectInvite').addEventListener('click', ()=>{
@@ -1059,6 +1089,13 @@ function renderDynamicCalendar() {
     }
   });
 
+  if (tempImportSchedule) {
+    const s = tempImportSchedule;
+    const startStr = s.startDate.slice(0, 10);
+    const key = `${s.id}_${startStr}`;
+    uniqueEventsMap.set(key, { ...s, nicknames: [`${s.nickname} (가져올 일정)`] });
+  }
+
   const allEvents = Array.from(uniqueEventsMap.values());
 
   // 우선순위 정렬 (기간이 긴 일정, 시작일이 빠른 일정 우선, 그 다음 시간 순)
@@ -1199,6 +1236,15 @@ function renderDynamicCalendar() {
             }
             colorStyle = 'color: white; text-shadow: 0px 1px 2px rgba(0,0,0,0.3);';
             if (s.isPublic === 'N') colorStyle += ' opacity: 0.5;';
+            if (s.isTemp) {
+                cls += ' blinking-temp-schedule';
+                if (!document.getElementById('blinking-style')) {
+                    const style = document.createElement('style');
+                    style.id = 'blinking-style';
+                    style.innerHTML = `@keyframes temp-blink { 0% {opacity:1; transform:scale(1);} 50% {opacity:0.4; transform:scale(0.95);} 100% {opacity:1; transform:scale(1);} } .blinking-temp-schedule { animation: temp-blink 1.2s infinite ease-in-out !important; box-shadow: 0 0 8px rgba(59,130,246,0.8); }`;
+                    document.head.appendChild(style);
+                }
+            }
         }
 
         eventsHtml += `<em class="${cls}" title="${tooltip}" style="background-color: ${bgColor}; ${colorStyle}" onclick="event.stopPropagation(); showDayDetail('${dateStr}')">${displayTitle}${displayTitle !== '&nbsp;' ? displayTime : ''}</em>`;
@@ -1258,15 +1304,28 @@ function showDayDetail(dateStr, forceOpen = false) {
   }
 
   currentDetailDate = dateStr;
-  title.style.display = 'flex';
-  title.style.justifyContent = 'space-between';
-  title.style.alignItems = 'center';
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  const dateObj = new Date(dateStr);
+  const dayOfWeek = days[dateObj.getDay()];
+  const parts = dateStr.split('-');
+  const formattedDate = `${parts[0]}년 ${parseInt(parts[1], 10)}월 ${parseInt(parts[2], 10)}일 (${dayOfWeek}) 일정`;
+
+  title.style.display = 'block';
   title.style.width = '100%';
   title.innerHTML = `
-    <span>${dateStr} 일정 상세</span>
-    <button class="btn-ghost" style="color: #EF4444; border: 1px solid #FEE2E2; background: #FEF2F2; font-weight: 800; font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px;" onclick="deleteSelectedDateSchedules('${dateStr}')">
-        🗑️ 당일 일정 삭제
-    </button>
+    <div style="margin-bottom: 12px; border-bottom: 2px solid #E2E8F0; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; width: 100%;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <h3 style="margin: 0; font-size: 16px; color: #075985; font-weight: 800;">${formattedDate}</h3>
+            <div style="display: flex; gap: 8px; align-items: center; font-size: 11.5px; margin-top: 2px;">
+                <span style="color: #64748B; font-weight: 700; display: inline-flex; align-items: center; gap: 2px;">일정 유형:</span>
+                <span style="color: #0369A1; font-weight: 800; background: #E0F2FE; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px;">공개</span>
+                <span style="color: #6B21A8; font-weight: 800; background: #F3E8FF; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px; margin-left: 2px;">비공개</span>
+            </div>
+        </div>
+        <button class="btn-ghost" style="color: #EF4444; border: 1px solid #FEE2E2; background: #FEF2F2; font-weight: 800; font-size: 12px; padding: 6px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px;" onclick="deleteSelectedDateSchedules('${dateStr}')">
+            🗑️ 당일 일정 삭제
+        </button>
+    </div>
   `;
 
   const daySchedules = groupSchedules.filter(s => {

@@ -109,6 +109,14 @@ public class MemberServiceImpl implements MemberService{
 
     @Override
     @Transactional
+    public void updateCalendarColor(String email, String color) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        member.updateCalendarColor(color);
+    }
+
+    @Override
+    @Transactional
     public void withdraw(String email) {
         Member member = memberRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));

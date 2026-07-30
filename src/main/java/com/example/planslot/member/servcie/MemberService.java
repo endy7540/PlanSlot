@@ -13,6 +13,7 @@ public interface MemberService {
     void updateMyInfo(String email, MemberRequestDTO.UpdateInfo request);
     void updateNotification(String email, MemberRequestDTO.UpdateNotification request);
     void updateProfileImage(String email, String imageUrl);
+    void updateCalendarColor(String email, String color);
     void withdraw(String email);
     
     void updateGoogleSyncEnabled(String email, boolean enabled);

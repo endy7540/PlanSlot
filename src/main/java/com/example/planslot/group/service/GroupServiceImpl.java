@@ -137,7 +137,7 @@ public class GroupServiceImpl implements GroupService {
 
         for (GroupMember gm : allMembers) {
             String mId = gm.getMember().getId().toString();
-            String mName = gm.getMember().getDisplayName();
+            String mName = gm.getNickname();
             if (gm.getMemberStatus().name().equals("WAITING")) {
                 boolean isMe = mId.equals(memberId.toString());
                 String inviterName = gm.getInviter() != null ? gm.getInviter().getDisplayName() : group.getOwner().getDisplayName();
@@ -149,6 +149,12 @@ public class GroupServiceImpl implements GroupService {
                 members.add(new GroupDTO.MemberInfo(mId, mName, role, profileImageUrl, memberColor));
             }
         }
+
+        members.sort((a, b) -> {
+            if (a.id().equals(memberId.toString())) return -1;
+            if (b.id().equals(memberId.toString())) return 1;
+            return a.name().compareTo(b.name());
+        });
 
         List<GroupSchedule> myGroupSchedules = groupScheduleRepository.findByGroup_IdAndSharer_Id(groupId, memberId);
         
@@ -196,6 +202,27 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
+    public void updateMyNickname(Long groupId, Long memberId, String nickname) {
+        GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
+                .orElseThrow(() -> new IllegalArgumentException("참여 중이 아닙니다."));
+        membership.changeNickname(nickname);
+    }
+
+    @Override
+    @Transactional
+    public void updateMemberDisplayName(Long groupId, Long targetMemberId, String displayName, Long memberId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
+        if (!group.getOwner().getId().equals(memberId)) {
+            throw new IllegalArgumentException("모임장만 타인의 별명을 변경할 수 있습니다.");
+        }
+        GroupMember target = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, targetMemberId)
+                .orElseThrow(() -> new IllegalArgumentException("대상을 찾을 수 없습니다."));
+        target.changeNickname(displayName);
+    }
+
+    @Override
+    @Transactional
     public void updateGroupProfileImage(Long groupId, String imageUrl, Long memberId) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
@@ -236,6 +263,7 @@ public class GroupServiceImpl implements GroupService {
         }
         GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId).orElseThrow(() -> new IllegalArgumentException("참여 중이 아닙니다."));
         groupMemberRepository.delete(membership);
+        groupScheduleRepository.deleteByGroup_IdAndSharer_Id(groupId, memberId);
         group.decreasePersonCount();
     }
 
@@ -259,6 +287,7 @@ public class GroupServiceImpl implements GroupService {
             group.decreasePersonCount();
         }
         groupMemberRepository.delete(target);
+        groupScheduleRepository.deleteByGroup_IdAndSharer_Id(groupId, targetMemberId);
     }
 
     @Override
@@ -292,11 +321,14 @@ public class GroupServiceImpl implements GroupService {
         if (membership.getMemberStatus() != GroupMemberStatus.WAITING) throw new IllegalArgumentException("대기 중인 초대가 아닙니다.");
         
         List<GroupMember> groupMembers = groupMemberRepository.findByGroup_Id(groupId);
-        boolean isTaken = groupMembers.stream()
-                .anyMatch(m -> m.getMemberStatus() == GroupMemberStatus.ACTIVE && color.equals(m.getColor()));
-        if (isTaken) throw new IllegalArgumentException("이미 사용중인 색상입니다.");
         
-        membership.changeColor(color);
+        // 개인 마이페이지에 지정된 캘린더 색상을 가져옴 (없으면 기본값)
+        String memberColor = membership.getMember().getCalendarColor();
+        if (memberColor == null || memberColor.trim().isEmpty()) {
+            memberColor = "#3B82F6";
+        }
+        
+        membership.changeColor(memberColor);
         membership.changeStatus(GroupMemberStatus.ACTIVE);
         membership.getGroup().increasePersonCount();
 

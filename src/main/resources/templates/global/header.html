@@ -15,8 +15,12 @@
       </div>
     </div>
 
+    <button class="header-menu-toggle" id="headerMenuToggle" type="button" aria-label="전체 메뉴 열기" aria-controls="headerMenu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+
     <!-- 4가지 카테고리 -->
-    <nav class="header-menu">
+    <nav class="header-menu" id="headerMenu">
       <a th:href="@{/schedule}">개인 캘린더</a>
       <a th:href="@{/group}">모임 캘린더</a>
       <a th:href="@{/groupChat}">모임 채팅방</a>

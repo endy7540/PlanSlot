@@ -826,8 +826,8 @@ const HOLIDAYS = {
                     <div style="display:flex; align-items:center; gap:12px;">
                         <span class="selected-event-time" style="font-size: 12px; color: #64748B; font-weight: 500; white-space: nowrap;">${timeText}</span>
                         <div style="display:flex; gap:4px;">
-                            <button class="btn btn-ghost btn-sm" style="font-size:12px; padding:4px 8px; color:#0284C7; background:#fff; border:1px solid #DCEFFC; border-radius:6px; cursor:pointer;" onclick="event.stopPropagation(); openSchedule(${s.scheduleId}, '${dateKey}')">수정</button>
-                            <button class="btn btn-ghost btn-sm" style="font-size:12px; padding:4px 8px; color:#EF4444; background:#fff; border:1px solid #FEE2E2; border-radius:6px; cursor:pointer;" onclick="event.stopPropagation(); deleteSingleSchedule(${s.scheduleId}, '${escapeHtml(s.title).replace(/'/g, "\\'")}')">삭제</button>
+                            <button class="btn-edit" onclick="event.stopPropagation(); openScheduleModify(${s.scheduleId}, '${dateKey}')">수정</button>
+                            <button class="btn-delete" onclick="event.stopPropagation(); deleteSingleSchedule(${s.scheduleId}, '${escapeHtml(s.title).replace(/'/g, "\\'")}')">삭제</button>
                         </div>
                     </div>
                 </div>
@@ -1014,6 +1014,10 @@ const HOLIDAYS = {
 
     function openSchedule(scheduleId, dateKey) {
         openScheduleIframeModal(`/schedule/${scheduleId}?date=${dateKey}`);
+    }
+
+    function openScheduleModify(scheduleId, dateKey) {
+        openScheduleIframeModal(`/schedule/${scheduleId}/edit?date=${dateKey}`);
     }
 
     function escapeHtml(str) {

@@ -323,6 +323,37 @@
             background: #F3FAFF;
             transform: translateY(-1px);
         }
+        /* selected-event-item 내부 수정/삭제 버튼 및 호버 효과 */
+        .selected-event-item .btn-edit {
+            font-size: 12px;
+            padding: 4px 8px;
+            color: #0284C7;
+            background: #fff;
+            border: 1px solid #DCEFFC;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .selected-event-item .btn-edit:hover {
+            background: #F0F9FF !important;
+            border-color: #0284C7 !important;
+            color: #025a87 !important;
+        }
+        .selected-event-item .btn-delete {
+            font-size: 12px;
+            padding: 4px 8px;
+            color: #EF4444;
+            background: #fff;
+            border: 1px solid #FEE2E2;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .selected-event-item .btn-delete:hover {
+            background: #FEF2F2 !important;
+            border-color: #EF4444 !important;
+            color: #b91c1c !important;
+        }
         .selected-event-title {
             font-weight: 800;
             color: #075985;

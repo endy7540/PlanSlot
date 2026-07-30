@@ -16,5 +16,6 @@ public class MemberResponseDTO {
         private boolean allowActivityNoti;
         private boolean allowMarketingNoti;
         private String role;
+        private String calendarColor;
     }
 }

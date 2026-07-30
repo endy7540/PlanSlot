@@ -70,6 +70,7 @@ public class MemberServiceImpl implements MemberService{
                 .allowActivityNoti(member.isAllowActivityNoti())
                 .allowMarketingNoti(member.isAllowMarketingNoti())
                 .role(member.getRole().name())
+                .calendarColor(member.getCalendarColor())
                 .build();
     }
 
@@ -103,6 +104,7 @@ public class MemberServiceImpl implements MemberService{
         }
         
         member.updateInfo(finalNickname, encodedPassword, request.getAddress());
+        member.updateCalendarColor(request.getCalendarColor());
     }
 
     @Override

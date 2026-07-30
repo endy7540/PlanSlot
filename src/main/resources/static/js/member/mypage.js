@@ -30,6 +30,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordError = document.getElementById('passwordError');
     const btnCancelEdit = document.getElementById('btnCancelEdit');
 
+    // Calendar Color Elements
+    const calendarColorContainer = document.getElementById('calendarColorContainer');
+    const calendarColorValue = document.getElementById('calendarColorValue');
+    const PREDEFINED_COLORS = ["#EF4444", "#F97316", "#F59E0B", "#10B981", "#6366F1", "#8B5CF6", "#D946EF", "#F43F5E", "#14B8A6", "#84CC16", "#059669", "#7C3AED", "#3B82F6"];
+
+    function initColorPicker() {
+        if (!calendarColorContainer || !calendarColorValue) return;
+        calendarColorContainer.innerHTML = '';
+        PREDEFINED_COLORS.forEach(c => {
+            const circle = document.createElement('div');
+            circle.style.width = '30px';
+            circle.style.height = '30px';
+            circle.style.borderRadius = '50%';
+            circle.style.backgroundColor = c;
+            circle.style.cursor = 'pointer';
+            circle.style.border = '2px solid transparent';
+            
+            circle.onclick = () => {
+                calendarColorValue.value = c;
+                updateColorPickerUI(c);
+            };
+            calendarColorContainer.appendChild(circle);
+        });
+    }
+
+    function updateColorPickerUI(selectedColor) {
+        if (!calendarColorContainer) return;
+        Array.from(calendarColorContainer.children).forEach(child => {
+            if (child.style.backgroundColor === selectedColor || rgb2hex(child.style.backgroundColor) === selectedColor.toLowerCase()) {
+                child.style.border = '3px solid #1E293B';
+            } else {
+                child.style.border = '2px solid transparent';
+            }
+        });
+    }
+
+    function rgb2hex(rgb) {
+        if (/^#[0-9A-F]{6}$/i.test(rgb)) return rgb.toLowerCase();
+        const hex = (x) => ("0" + parseInt(x).toString(16)).slice(-2);
+        const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+        return match ? "#" + hex(match[1]) + hex(match[2]) + hex(match[3]) : rgb;
+    }
+
+    initColorPicker();
+
     let currentData = {};
     let notificationSettingsLoaded = false;
     let currentGroupNotificationSettings = [];
@@ -69,6 +114,13 @@ document.addEventListener('DOMContentLoaded', () => {
             viewEmail.textContent = maskedEmail;
             viewNickname.textContent = data.nickname || '-';
             viewAddress.textContent = data.address || '등록된 주소가 없습니다.';
+            
+            // Calendar Color View Mode
+            const calendarColor = data.calendarColor || '#3B82F6';
+            const viewColorBox = document.getElementById('viewCalendarColorBox');
+            if (viewColorBox) {
+                viewColorBox.style.backgroundColor = calendarColor;
+            }
             
             // Update Form
             emailInput.value = maskedEmail;
@@ -133,6 +185,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset form to current data
         nicknameInput.value = currentData.displayName || currentData.nickname || '';
         
+        const calendarColorValue = document.getElementById('calendarColorValue');
+        if (calendarColorValue) {
+            calendarColorValue.value = currentData.calendarColor || '#3B82F6';
+            updateColorPickerUI(calendarColorValue.value);
+        }
+        
         if (currentData.address) {
             const parts = currentData.address.split(' ');
             if (parts.length >= 2) {
@@ -181,6 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const sido = document.getElementById('addressSido').value;
         const sigungu = document.getElementById('addressSigungu').value;
         const address = (sido && sigungu) ? `${sido} ${sigungu}` : '';
+        const calendarColorValue = document.getElementById('calendarColorValue') ? document.getElementById('calendarColorValue').value : '';
         const currentPw = currentPassword.value.trim();
         const newPw = newPassword.value.trim();
 
@@ -189,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const body = { nickname, address };
+        const body = { nickname, address, calendarColor: calendarColorValue };
 
         if (newPw) {
             if (!currentPw) {

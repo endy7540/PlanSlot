@@ -145,7 +145,8 @@ public class GroupServiceImpl implements GroupService {
             } else if (gm.getMemberStatus().name().equals("ACTIVE")) {
                 String role = ownerIdStr.equals(mId) ? "owner" : "member";
                 String profileImageUrl = gm.getMember().getProfileImageUrl();
-                members.add(new GroupDTO.MemberInfo(mId, mName, role, profileImageUrl, gm.getColor()));
+                String memberColor = gm.getMember().getCalendarColor() != null ? gm.getMember().getCalendarColor() : "#3B82F6";
+                members.add(new GroupDTO.MemberInfo(mId, mName, role, profileImageUrl, memberColor));
             }
         }
 
@@ -191,19 +192,6 @@ public class GroupServiceImpl implements GroupService {
         }
 
         group.updateGroupName(newName);
-    }
-
-    @Override
-    @Transactional
-    public void updateMyColor(Long groupId, Long memberId, String color) {
-        GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
-                .orElseThrow(() -> new IllegalArgumentException("참여 중이 아닙니다."));
-        
-        boolean isTaken = groupMemberRepository.findByGroup_Id(groupId).stream()
-                .anyMatch(m -> !m.getMember().getId().equals(memberId) && m.getMemberStatus() == GroupMemberStatus.ACTIVE && color.equals(m.getColor()));
-        if (isTaken) throw new IllegalArgumentException("이미 사용중인 색상입니다.");
-        
-        membership.changeColor(color);
     }
 
     @Override

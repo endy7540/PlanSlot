@@ -34,6 +34,7 @@ public class MemberRequestDTO {
         private String address;
         private String currentPassword;
         private String newPassword;
+        private String calendarColor;
     }
 
     @Getter

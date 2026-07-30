@@ -551,7 +551,11 @@ const HOLIDAYS = {
                     ? '&nbsp;'
                     : timePrefix + escapeHtml(s.title);
 
-                return `<div class="event-chip${isPub ? ' public' : ''}${searchClass}${durationClass}">${displayTitle}</div>`;
+                const baseColor = window.personalCalendarColor || '#3B82F6';
+                let colorStyle = `background-color: ${baseColor}; color: white; border: none; text-shadow: 0px 1px 2px rgba(0,0,0,0.3);`;
+                if (!isPub) colorStyle += ' opacity: 0.5;';
+
+                return `<div class="event-chip${isPub ? ' public' : ''}${searchClass}${durationClass}" style="${colorStyle}">${displayTitle}</div>`;
             }).join('');
 
             // 더보기 개수 계산
@@ -1038,6 +1042,14 @@ const HOLIDAYS = {
         selectedDateKey = dateParam || `${base.getFullYear()}-${padStr(base.getMonth()+1)}-${padStr(base.getDate())}`;
 
         if (checkAuth()) {
+            fetch('/members/me', { headers: authHeaders() })
+                .then(r => r.json())
+                .then(data => {
+                    window.personalCalendarColor = data.calendarColor || '#3B82F6';
+                    renderCalendar();
+                    renderSelectedDateEvents(selectedDateKey);
+                }).catch(e => console.error('Failed to load user color:', e));
+                
             loadGoogleSyncStatus();
             loadMonthSchedules().then(() => {
                 if (dateParam) highlightDate(dateParam);

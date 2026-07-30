@@ -141,38 +141,65 @@ function renderHead(){
     document.getElementById('settingsGroupName').disabled = !owner;
   }
 
-  const settingsMyColor = document.getElementById('settingsMyColor');
-  const paletteContainer = document.getElementById('colorPaletteContainer');
-  if(settingsMyColor && myMemberInfo && paletteContainer) {
-    const currentColor = myMemberInfo.color || '#E2E8F0';
-    settingsMyColor.value = currentColor;
-    const colors = ["#EF4444", "#F97316", "#F59E0B", "#10B981", "#6366F1", "#8B5CF6", "#D946EF", "#F43F5E", "#14B8A6", "#84CC16", "#059669", "#7C3AED"];
-    const usedColors = group.members.filter(m => m.id !== group.myMemberId).map(m => m.color);
-    paletteContainer.innerHTML = '';
+  const customPalette = document.getElementById('customColorPaletteContainer');
+  window.currentPaletteMode = null;
+  
+  if (customPalette) {
+    const colors = ["#EF4444", "#F97316", "#F59E0B", "#10B981", "#6366F1", "#8B5CF6", "#D946EF", "#F43F5E", "#14B8A6", "#84CC16", "#059669", "#7C3AED", "#3B82F6", "#94A3B8"];
+    customPalette.innerHTML = '';
     colors.forEach(c => {
       const circle = document.createElement('div');
-      circle.style.width = '28px';
-      circle.style.height = '28px';
+      circle.style.width = '24px';
+      circle.style.height = '24px';
       circle.style.borderRadius = '50%';
       circle.style.backgroundColor = c;
-      const isTaken = usedColors.includes(c);
-
-      if (isTaken) {
-        circle.style.opacity = '0.2';
-        circle.style.cursor = 'not-allowed';
-        circle.title = '다른 모임원이 사용 중입니다';
-      } else {
-        circle.style.cursor = 'pointer';
-        circle.style.border = (c === currentColor) ? '3px solid #1E293B' : '2px solid transparent';
-        circle.style.transition = 'all 0.2s';
-        circle.onclick = () => {
-          settingsMyColor.value = c;
-          Array.from(paletteContainer.children).forEach(child => child.style.border = child.style.opacity === '0.2' ? 'none' : '2px solid transparent');
-          circle.style.border = '3px solid #1E293B';
-        };
-      }
-      paletteContainer.appendChild(circle);
+      circle.style.cursor = 'pointer';
+      circle.style.border = '2px solid transparent';
+      circle.title = '이 색상으로 변경';
+      circle.onclick = () => {
+        if (window.currentPaletteMode === 'my') {
+          saveColorOverride(group.myMemberId, c);
+          showToast('내 일정 색상을 변경했습니다.');
+        } else if (window.currentPaletteMode === 'others') {
+          const checkedBoxes = Array.from(document.querySelectorAll('.member-color-cb:checked'));
+          if (checkedBoxes.length === 0) {
+            showToast('색상을 변경할 사람을 먼저 선택해주세요.');
+            return;
+          }
+          checkedBoxes.forEach(cb => saveColorOverride(cb.value, c));
+          showToast('선택한 사람의 일정 색상을 변경했습니다.');
+          const checkAll = document.getElementById('checkAllMembersColor');
+          if (checkAll) checkAll.checked = false;
+        }
+        renderMembers();
+        renderDynamicCalendar();
+      };
+      customPalette.appendChild(circle);
     });
+    
+    const checkAll = document.getElementById('checkAllMembersColor');
+    if (checkAll) {
+      checkAll.onchange = (e) => {
+        const isChecked = e.target.checked;
+        document.querySelectorAll('.member-color-cb').forEach(cb => cb.checked = isChecked);
+      };
+    }
+
+    document.getElementById('btnToggleMyColor').onclick = () => {
+      window.currentPaletteMode = 'my';
+      document.getElementById('paletteSection').style.display = 'block';
+      document.getElementById('paletteTitle').textContent = '내 일정 색상 지정';
+      document.getElementById('selectAllContainer').style.display = 'none';
+      document.querySelectorAll('.member-color-cb').forEach(cb => cb.parentElement.style.display = 'none');
+    };
+
+    document.getElementById('btnToggleOthersColor').onclick = () => {
+      window.currentPaletteMode = 'others';
+      document.getElementById('paletteSection').style.display = 'block';
+      document.getElementById('paletteTitle').textContent = '타인 일정 색상 일괄 지정';
+      document.getElementById('selectAllContainer').style.display = 'flex';
+      document.querySelectorAll('.member-color-cb').forEach(cb => cb.parentElement.style.display = 'flex');
+    };
   }
 
   const blockImageUpdate = document.getElementById('blockImageUpdate');
@@ -239,21 +266,26 @@ function renderHead(){
 
 }
 
-function getMemberColor(member) {
-  if (member.id === group.myMemberId) {
-    return member.color || '#E2E8F0';
-  }
-  const overrides = JSON.parse(localStorage.getItem(`planslot_group_colors_${group.id}`) || '{}');
-  return overrides[member.id] || '#9CA3AF'; // 기존 #4B5563에서 좀 더 연하고 중간 채도인 회색으로 변경
+function loadColorOverrides() {
+  if (!group || !group.id) return {};
+  const key = `ps_group_${group.id}_colors`;
+  try { return JSON.parse(localStorage.getItem(key)) || {}; } catch(e) { return {}; }
 }
 
-function setMemberColorOverride(memberId, color) {
-  const overrides = JSON.parse(localStorage.getItem(`planslot_group_colors_${group.id}`) || '{}');
+function saveColorOverride(memberId, color) {
+  if (!group || !group.id) return;
+  const overrides = loadColorOverrides();
   overrides[memberId] = color;
-  localStorage.setItem(`planslot_group_colors_${group.id}`, JSON.stringify(overrides));
-  renderMembers();
-  renderDynamicCalendar();
-  renderTodaySchedules();
+  localStorage.setItem(`ps_group_${group.id}_colors`, JSON.stringify(overrides));
+}
+
+function getMemberColor(member) {
+  const overrides = loadColorOverrides();
+  if (overrides[member.id]) return overrides[member.id];
+  if (member.id === group.myMemberId) {
+    return member.color || '#3B82F6';
+  }
+  return '#94A3B8';
 }
 
 function renderTodaySchedules() {
@@ -367,15 +399,14 @@ function renderMembers(){
       ? `<img src="${m.profileImageUrl}" alt="${m.name}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" onerror="this.outerHTML=decodeURIComponent('${encodeURIComponent(fallbackSvg)}')">`
       : fallbackSvg;
 
-    let colorPickerHtml = '';
-    if (!isMe) {
-      colorPickerHtml = `<input type="color" class="member-color-picker" data-id="${m.id}" value="${displayColor}" title="이 모임원의 색상 변경 (내 화면에서만 적용됨)" style="width:24px; height:24px; padding:0; border:none; border-radius:4px; cursor:pointer; background:none; appearance:none;">`;
-    } else {
-      colorPickerHtml = `<div style="width:24px; height:24px; border-radius:4px; background:${displayColor}; border:1px solid var(--border);" title="내 색상은 설정 탭에서 변경 가능합니다"></div>`;
-    }
+    const cbHtml = isMe ? '' : `<input type="checkbox" class="member-color-cb" value="${m.id}" style="width:16px; height:16px; cursor:pointer;">`;
+    const cbDisplay = (window.currentPaletteMode === 'others' && !isMe) ? 'flex' : 'none';
 
     row.innerHTML = `
-      <div class="avatar">${avatarHtml}</div>
+      <div style="display:${cbDisplay}; align-items:center; margin-right:8px; padding-left:4px; width:16px;">
+        ${cbHtml}
+      </div>
+      <div class="avatar" style="border: 2px solid ${displayColor};">${avatarHtml}</div>
       <div class="member-info">
         <div class="member-name-row">
           <b class="nick-label">${m.name}${isMe ? ' (나)' : ''}</b>
@@ -384,15 +415,10 @@ function renderMembers(){
         <span>${m.role === 'owner' ? '방장' : '모임원'}</span>
       </div>
       <div class="member-actions" style="display:flex; align-items:center; gap:8px;">
-        ${colorPickerHtml}
         ${canKick ? '<button class="btn btn-danger btn-sm">추방</button>' : ''}
       </div>`;
 
-    if (!isMe) {
-      row.querySelector('.member-color-picker').addEventListener('change', (e) => {
-        setMemberColorOverride(m.id, e.target.value);
-      });
-    }
+
 
     row.querySelector('.edit-nick').addEventListener('click', ()=>{
       const label = row.querySelector('.nick-label');
@@ -733,22 +759,7 @@ document.getElementById('btnSaveName').addEventListener('click', async ()=>{
   }
 })();
 
-document.getElementById('btnSaveColor').addEventListener('click', async ()=>{
-  const color = document.getElementById('settingsMyColor').value;
-  try {
-    const res = await fetchApi(`/group/${group.id}/color`, {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ color })
-    });
-    if(res.ok) {
-      showToast('색상을 변경했어요.');
-      fetchGroupDetail();
-    } else {
-      showToast('색상 변경 중 오류가 발생했습니다.');
-    }
-  } catch(e) { console.error(e); }
-});
+
 
 document.getElementById('btnDeleteGroup').addEventListener('click', ()=>{
   openConfirm('모임을 삭제할까요?', `'${group.name}' 모임과 모든 일정, 채팅, 게시글이 삭제되고 되돌릴 수 없어요.`, async ()=>{
@@ -1268,9 +1279,13 @@ function renderDynamicCalendar() {
             bgColor = '#E0F2FE';
             colorStyle = 'color: #0284C7;';
         } else {
+            const isMine = (s.nickname === myName);
             const mObj = group.members.find(m => m.name === s.nickname);
-            const memberColor = mObj ? getMemberColor(mObj) : '#E2E8F0';
-            bgColor = memberColor;
+            if (isMine) {
+                bgColor = mObj ? getMemberColor(mObj) : '#E2E8F0';
+            } else {
+                bgColor = mObj ? getMemberColor(mObj) : '#94A3B8';
+            }
             colorStyle = 'color: white; text-shadow: 0px 1px 2px rgba(0,0,0,0.3);';
             if (s.isPublic === 'N') colorStyle += ' opacity: 0.5;';
         }

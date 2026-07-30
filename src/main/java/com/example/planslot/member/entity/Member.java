@@ -60,6 +60,10 @@ public class Member {
     @Column(name = "suspended_until")
     private LocalDateTime suspendedUntil;
 
+    @Column(name = "calendar_color", length = 7)
+    @Builder.Default
+    private String calendarColor = "#3B82F6";
+
     @Column(name = "allow_activity_noti", nullable = false)
     @Builder.Default
     private boolean allowActivityNoti = true;
@@ -113,6 +117,12 @@ public class Member {
         }
         if (address != null) {
             this.address = address;
+        }
+    }
+
+    public void updateCalendarColor(String calendarColor) {
+        if (calendarColor != null && calendarColor.matches("^#[0-9A-Fa-f]{6}$")) {
+            this.calendarColor = calendarColor;
         }
     }
 

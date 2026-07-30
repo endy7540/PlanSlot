@@ -571,3 +571,13 @@ const API_BASE = window.location.origin;
             window.location.href = `/schedule?date=${dateKey}`;
         }
     };
+
+    function handleEscInIframe(event) {
+        if (event.key === 'Escape' || event.key === 'Esc' || event.keyCode === 27) {
+            if (window.parent && typeof window.parent.closeScheduleIframeModal === 'function') {
+                window.parent.closeScheduleIframeModal();
+            }
+        }
+    }
+    window.addEventListener('keydown', handleEscInIframe, true);
+    window.addEventListener('keyup', handleEscInIframe, true);

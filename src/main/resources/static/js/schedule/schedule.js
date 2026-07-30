@@ -1106,7 +1106,10 @@ const HOLIDAYS = {
             showToast('로그인이 필요합니다. 먼저 로그인 해주세요.', true);
             return;
         }
-        document.getElementById('aiImageModal').style.display = 'flex';
+        const modal = document.getElementById('aiImageModal');
+        modal.style.display = 'flex';
+        modal.setAttribute('tabindex', '-1');
+        modal.focus();
         resetStep();
     }
 
@@ -1695,10 +1698,37 @@ const HOLIDAYS = {
                     // cross-origin 등 에러 시 기본값
                     container.style.height = '700px';
                 }
+                
+                // 포커스 강제 설정으로 ESC 키 작동 보장
+                setTimeout(() => {
+                    iframe.focus();
+                    if (iframe.contentWindow) {
+                        iframe.contentWindow.focus();
+                    }
+                }, 50);
             };
             container.style.height = '0px'; // 로드 전 숨기기
             iframe.src = url;
             modal.style.display = 'flex';
+            
+            modal.setAttribute('tabindex', '-1');
+            modal.focus();
+        }
+    };
+
+    window.adjustScheduleIframeHeight = function() {
+        const modal = document.getElementById('scheduleIframeModal');
+        const iframe = document.getElementById('scheduleIframe');
+        const container = document.getElementById('scheduleIframeContainer');
+        if (modal && iframe && container && modal.style.display !== 'none') {
+            try {
+                const doc = iframe.contentDocument || iframe.contentWindow.document;
+                const contentHeight = doc.documentElement.scrollHeight + 40;
+                const maxH = window.innerHeight * 0.96;
+                container.style.height = Math.min(contentHeight, maxH) + 'px';
+            } catch(e) {
+                console.error("높이 재조정 실패:", e);
+            }
         }
     };
 
@@ -1853,3 +1883,26 @@ const HOLIDAYS = {
             showToast('삭제 조회 중 오류 발생', true);
         }
     };
+
+    // ESC 키 입력 시 모든 활성 모달 닫기
+    function handleEscKey(event) {
+        if (event.key === 'Escape' || event.key === 'Esc' || event.keyCode === 27) {
+            // 1. AI 이미지 모달 닫기
+            const aiModal = document.getElementById('aiImageModal');
+            if (aiModal && (aiModal.style.display === 'flex' || aiModal.classList.contains('open'))) {
+                if (typeof closeAiImageModal === 'function') closeAiImageModal();
+            }
+            // 2. 삭제 확인 모달 닫기
+            const delModal = document.getElementById('deleteConfirmModal');
+            if (delModal && delModal.style.display === 'flex') {
+                if (typeof closeDeleteConfirmModal === 'function') closeDeleteConfirmModal();
+            }
+            // 3. iframe 일정 등록/수정/상세 모달 닫기
+            const iframeModal = document.getElementById('scheduleIframeContainer');
+            if (iframeModal && iframeModal.classList.contains('open')) {
+                if (typeof closeScheduleIframeModal === 'function') closeScheduleIframeModal();
+            }
+        }
+    }
+    window.addEventListener('keydown', handleEscKey, true);
+    window.addEventListener('keyup', handleEscKey, true);

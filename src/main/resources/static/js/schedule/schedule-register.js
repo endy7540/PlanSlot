@@ -234,6 +234,9 @@ const API_BASE = window.location.origin;
                 fpInstance.setDate(currentDates);
             }
         }
+        if (window.parent && typeof window.parent.adjustScheduleIframeHeight === 'function') {
+            window.parent.adjustScheduleIframeHeight();
+        }
     }
 
     function toggleAllDay(checked) {
@@ -258,6 +261,9 @@ const API_BASE = window.location.origin;
         } else {
             row.style.display = 'none';
             input.value = '';
+        }
+        if (window.parent && typeof window.parent.adjustScheduleIframeHeight === 'function') {
+            window.parent.adjustScheduleIframeHeight();
         }
     }
 
@@ -465,3 +471,13 @@ window.handleCancel = function() {
         history.back();
     }
 };
+
+function handleEscInIframe(event) {
+    if (event.key === 'Escape' || event.key === 'Esc' || event.keyCode === 27) {
+        if (window.parent && typeof window.parent.closeScheduleIframeModal === 'function') {
+            window.parent.closeScheduleIframeModal();
+        }
+    }
+}
+window.addEventListener('keydown', handleEscInIframe, true);
+window.addEventListener('keyup', handleEscInIframe, true);

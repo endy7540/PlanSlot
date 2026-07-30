@@ -1201,13 +1201,9 @@ function renderDynamicCalendar() {
     const isHoliday = !!HOLIDAYS[dateStr] || isSolarHoliday;
     const isRedDay = isSunday || isHoliday;
 
+    let otherMonthStyle = '';
     if (c.otherMonth) {
-      let dayColor = 'color: #A0AEC0;';
-      if (isRedDay) dayColor = 'color: #FC8181;';
-      else if (isSaturday) dayColor = 'color: #93C5FD;';
-      
-      html += `<div class="date" style="background:#FAFCFE; opacity:0.5"><b style="${dayColor} background:transparent;">${c.day}</b></div>`;
-      return;
+      otherMonthStyle = 'background:#FAFCFE; opacity:0.5;';
     }
 
     const slots = scheduledSlots[dateStr];
@@ -1294,12 +1290,16 @@ function renderDynamicCalendar() {
     }
 
     let dayColor = '';
-    if (!isToday) {
+    if (c.otherMonth) {
+      dayColor = 'color: #A0AEC0;';
+      if (isRedDay) dayColor = 'color: #FC8181;';
+      else if (isSaturday) dayColor = 'color: #93C5FD;';
+    } else if (!isToday) {
       if (isRedDay) dayColor = 'color: var(--danger);';
       else if (isSaturday) dayColor = 'color: var(--sky);';
     }
     
-    html += `<div class="date ${isToday ? 'today' : ''}" data-date="${dateStr}" style="cursor:pointer;" onclick="showDayDetail('${dateStr}')"><b style="${dayColor}">${c.day}</b>${eventsHtml}</div>`;
+    html += `<div class="date ${isToday ? 'today' : ''}" data-date="${dateStr}" style="cursor:pointer; ${otherMonthStyle}" onclick="showDayDetail('${dateStr}')"><b style="${dayColor}">${c.day}</b>${eventsHtml}</div>`;
   });
 
   document.getElementById('groupCalendarContainer').innerHTML = html;

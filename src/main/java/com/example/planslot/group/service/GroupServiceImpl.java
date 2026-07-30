@@ -459,7 +459,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public void addGroupSchedule(Long groupId, Long memberId, String title, String dateStr, String timeStr, String visibility, String endDateStr, String endTimeStr, String scheduleType, String recurrenceEndDate) {
+    public void addGroupSchedule(Long groupId, Long memberId, ScheduleDTO requestDTO) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
         Member member = memberRepository.findById(memberId)
@@ -471,36 +471,16 @@ public class GroupServiceImpl implements GroupService {
             throw new IllegalArgumentException("모임원이 아닙니다.");
         }
 
-        LocalDateTime startDateTime = LocalDateTime.parse(dateStr + "T" + (timeStr.length() == 5 ? timeStr + ":00" : timeStr));
-        LocalDateTime endDateTime = null;
-        if (endDateStr != null && !endDateStr.trim().isEmpty() && endTimeStr != null && !endTimeStr.trim().isEmpty()) {
-            endDateTime = LocalDateTime.parse(endDateStr + "T" + (endTimeStr.length() == 5 ? endTimeStr + ":00" : endTimeStr));
-        }
-        
-        boolean isPublic = "public".equals(visibility);
-        
-        ScheduleType type = ScheduleType.DAILY;
-        if (scheduleType != null && !scheduleType.trim().isEmpty()) {
-            try {
-                type = ScheduleType.valueOf(scheduleType.toUpperCase());
-            } catch(Exception e) {}
-        }
-        
-        LocalDate parsedRecurrenceEndDate = null;
-        if (recurrenceEndDate != null && !recurrenceEndDate.trim().isEmpty()) {
-            try {
-                parsedRecurrenceEndDate = LocalDate.parse(recurrenceEndDate);
-            } catch(Exception e) {}
-        }
-
         Schedule schedule = Schedule.builder()
                 .member(member)
-                .title(title)
-                .startDate(startDateTime)
-                .endDate(endDateTime)
-                .scheduleType(type)
-                .recurrenceEndDate(parsedRecurrenceEndDate)
-                .isPublic(isPublic ? "Y" : "N")
+                .title(requestDTO.getTitle())
+                .description(requestDTO.getDescription())
+                .startDate(requestDTO.getStartDate())
+                .endDate(requestDTO.getEndDate())
+                .scheduleType(requestDTO.getScheduleType())
+                .recurrenceEndDate(requestDTO.getRecurrenceEndDate())
+                .isPublic(requestDTO.getIsPublic() != null && requestDTO.getIsPublic() ? "Y" : "N")
+                .location(requestDTO.getLocation())
                 .sourceType(SourceType.MANUAL)
                 .build();
 
@@ -510,7 +490,7 @@ public class GroupServiceImpl implements GroupService {
                 .group(group)
                 .sharer(member)
                 .schedule(schedule)
-                .isVisible(isPublic)
+                .isVisible(requestDTO.getIsPublic() != null ? requestDTO.getIsPublic() : false)
                 .build();
 
         groupScheduleRepository.save(groupSchedule);

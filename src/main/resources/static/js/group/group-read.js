@@ -322,86 +322,6 @@ function getMemberColor(member) {
   return '#94A3B8';
 }
 
-function renderTodaySchedules() {
-  const list = document.getElementById('myScheduleList');
-  list.innerHTML = '';
-
-  const today = new Date();
-  const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-
-  const todays = groupSchedules.filter(s => s.startDate && s.startDate.startsWith(dateStr));
-
-  if(todays.length === 0){
-    list.innerHTML = '<div class="empty-note">오늘은 등록된 일정이 없어요. 아래에서 일정을 등록해보세요.</div>';
-    return;
-  }
-
-  todays.forEach(s => {
-    const isPrivate = s.isPublic === 'N';
-    const badge = isPrivate
-      ? `<span style="font-size:10px; padding:3px 7px; background:#e2e8f0; color:#1e293b; font-weight:800; border-radius:4px; margin-left:6px;">비공개</span>`
-      : `<span style="font-size:10px; padding:3px 7px; background:#bae6fd; color:#0369a1; font-weight:800; border-radius:4px; margin-left:6px;">공개</span>`;
-
-    let isShared = false;
-    let dispTitle = s.title;
-    const daySchedules = groupSchedules.filter(x => x.startDate === s.startDate && x.time === s.time && x.title === s.title);
-    if(daySchedules.length > 1) isShared = true;
-
-    let bgColor = '#E0F2FE';
-    let borderColor = '#bae6fd';
-
-    if (isShared) {
-      bgColor = '#E0F2FE';
-      borderColor = '#bae6fd';
-    } else {
-      const mObj = group.members.find(m => m.name === s.nickname);
-      const memberColor = mObj ? getMemberColor(mObj) : '#E2E8F0';
-      bgColor = memberColor;
-      borderColor = memberColor;
-    }
-
-    if (isPrivate) {
-      borderColor = `color-mix(in srgb, ${borderColor} 50%, white)`;
-    }
-
-    let displayTime = s.time || '';
-    if (s.endDate) {
-      const endObj = new Date(s.endDate);
-      const eHours = String(endObj.getHours()).padStart(2, '0');
-      const eMins = String(endObj.getMinutes()).padStart(2, '0');
-      const eTimeStr = `${eHours}:${eMins}`;
-      if (eTimeStr !== '00:00' && eTimeStr !== displayTime) {
-        displayTime = `${displayTime} ~ ${eTimeStr}`;
-      }
-    }
-
-    const row = document.createElement('div');
-    row.className = 'sched-item';
-    row.style.display = 'flex';
-    row.style.justifyContent = 'space-between';
-    row.style.alignItems = 'center';
-    row.style.padding = '8px 12px';
-    row.style.border = `1px solid ${borderColor}`;
-    row.style.borderLeft = `5px solid ${borderColor}`;
-    row.style.borderRadius = '6px';
-    row.style.marginBottom = '6px';
-    row.style.background = '#ffffff';
-    row.style.background = '#ffffff';
-
-    row.innerHTML = `
-      <div>
-        <div style="display:flex; align-items:center;">
-          <b style="font-size:13px; color:#1E293B;">${s.title}</b>
-          ${badge}
-        </div>
-        <div style="font-size:11px; color:#64748B; margin-top:2px;">${s.nickname}</div>
-      </div>
-      <div style="font-size:12px; font-weight:600; color:#000;">${displayTime}</div>
-    `;
-    list.appendChild(row);
-  });
-}
-
 function renderMembers(){
   const memberList = document.getElementById('memberList');
   const waitingList = document.getElementById('waitingList');
@@ -606,46 +526,7 @@ document.getElementById('btnInvite').addEventListener('click', async ()=>{
   } catch(e) { console.error(e); }
 });
 
-document.getElementById('btnAddSchedule').addEventListener('click', async ()=>{
-  const title = document.getElementById('scheduleTitle').value.trim();
-  const date = document.getElementById('scheduleDate').value;
-  const time = document.getElementById('scheduleTime').value;
-  const endTime = document.getElementById('scheduleEndTime').value || null;
-  const visibility = document.getElementById('scheduleVisibility').value;
-  const editId = document.getElementById('editScheduleId')?.value;
 
-  if(!title || !date || !time){ showToast('제목, 날짜, 시작 시간을 모두 입력해주세요.'); return; }
-
-  try {
-    if (editId) {
-      const res = await fetchApi(`/schedule/${editId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, date, time, endTime, visibility })
-      });
-      if (res.ok) {
-        document.getElementById('scheduleModal').classList.remove('open');
-        showToast('일정이 수정되었습니다.');
-        fetchGroupDetail();
-      } else {
-        showToast('일정 수정 중 오류가 발생했습니다.');
-      }
-    } else {
-      const res = await fetchApi(`/group/${group.id}/schedules`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, date, time, endTime, visibility })
-      });
-      if(res.ok) {
-        document.getElementById('scheduleModal').classList.remove('open');
-        showToast('일정을 등록하고 공유했어요.');
-        fetchGroupDetail();
-      } else {
-        showToast('일정 등록 중 오류가 발생했습니다.');
-      }
-    }
-  } catch(e) { console.error(e); }
-});
 
 document.getElementById('btnSaveName').addEventListener('click', async ()=>{
   const val = document.getElementById('settingsGroupName').value.trim();
@@ -999,7 +880,8 @@ const HOLIDAYS = {
 
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
-let currentDetailDate = null;
+const _todayInit = new Date();
+let currentDetailDate = `${_todayInit.getFullYear()}-${String(_todayInit.getMonth()+1).padStart(2,'0')}-${String(_todayInit.getDate()).padStart(2,'0')}`;
 let currentSearchQuery = '';
 let searchMatches = [];
 let searchMatchIndex = 0;
@@ -1102,7 +984,6 @@ async function fetchGroupSchedules() {
     if(res.ok) {
       groupSchedules = await res.json();
       renderDynamicCalendar();
-      renderTodaySchedules();
       if (currentDetailDate) showDayDetail(currentDetailDate, true);
     }
   } catch(e) { console.error("일정 불러오기 실패", e); }
@@ -1519,18 +1400,7 @@ window.editMySchedule = function(id) {
   openScheduleIframeModal('/schedule/' + id + '/edit?groupId=' + group.id);
 };
 
-window.deleteMySchedule = async function(id) {
-  if(!confirm('정말 이 일정을 삭제하시겠습니까?')) return;
-  try {
-    const res = await fetchApi(`/schedule/${id}`, { method: 'DELETE' });
-    if (res.ok) {
-      showToast('일정이 삭제되었습니다.');
-      fetchGroupDetail(); // 새로고침
-    } else {
-      showToast('일정 삭제에 실패했습니다.');
-    }
-  } catch(e) { console.error(e); }
-};
+
 
 // === 공유 일정(Peer) 로직 ===
 let peerSchedules = [];
@@ -2047,7 +1917,8 @@ window.deleteSelectedDateSchedules = async function(targetDate) {
     });
     if (daySchedules.length === 0) return;
 
-    const mySchedules = daySchedules.filter(s => s.myScheduleId);
+    const myName = group.members.find(m => String(m.id) === String(group.myMemberId))?.name || '나';
+    const mySchedules = daySchedules.filter(s => s.nickname === myName);
     if (mySchedules.length === 0) {
         showToast('해당 날짜에 삭제할 수 있는 본인 일정이 없습니다.', true);
         return;
@@ -2071,7 +1942,7 @@ window.deleteSelectedDateSchedules = async function(targetDate) {
         try {
             let successCount = 0;
             for (const s of mySchedules) {
-                const id = s.myScheduleId;
+                const id = s.id;
                 const startDateStr = s.startDate ? s.startDate.slice(0, 10) : '';
                 const endDateStr = s.endDate ? s.endDate.slice(0, 10) : startDateStr;
                 const isMultiDay = startDateStr !== endDateStr;
@@ -2149,6 +2020,16 @@ window.closeScheduleIframeModal = function() {
     }
     if (iframe) {
         iframe.src = '';
+    }
+    fetchGroupDetail();
+};
+
+window.closeScheduleModalAndReload = function(dateKey) {
+    if (window.closeScheduleIframeModal) {
+        window.closeScheduleIframeModal();
+    }
+    if (dateKey) {
+        currentDetailDate = dateKey;
     }
     fetchGroupDetail();
 };

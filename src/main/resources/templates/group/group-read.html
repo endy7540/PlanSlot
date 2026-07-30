@@ -257,29 +257,6 @@
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
-<div class="modal-overlay" id="scheduleModal">
-  <div class="modal-box" style="max-width:350px;">
-    <h3 style="margin-top:0; margin-bottom:16px;" id="scheduleModalTitle">새 모임 일정</h3>
-    <div style="display:flex; flex-direction:column; gap:8px;">
-      <input type="hidden" id="editScheduleId" value="">
-      <input id="scheduleTitle" type="text" placeholder="일정 제목" class="form-input">
-      <input id="scheduleDate" type="date" class="form-input">
-      <div style="display:flex; gap:8px; align-items:center;">
-        <input id="scheduleTime" type="time" class="form-input" style="flex:1;">
-        <span>~</span>
-        <input id="scheduleEndTime" type="time" class="form-input" style="flex:1;">
-      </div>
-      <select id="scheduleVisibility" class="form-input">
-        <option value="public">공개</option>
-        <option value="private">비공개</option>
-      </select>
-          <div class="modal-actions" style="margin-top:20px;">
-      <button class="btn btn-ghost" onclick="document.getElementById('scheduleModal').classList.remove('open')">취소</button>
-      <button class="btn btn-primary" id="btnAddSchedule">등록</button>
-    </div>
-  </div>
-</div>
-
   <div id="deleteConfirmModal" class="modal-backdrop" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 10000; justify-content: center; align-items: center;">
       <div class="delete-confirm-panel" style="text-align:center; max-width: 380px; width: 90%; background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
           <span style="font-size: 32px; display: block; margin-bottom: 12px;">🗑️</span>
@@ -326,6 +303,6 @@
 }
 </style>
 
-<script th:src="@{/js/group/group-read.js(v='1.0.2')}"></script>
+<script th:src="@{/js/group/group-read.js(v='1.0.6')}"></script>
 </body>
 </html>

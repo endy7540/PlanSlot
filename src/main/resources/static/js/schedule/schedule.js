@@ -1735,9 +1735,27 @@ const HOLIDAYS = {
         if (modal && iframe && container && modal.style.display !== 'none') {
             try {
                 const doc = iframe.contentDocument || iframe.contentWindow.document;
-                const contentHeight = doc.documentElement.scrollHeight + 40;
+                
+                // 1. transition 임시 해제 (transition 작동 중에는 scrollHeight 측정 오류 발생)
+                const origTransition = container.style.transition;
+                container.style.transition = 'none';
+                
+                // 2. 높이 일시 축소
+                container.style.height = '100px'; 
+                
+                // 3. 실제 필요 높이 측정
+                const contentHeight = doc.documentElement.scrollHeight + 32;
                 const maxH = window.innerHeight * 0.96;
-                container.style.height = Math.min(contentHeight, maxH) + 'px';
+                const targetHeight = Math.min(contentHeight, maxH) + 'px';
+                
+                // 4. 새로운 높이 바로 대입
+                container.style.height = targetHeight;
+                
+                // 5. reflow 강제 유발하여 즉시 반영되도록 함
+                container.offsetHeight; 
+                
+                // 6. transition 원복
+                container.style.transition = origTransition;
             } catch(e) {
                 console.error("높이 재조정 실패:", e);
             }

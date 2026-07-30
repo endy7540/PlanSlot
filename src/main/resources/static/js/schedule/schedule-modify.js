@@ -237,6 +237,7 @@ const API_BASE = window.location.origin;
                 fpInstance.setDate(currentDates);
             }
         }
+        updateDeadlineMax();
         if (window.parent && typeof window.parent.adjustScheduleIframeHeight === 'function') {
             window.parent.adjustScheduleIframeHeight();
         }

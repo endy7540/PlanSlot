@@ -144,12 +144,10 @@
 #boardGroupStep1 h3::before{content:'1'}
 #boardGroupStep2 h3::before{content:'2'}
 .board-group-step > p{
-  margin:13px 0 18px;
-  padding:12px 14px;
-  border:1px solid #CDEBFC;
-  border-radius:12px;
-  background:var(--board-surface);
-  color:#597488;
+  margin:10px 1px 18px;
+  color:#6B8293;
+  font-size:12px;
+  line-height:1.6;
 }
 .board-group-modal .board-field{
   margin-bottom:16px;
@@ -159,6 +157,47 @@
   background:#fff;
 }
 .board-group-modal .board-input{background:#FBFDFF}
+.board-group-modal .board-field-info{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:8px;
+  color:#718797;
+  font-size:12px;
+  line-height:1.4;
+}
+.board-group-modal .board-field-info span:first-child{min-width:0}
+.board-group-modal .board-field-info span:last-child{
+  flex:0 0 auto;
+  color:var(--board-navy);
+  font-weight:800;
+}
+.board-group-profile-field{margin-bottom:16px}
+.board-group-profile-field input[type="file"]{
+  width:100%;
+  box-sizing:border-box;
+  padding:8px;
+  border:1px solid var(--board-border);
+  border-radius:6px;
+  background:#fff;
+  color:var(--board-ink);
+  font:inherit;
+}
+.board-group-crop-modal{max-width:500px}
+.board-group-crop-stage{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  height:300px;
+  margin-bottom:16px;
+  overflow:hidden;
+  background:#F1F5F9;
+}
+.board-group-crop-stage img{max-width:100%;max-height:100%}
+#boardGroupCropModal .cropper-view-box,
+#boardGroupCropModal .cropper-face{border-radius:28%}
 .board-group-candidate-section{
   padding:15px;
   border:1px solid var(--board-border);

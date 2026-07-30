@@ -3,6 +3,7 @@ package com.example.planslot.group.controller;
 import com.example.planslot.group.dto.GroupDTO;
 import com.example.planslot.group.service.GroupService;
 import com.example.planslot.member.repository.MemberRepository;
+import com.example.planslot.schedule.dto.ScheduleDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -354,10 +355,10 @@ public class GroupController {
     @ResponseBody
     public ResponseEntity<Void> addGroupSchedule(
             @PathVariable("groupId") Long groupId,
-            @RequestBody Map<String, String> body,
+            @RequestBody ScheduleDTO requestDTO,
             Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        groupService.addGroupSchedule(groupId, memberId, body.get("title"), body.get("date"), body.get("time"), body.get("visibility"), body.get("endDate"), body.get("endTime"), body.get("scheduleType"), body.get("recurrenceEndDate"));
+        groupService.addGroupSchedule(groupId, memberId, requestDTO);
         return ResponseEntity.ok().build();
     }
 

@@ -6,7 +6,7 @@
     <title>PlanSlot - 일정 상세 정보</title>
     <link rel="stylesheet" th:href="@{/css/notification/notification.css}"
           href="/css/notification/notification.css">
-    <link rel="stylesheet" th:href="@{/css/schedule/schedule-detail.css}">
+    <link rel="stylesheet" th:href="@{/css/schedule/schedule-detail.css(v='1.0.1')}">
 
     <!-- iframe 모달 내부 감지 시 헤더 숨김 및 레이아웃 최적화 -->
     <script>
@@ -14,13 +14,7 @@
             document.documentElement.classList.add('in-iframe');
         }
     </script>
-    <style>
-        html.in-iframe .header-nav,
-        html.in-iframe header { display: none !important; }
-        html.in-iframe body { background: transparent !important; padding: 0 !important; margin: 0 !important; min-height: auto !important; }
-        html.in-iframe .wrap { padding: 10px 20px 16px !important; margin: 0 auto !important; max-width: 100% !important; }
-        html.in-iframe .panel { border: none !important; box-shadow: none !important; margin: 0 !important; padding: 16px 20px !important; }
-    </style>
+
 
 </head>
 <body>

@@ -10,6 +10,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import jakarta.annotation.PostConstruct;
+import java.util.TimeZone;
 
 @EnableJpaAuditing
 @EnableScheduling
@@ -18,6 +20,11 @@ public class PlanSlotApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(PlanSlotApplication.class, args);
+    }
+
+    @PostConstruct
+    public void init() {
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
     }
 
     @Bean

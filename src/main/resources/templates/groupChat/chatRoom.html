@@ -97,6 +97,7 @@
   <div class="chat-sidebar">
     <div class="sidebar-header" style="justify-content: space-between;">
       <span>채팅방 인원</span>
+      <button type="button" class="sidebar-close-btn" onclick="closeMobileSidebar()" title="닫기" aria-label="닫기">✕</button>
     </div>
     <div class="member-list">
       
@@ -143,6 +144,7 @@
   <div class="chat-left-sidebar hidden" style="width: 320px; border-left: 1px solid var(--line); background: #fff; display: flex; flex-direction: column;">
     <div class="sidebar-header" style="justify-content: space-between;">
       <span>모임방 목록</span>
+      <button type="button" class="sidebar-close-btn" onclick="closeMobileSidebar()" title="닫기" aria-label="닫기">✕</button>
     </div>
     <div style="flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
       <a th:href="@{/groupChat/{id}(id=${g.id}, sidebar='left')}" th:each="g : ${myGroups}"
@@ -449,6 +451,15 @@
       sessionStorage.setItem('chatActiveTab', 'right');
     });
   }
+
+  // 모바일: 사이드바(모임방 목록 / 채팅방 인원)를 닫고 대화창으로 돌아가기
+  window.closeMobileSidebar = function() {
+    if (leftSidebar) leftSidebar.classList.add('hidden');
+    if (rightSidebar) rightSidebar.classList.add('hidden');
+    if (btnToggleLeft) btnToggleLeft.classList.remove('active');
+    if (btnToggleRight) btnToggleRight.classList.remove('active');
+    sessionStorage.setItem('chatActiveTab', 'none');
+  };
 
   // 신고 로직
   let currentReportMessageId = null;

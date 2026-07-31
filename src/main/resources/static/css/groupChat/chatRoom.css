@@ -332,6 +332,20 @@
     box-sizing: border-box;
   }
 
+  /* 모바일 오버레이 상태에서만 노출되는 사이드바 닫기 버튼 (PC에서는 숨김) */
+  .sidebar-close-btn {
+    display: none;
+    border: none;
+    background: transparent;
+    color: var(--ink-soft);
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px 8px;
+    cursor: pointer;
+    border-radius: 8px;
+  }
+  .sidebar-close-btn:hover { background: #f1f5f9; }
+
   .member-list {
     flex: 1;
     overflow-y: auto;
@@ -430,3 +444,114 @@
       background: #0ea5e9;
       color: #fff;
   }
+
+/* ===================================================================
+   모바일 반응형 (채팅방)
+   - 데스크톱 전제로 짜여진 3열(본문+사이드바 320px 고정) 레이아웃이
+     좁은 화면에서는 본문을 짓눌러버리는 문제를 해결한다.
+   - 사이드바(모임방 목록 / 채팅방 인원)는 화면을 나눠 쓰지 않고,
+     탭 했을 때만 전체화면 오버레이로 뜨도록 전환한다.
+   =================================================================== */
+@media (max-width: 768px) {
+  .chat-layout {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    height: 100vh;
+    height: 100dvh; /* 모바일 브라우저 주소창 높이 변화 대응 */
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  .chat-body { height: 0; } /* flex:1 계산을 안정적으로 만들기 위한 보정 */
+
+  /* 헤더 */
+  .chat-header {
+    height: auto;
+    min-height: 56px;
+    padding: 10px 12px;
+  }
+  .chat-header h2 {
+    font-size: 15.5px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .chat-header > div {
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .chat-header .chat-sidebar-btn {
+    font-size: 11px;
+    padding: 6px 8px;
+    white-space: nowrap;
+  }
+  .chat-header .ai-summary-btn { padding: 6px 8px; }
+
+  /* 메시지 영역 */
+  .chat-messages {
+    padding: 14px 12px;
+    gap: 12px;
+  }
+  .message { max-width: 82%; }
+  .message .sender { margin-left: 40px; font-size: 11px; }
+  .avatar { width: 32px; height: 32px; }
+  .bubble { padding: 10px 13px; font-size: 14px; }
+
+  /* 말풍선 위 액션(수정/삭제/신고) 메뉴는 hover가 없는 터치 환경에서도
+     항상 눌러볼 수 있도록 노출시킨다 */
+  .msg-actions {
+    display: flex;
+    position: static;
+    box-shadow: none;
+    border: none;
+    background: none;
+    padding: 4px 0 0;
+    margin-left: 48px;
+  }
+  .message.mine .msg-actions {
+    margin-left: 0;
+    margin-right: 0;
+    justify-content: flex-end;
+  }
+  .message-inner:hover .msg-actions { display: flex; }
+
+  /* 입력창 */
+  .chat-input-area {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .chat-input-area textarea {
+    font-size: 16px; /* iOS에서 입력 시 자동 확대되는 것을 방지 */
+    height: 42px;
+  }
+  .send-btn {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+  }
+
+  /* 사이드바: 본문 옆에 나란히 두지 않고 전체화면 오버레이로 전환 */
+  .chat-sidebar,
+  .chat-left-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    height: 100%;
+    z-index: 300;
+    border-left: none;
+  }
+
+  .sidebar-close-btn { display: inline-flex; }
+}
+
+@media (max-width: 380px) {
+  .message { max-width: 88%; }
+  .chat-header .chat-sidebar-btn { padding: 5px 6px; font-size: 10.5px; }
+}

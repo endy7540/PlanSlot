@@ -82,9 +82,41 @@ body[data-board-page="register"] .board-main{padding-top:22px}
 .board-image-preview-actions{display:flex;gap:7px;margin-top:8px}
 .board-form-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:2px;flex-wrap:wrap}
 
+
+@media(max-width:700px){
+  .board-form-card{padding:24px 20px}
+  .board-form-card .board-textarea{min-height:250px}
+}
+
 @media(max-width:560px){
-  .board-form-card{padding:20px 16px}
-  .board-field-info{align-items:flex-end;flex-direction:column}
-  .board-image-dropzone{align-items:flex-start;flex-wrap:wrap}
-  .board-image-select-badge{margin-left:60px}
+  body[data-board-page="register"] .board-main{padding-top:14px}
+  .board-breadcrumb{margin-bottom:12px;overflow:hidden;font-size:11.5px;white-space:nowrap}
+  .board-breadcrumb a,.board-breadcrumb span{flex:0 0 auto}
+  .board-breadcrumb span:last-child{overflow:hidden;min-width:0;text-overflow:ellipsis}
+  .board-form-card{padding:20px 15px;border-radius:14px}
+  #boardRegisterLoading{border-radius:14px}
+  .board-form-card .board-field{margin-bottom:19px}
+  .board-form-card .board-field label{font-size:12.5px}
+  .board-form-card .board-input{min-height:44px}
+  .board-form-card .board-textarea{min-height:220px;line-height:1.65}
+  .board-field-info{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:7px 10px;font-size:10.5px;line-height:1.5}
+  .board-field-info span:first-child{min-width:0;overflow-wrap:anywhere;word-break:keep-all}
+  .board-field-info span:last-child{white-space:nowrap}
+  .board-image-upload{padding:12px;border-radius:11px}
+  .board-image-dropzone{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:10px 12px;min-height:0;padding:13px}
+  .board-image-upload-icon{grid-column:1;grid-row:1;width:42px;height:42px;flex-basis:42px}
+  .board-image-upload-copy{grid-column:2;grid-row:1;gap:4px}
+  .board-image-upload-copy strong{font-size:12.5px;line-height:1.45;word-break:keep-all}
+  .board-image-upload-copy span{overflow:hidden;font-size:10.5px;line-height:1.4;text-overflow:ellipsis;white-space:nowrap}
+  .board-image-select-badge{grid-column:3;grid-row:1;align-self:center;justify-self:end;margin:0;padding:7px 11px;font-size:11px;white-space:nowrap}
+  .board-image-upload-hint{font-size:10px;line-height:1.5;text-align:left;word-break:keep-all}
+  .board-image-preview{max-height:280px}
+  .board-form-actions{gap:7px}
+}
+
+@media(max-width:380px){
+  .board-form-card{padding:18px 13px}
+  .board-field-info{grid-template-columns:1fr}
+  .board-field-info span:last-child{justify-self:end}
+  .board-form-actions .board-btn{flex:1 1 0}
 }

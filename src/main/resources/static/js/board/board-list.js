@@ -131,11 +131,12 @@ async function initializeBoardList() {
   initializeBoardSearchDropdown(searchTypeSelect);
   initializeBoardSortDropdown(sortSelect);
 
-  searchButton?.addEventListener('click', async () => {
+  searchButton?.addEventListener('click', async event => {
+    event.preventDefault();
     const keyword = searchInput?.value.trim().slice(0, 100) || '';
 
-    if (!keyword) {
-      showBoardToast('검색어를 입력해 주세요.', true);
+    if (keyword.length < 1) {
+      showBoardToast('검색어는 1자 이상 입력해 주세요.', true);
       searchInput?.focus();
       return;
     }
@@ -148,7 +149,9 @@ async function initializeBoardList() {
   });
 
   searchInput?.addEventListener('keydown', event => {
-    if (event.key === 'Enter') searchButton?.click();
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    searchButton?.click();
   });
 
   sortSelect?.addEventListener('change', async () => {

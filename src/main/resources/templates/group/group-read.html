@@ -42,6 +42,7 @@
             <button class="btn btn-ghost btn-sm" onclick="goToday()">오늘</button>
             <div style="display: flex; gap: 6px; align-items: center;">
               <input id="scheduleSearchInput" type="text" placeholder="제목 검색..." style="width: 140px; padding: 6px 10px; font-size: 13px; border: 2px solid #DCEFFC; border-radius: 8px; font-weight: 700; color: #075985; transition: all 0.2s;" onkeyup="handleSearchKeyup(event)">
+              <button class="btn btn-ghost btn-sm" id="searchPrevBtn" style="display: none;" onclick="goToPrevMatch()">이전</button>
               <button class="btn btn-ghost btn-sm" id="searchNextBtn" style="display: none;" onclick="goToNextMatch()">다음</button>
               <button class="btn btn-primary btn-sm" style="padding: 6px 12px; border: 0;" onclick="performSearch()">검색</button>
               <button class="btn btn-ghost btn-sm" id="searchClearBtn" style="display: none;" onclick="clearSearch()">X</button>

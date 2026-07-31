@@ -66,7 +66,7 @@ public class GroupChatController {
                 return "redirect:/groupChat/" + myGroups.get(0).id();
             }
         }
-        return "redirect:/group/list";
+        return "redirect:/group";
     }
 
     // 2. 개별 채팅방 뷰

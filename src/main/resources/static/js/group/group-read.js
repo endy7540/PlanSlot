@@ -46,6 +46,29 @@ function initials(name){ return name.slice(0,1); }
 function isOwner(group){ return group.ownerId === group.myMemberId; }
 function getGroupById(id){ return GROUPS.find(g => g.id === id); }
 
+function resolveDisplayName(rawNick, currentGroupObj) {
+  if (!rawNick || !currentGroupObj) return rawNick ? rawNick.split('#')[0] : rawNick;
+  let suffix = '';
+  let baseNick = rawNick;
+  if (baseNick.includes(' (나-비공개)')) {
+    suffix = ' (나-비공개)';
+    baseNick = baseNick.replace(' (나-비공개)', '');
+  }
+  if (baseNick.includes(' (가져올 일정)')) {
+    suffix += ' (가져올 일정)';
+    baseNick = baseNick.replace(' (가져올 일정)', '');
+  }
+  const mObj = currentGroupObj.members.find(m => m.name === baseNick);
+  if (mObj) {
+    const isMe = mObj.id === currentGroupObj.myMemberId;
+    const localAlias = localStorage.getItem(`alias_${currentGroupObj.id}_${mObj.id}`);
+    if (!isMe && localAlias) {
+      return localAlias + suffix;
+    }
+  }
+  return baseNick.split('#')[0] + suffix;
+}
+
 function getQueryParam(name){
   return new URLSearchParams(window.location.search).get(name);
 }
@@ -934,13 +957,14 @@ function clearSearch() {
   currentSearchQuery = '';
   searchMatches = [];
   searchMatchIndex = 0;
+  document.getElementById('searchPrevBtn').style.display = 'none';
   document.getElementById('searchNextBtn').style.display = 'none';
   document.getElementById('searchClearBtn').style.display = 'none';
   renderDynamicCalendar();
   if (currentDetailDate) showDayDetail(currentDetailDate);
 }
 
-function performSearch() {
+async function performSearch() {
   const input = document.getElementById('scheduleSearchInput');
   if (!input) return;
   const q = input.value.trim();
@@ -952,20 +976,47 @@ function performSearch() {
   currentSearchQuery = q;
   document.getElementById('searchClearBtn').style.display = 'inline-block';
   
-  searchMatches = groupSchedules.filter(s => s.title && s.title.toLowerCase().includes(q.toLowerCase()))
-    .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+  const today = new Date();
+  const searchStart = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+  const searchEnd = new Date(today.getFullYear() + 2, today.getMonth(), 1);
+  const startStr = searchStart.getFullYear() + '-' + String(searchStart.getMonth() + 1).padStart(2, '0') + '-01T00:00:00';
+  const endStr = searchEnd.getFullYear() + '-' + String(searchEnd.getMonth() + 1).padStart(2, '0') + '-01T23:59:59';
+  
+  try {
+    const res = await fetchApi(`/group/${group.id}/schedules?start=${startStr}&end=${endStr}`);
+    if (res.ok) {
+      const allSchedules = await res.json();
+      const uniqueMatches = [];
+      const seenMap = new Set();
+      allSchedules.forEach(s => {
+        if (s.title && s.title.toLowerCase().includes(q.toLowerCase())) {
+          const dateStr = s.startDate ? s.startDate.slice(0, 10) : '';
+          const key = `${s.title}|${s.time}|${dateStr}`;
+          if (!seenMap.has(key)) {
+            seenMap.add(key);
+            uniqueMatches.push(s);
+          }
+        }
+      });
+      searchMatches = uniqueMatches.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    }
+  } catch(e) {
+    console.error("검색 일정 불러오기 실패", e);
+    return;
+  }
   
   if (searchMatches.length === 0) {
     showToast('검색 결과와 일치하는 일정이 없습니다.');
+    document.getElementById('searchPrevBtn').style.display = 'none';
     document.getElementById('searchNextBtn').style.display = 'none';
     renderDynamicCalendar();
     if (currentDetailDate) showDayDetail(currentDetailDate);
     return;
   }
   
+  document.getElementById('searchPrevBtn').style.display = 'inline-block';
   document.getElementById('searchNextBtn').style.display = 'inline-block';
   
-  const today = new Date();
   let closestIdx = 0;
   let minDiff = Infinity;
   searchMatches.forEach((s, idx) => {
@@ -982,13 +1033,19 @@ function performSearch() {
   jumpToMatch();
 }
 
-function goToNextMatch() {
+async function goToNextMatch() {
   if (searchMatches.length === 0) return;
   searchMatchIndex = (searchMatchIndex + 1) % searchMatches.length;
-  jumpToMatch();
+  await jumpToMatch();
 }
 
-function jumpToMatch() {
+async function goToPrevMatch() {
+  if (searchMatches.length === 0) return;
+  searchMatchIndex = (searchMatchIndex - 1 + searchMatches.length) % searchMatches.length;
+  await jumpToMatch();
+}
+
+async function jumpToMatch() {
   const target = searchMatches[searchMatchIndex];
   if (!target || !target.startDate) return;
   
@@ -997,8 +1054,8 @@ function jumpToMatch() {
   calMonth = d.getMonth();
   
   const dateStr = target.startDate.slice(0, 10);
-  renderDynamicCalendar();
-  showDayDetail(dateStr);
+  currentDetailDate = dateStr;
+  await fetchGroupSchedules();
 }
 
 let groupSchedules = [];
@@ -1069,7 +1126,7 @@ function renderDynamicCalendar() {
   groupSchedules.forEach(s => {
     if (!s.startDate) return;
     const startStr = s.startDate.slice(0, 10);
-    const key = `${s.id || s.scheduleId}_${startStr}`;
+    const key = `${s.title}|${s.time}|${startStr}`;
 
     let displayNick = s.nickname;
     if (s.nickname === myName && s.isPublic === 'N') {
@@ -1092,8 +1149,17 @@ function renderDynamicCalendar() {
   if (tempImportSchedule) {
     const s = tempImportSchedule;
     const startStr = s.startDate.slice(0, 10);
-    const key = `${s.id}_${startStr}`;
-    uniqueEventsMap.set(key, { ...s, nicknames: [`${s.nickname} (가져올 일정)`] });
+    const key = `${s.title}|${s.time}|${startStr}`;
+    let displayNick = `${s.nickname} (가져올 일정)`;
+    if (!uniqueEventsMap.has(key)) {
+      uniqueEventsMap.set(key, { ...s, nicknames: [displayNick] });
+    } else {
+      const existing = uniqueEventsMap.get(key);
+      if (!existing.nicknames.includes(displayNick)) {
+        existing.nicknames.push(displayNick);
+      }
+      existing.isTemp = true;
+    }
   }
 
   const allEvents = Array.from(uniqueEventsMap.values());
@@ -1218,14 +1284,22 @@ function renderDynamicCalendar() {
           cls += matched ? ' search-match' : ' search-mismatch';
         }
 
-        const tooltip = `${s.title} (${s.nicknames ? s.nicknames.join(', ') : (s.nickname || '공통')})`;
+        const tooltipNames = s.nicknames ? s.nicknames.map(n => resolveDisplayName(n, group)).join(', ') : (s.nickname ? resolveDisplayName(s.nickname, group) : '공통');
+        const tooltip = `${s.title} (${tooltipNames})`;
         const displayTime = s.title.startsWith('모임 일정') ? '' : ` ${s.time || ''}`;
 
         let bgColor = '';
         let colorStyle = '';
         if (s.nicknames && s.nicknames.length > 1) {
-            bgColor = '#E0F2FE';
-            colorStyle = 'color: #0284C7;';
+            const includesMe = s.nicknames.some(n => n === myName || n === `${myName} (나-비공개)` || n.startsWith(`${myName} `));
+            if (includesMe) {
+                const myObj = group.members.find(m => String(m.id) === String(group.myMemberId));
+                bgColor = myObj ? getMemberColor(myObj) : '#3B82F6';
+                colorStyle = `color: white; text-shadow: 0px 1px 2px rgba(0,0,0,0.3);`;
+            } else {
+                bgColor = '#E0F2FE';
+                colorStyle = 'color: #0284C7;';
+            }
         } else {
             const isMine = (s.nickname === myName);
             const mObj = group.members.find(m => m.name === s.nickname);
@@ -1235,8 +1309,9 @@ function renderDynamicCalendar() {
                 bgColor = mObj ? getMemberColor(mObj) : '#94A3B8';
             }
             colorStyle = 'color: white; text-shadow: 0px 1px 2px rgba(0,0,0,0.3);';
-            if (s.isPublic === 'N') colorStyle += ' opacity: 0.5;';
-            if (s.isTemp) {
+        }
+        if (s.isPublic === 'N') colorStyle += ' opacity: 0.5;';
+        if (s.isTemp) {
                 cls += ' blinking-temp-schedule';
                 if (!document.getElementById('blinking-style')) {
                     const style = document.createElement('style');
@@ -1245,14 +1320,14 @@ function renderDynamicCalendar() {
                     document.head.appendChild(style);
                 }
             }
-        }
+
 
         eventsHtml += `<em class="${cls}" title="${tooltip}" style="background-color: ${bgColor}; ${colorStyle}" onclick="event.stopPropagation(); showDayDetail('${dateStr}')">${displayTitle}${displayTitle !== '&nbsp;' ? displayTime : ''}</em>`;
       }
     }
 
     // 3개 슬롯 외에 더보기 처리
-    const daySchedules = groupSchedules.filter(s => {
+    const daySchedules = allEvents.filter(s => {
       if (!s.startDate) return false;
       const startStr = s.startDate.slice(0, 10);
       const endStr = s.endDate ? s.endDate.slice(0, 10) : startStr;
@@ -1379,8 +1454,8 @@ function showDayDetail(dateStr, forceOpen = false) {
       ? `<span style="font-size:10px; padding:3px 7px; background:#e2e8f0; color:#1e293b; font-weight:800; border-radius:4px; margin-left:6px;">비공개</span>`
       : `<span style="font-size:10px; padding:3px 7px; background:#bae6fd; color:#0369a1; font-weight:800; border-radius:4px; margin-left:6px;">공개</span>`;
 
-    // 여러 명이 공유한 일정일 경우 이름 목록 표시
-    const namesDisplay = s.nicknames && s.nicknames.length > 0 ? s.nicknames.join(', ') : '알 수 없음';
+    const resolvedNames = (s.nicknames || []).map(rawNick => resolveDisplayName(rawNick, group));
+    const namesDisplay = resolvedNames.length > 0 ? resolvedNames.join(', ') : '알 수 없음';
     
     const isShared = s.nicknames && s.nicknames.length > 1;
     let borderColor = '#bae6fd';
@@ -1424,7 +1499,7 @@ function showDayDetail(dateStr, forceOpen = false) {
     }
 
     return `
-      <div class="sched-item" style="cursor:${s.myScheduleId ? 'pointer' : 'default'}; border:1px solid ${borderColor}; border-left:5px solid ${borderColor}; background:#ffffff; border-radius:6px; padding:8px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;" onclick="if(${s.myScheduleId ? 'true' : 'false'}) openScheduleIframeModal('/schedule/${s.myScheduleId || s.id}?groupId=${group.id}&date=${dateStr}')">
+      <div class="sched-item" style="cursor:${s.myScheduleId ? 'pointer' : 'default'}; border:1px solid ${borderColor}; border-left:${isShared ? '5px' : '1px'} solid ${borderColor}; background:#ffffff; border-radius:6px; padding:8px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;" onclick="if(${s.myScheduleId ? 'true' : 'false'}) openScheduleIframeModal('/schedule/${s.myScheduleId || s.id}?groupId=${group.id}&date=${dateStr}')">
         <div style="display:flex; flex-direction:column;">
           <div style="display:flex; align-items:center;">
             <b style="font-size:13px; color:#1E293B;">${s.title}</b>
@@ -1505,7 +1580,7 @@ function renderSharedPeerSchedules() {
 
     row.innerHTML = `
       <div>
-        <div style="font-size:11px; color:#64748B; margin-bottom:2px;"><b>${s.sharerName}</b>님이 공유함</div>
+        <div style="font-size:11px; color:#64748B; margin-bottom:2px;"><b>${resolveDisplayName(s.sharerName, group)}</b>님이 공유함</div>
         <div style="font-size:14px; font-weight:600; color:#1E293B;">${s.title}${badge}${recurBadge}</div>
         <div style="font-size:12px; color:#64748B; margin-top:4px;">${s.date} ${s.time}</div>
       </div>
@@ -1711,7 +1786,7 @@ function renderSchedulesSharedByMe() {
     else if (group.scheduleType === 'MONTHLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px; vertical-align:middle;">매월 반복</span>`;
     else if (group.scheduleType === 'YEARLY') recurBadge = `<span style="font-size:10px; padding:2px 6px; background:#fef08a; color:#854d0e; border-radius:4px; margin-left:6px; vertical-align:middle;">매년 반복</span>`;
 
-    const names = group.shares.map(s => s.sharerName).join(', ');
+    const names = group.shares.map(s => resolveDisplayName(s.sharerName, window.group || currentGroup())).join(', ');
     const shareIds = group.shares.map(s => s.shareId).join(',');
 
     const row = document.createElement('div');

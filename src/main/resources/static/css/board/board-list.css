@@ -311,7 +311,7 @@
   .board-list-date{text-align:right}
 }
 
-@media(max-width:640px){
+@media(max-width:860px){
   .board-filter-tabs{
     gap:7px;
     margin-bottom:12px;
@@ -553,7 +553,7 @@
   pointer-events:none;
 }
 
-@media(max-width:640px){
+@media(max-width:860px){
   .board-search{
     height:46px;
     border:1px solid var(--board-border);
@@ -593,7 +593,7 @@
 }
 
 /* 모바일: 정렬 선택을 검색 카드 밖의 목록 상단으로 분리 */
-@media(max-width:640px){
+@media(max-width:860px){
   .board-toolbar{
     position:relative;
     margin-bottom:58px;
@@ -613,7 +613,7 @@
 }
 
 /* 모바일: 검색 조건 목록을 조건 버튼과 같은 폭으로 표시 */
-@media(max-width:640px){
+@media(max-width:860px){
   .board-search-select-menu{
     width:100%;
     min-width:100%;
@@ -623,7 +623,7 @@
 }
 
 /* 모바일: 정렬 버튼 가시성 강화 */
-@media(max-width:640px){
+@media(max-width:860px){
   .board-toolbar .board-list-options .board-select-button,
   .board-toolbar .board-list-options .board-sort-button,
   .board-toolbar .board-list-options button{
@@ -637,7 +637,7 @@
 }
 
 /* 모바일: 검색 조건 문구 한 줄 유지 */
-@media(max-width:640px){
+@media(max-width:860px){
   .board-search{
     grid-template-columns:108px minmax(0,1fr) 44px;
   }

@@ -270,10 +270,11 @@ body[data-board-page="list"] .board-page-head .board-btn-primary:hover{backgroun
   .board-card{border-radius:18px}
 }
 
-@media(max-width:700px){
-  body[data-board-page="list"] .board-page-head{align-items:flex-start;flex-direction:column;margin-bottom:18px;padding:24px;border-radius:18px}
+@media(max-width:860px){
+  body[data-board-page="list"] .board-page-head{align-items:flex-end;flex-direction:row;flex-wrap:nowrap;margin-bottom:18px;padding:24px;border-radius:18px}
+  body[data-board-page="list"] .board-page-head > div:first-child{flex:1;min-width:0}
   body[data-board-page="list"] .board-page-head h1{font-size:25px}
-  body[data-board-page="list"] .board-head-actions{width:100%;justify-content:flex-start}
+  body[data-board-page="list"] .board-head-actions{flex:0 0 auto;width:auto;align-self:flex-end;justify-content:flex-end}
   body[data-board-page="list"] .board-page-head .board-btn-primary{width:auto;max-width:100%;white-space:nowrap}
 }
 

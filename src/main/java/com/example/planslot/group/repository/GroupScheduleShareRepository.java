@@ -14,4 +14,7 @@ public interface GroupScheduleShareRepository extends JpaRepository<GroupSchedul
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"schedule", "targetMember"})
     List<GroupScheduleShare> findByGroup_IdAndSharer_Id(Long groupId, Long sharerId);
     boolean existsByGroup_IdAndSchedule_ScheduleIdAndTargetMember_Id(Long groupId, Long scheduleId, Long targetMemberId);
+    void deleteByGroup_IdAndSharer_Id(Long groupId, Long sharerId);
+    void deleteByGroup_IdAndTargetMember_Id(Long groupId, Long targetMemberId);
+    void deleteByGroup_Id(Long groupId);
 }

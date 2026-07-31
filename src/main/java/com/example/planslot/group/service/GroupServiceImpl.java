@@ -251,7 +251,7 @@ public class GroupServiceImpl implements GroupService {
             chatMessageRepository.deleteByGroupChatRoom_Id(chatRoom.getId());
         });
         groupChatRoomRepository.deleteByGroup_Id(groupId);
-
+        groupScheduleShareRepository.deleteByGroup_Id(groupId);
         groupRepository.delete(group);
     }
 
@@ -267,6 +267,8 @@ public class GroupServiceImpl implements GroupService {
         GroupMember membership = groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId).orElseThrow(() -> new IllegalArgumentException("참여 중이 아닙니다."));
         groupMemberRepository.delete(membership);
         groupScheduleRepository.deleteByGroup_IdAndSharer_Id(groupId, memberId);
+        groupScheduleShareRepository.deleteByGroup_IdAndSharer_Id(groupId, memberId);
+        groupScheduleShareRepository.deleteByGroup_IdAndTargetMember_Id(groupId, memberId);
         group.decreasePersonCount();
     }
 
@@ -291,6 +293,8 @@ public class GroupServiceImpl implements GroupService {
         }
         groupMemberRepository.delete(target);
         groupScheduleRepository.deleteByGroup_IdAndSharer_Id(groupId, targetMemberId);
+        groupScheduleShareRepository.deleteByGroup_IdAndSharer_Id(groupId, targetMemberId);
+        groupScheduleShareRepository.deleteByGroup_IdAndTargetMember_Id(groupId, targetMemberId);
     }
 
     @Override

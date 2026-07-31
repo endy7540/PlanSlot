@@ -233,10 +233,12 @@ body[data-board-page="list"] .board-page-head .board-btn-primary:hover{backgroun
 .board-modal .board-field{margin-bottom:13px}
 
 .board-toast{
-  position:fixed;
-  top:24px;
+  position:fixed !important;
+  top:92px;
   left:50%;
-  z-index:300;
+  right:auto;
+  bottom:auto;
+  z-index:1200;
   max-width:min(420px,calc(100vw - 40px));
   padding:13px 17px;
   border-radius:10px;
@@ -302,7 +304,7 @@ body[data-board-page="list"] .board-page-head .board-btn-primary:hover{backgroun
   .board-modal{width:100%;max-height:calc(100dvh - 12px);padding:20px 16px calc(18px + env(safe-area-inset-bottom));overflow-y:auto;border-width:1px;border-radius:18px 18px 0 0}
   .board-modal h3{font-size:17px}
   .board-modal-actions{gap:7px;flex-wrap:wrap}
-  .board-toast{top:12px;max-width:calc(100vw - 24px);padding:12px 14px;font-size:12px}
+  .board-toast{top:76px;max-width:calc(100vw - 24px);padding:12px 14px;font-size:12px}
 }
 
 @media(max-width:380px){

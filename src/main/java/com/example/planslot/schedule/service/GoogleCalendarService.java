@@ -139,7 +139,7 @@ public class GoogleCalendarService {
             return items != null ? items : Collections.emptyList();
         } catch (Exception e) {
             log.error("구글 캘린더 이벤트 페치 실패", e);
-            return Collections.emptyList();
+            throw new RuntimeException("구글 캘린더 이벤트 페치 실패: " + e.getMessage(), e);
         }
     }
 }

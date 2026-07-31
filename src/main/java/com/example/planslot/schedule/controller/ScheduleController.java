@@ -106,10 +106,16 @@ public class ScheduleController {
 
     @ResponseBody
     @PostMapping("/google-sync")
-    public ResponseEntity<Void> syncGoogleCalendarNow(Authentication authentication) {
+    public ResponseEntity<?> syncGoogleCalendarNow(Authentication authentication) {
         Long memberId = extractMemberId(authentication);
-        scheduleService.syncFromGoogleCalendar(memberId);
-        return ResponseEntity.ok().build();
+        try {
+            scheduleService.syncFromGoogleCalendar(memberId);
+            return ResponseEntity.ok().body(java.util.Map.of("message", "구글 캘린더 동기화가 완료되었습니다."));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("message", "동기화 실패: " + e.getMessage()));
+        }
     }
     @GetMapping(produces = MediaType.TEXT_HTML_VALUE)
     public String calendarPage() {

@@ -106,11 +106,6 @@ function renderGrid(){
     .filter(g => activeFilter === 'all' ? true : g.filter === activeFilter)
     .filter(g => (g.name || '').toLowerCase().includes(q));
 
-  const resultCountEl = document.getElementById('groupResultCount');
-  if (resultCountEl) {
-    resultCountEl.textContent = `총 ${filtered.length}개`;
-  }
-
   if(!filtered.length){
     wrap.innerHTML = '<div class="empty-note">조건에 맞는 모임이 없어요.</div>';
     return;
@@ -205,6 +200,116 @@ function renderGrid(){
     });
   }
 }
+
+function initializeGroupSearchDropdown(select) {
+  if (!select || select.dataset.enhanced === 'true') return;
+
+  select.dataset.enhanced = 'true';
+  select.classList.add('is-enhanced');
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'group-search-select-wrap';
+  select.parentNode.insertBefore(wrapper, select);
+  wrapper.appendChild(select);
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'group-search-select-button';
+  button.setAttribute('aria-label', '검색 조건');
+  button.setAttribute('aria-haspopup', 'listbox');
+  button.setAttribute('aria-expanded', 'false');
+
+  const selectedLabel = document.createElement('span');
+  selectedLabel.className = 'group-search-selected-label';
+  const arrow = document.createElement('span');
+  arrow.className = 'group-search-select-arrow';
+  arrow.setAttribute('aria-hidden', 'true');
+  button.append(selectedLabel, arrow);
+
+  const menu = document.createElement('div');
+  menu.id = 'groupSearchTypeMenu';
+  menu.className = 'group-search-select-menu';
+  menu.setAttribute('role', 'listbox');
+  menu.setAttribute('aria-label', '검색 조건 목록');
+  menu.hidden = true;
+  button.setAttribute('aria-controls', menu.id);
+
+  const optionButtons = [...select.options].map(option => {
+    const optionButton = document.createElement('button');
+    optionButton.type = 'button';
+    optionButton.className = 'group-search-select-option';
+    optionButton.dataset.value = option.value;
+    optionButton.textContent = option.textContent;
+    optionButton.setAttribute('role', 'option');
+
+    optionButton.addEventListener('click', () => {
+      select.value = option.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      syncSelectedOption();
+      setDropdownOpen(false);
+      button.focus();
+    });
+
+    menu.appendChild(optionButton);
+    return optionButton;
+  });
+
+  wrapper.append(button, menu);
+
+  function syncSelectedOption() {
+    const selectedOption = select.options[select.selectedIndex];
+    selectedLabel.textContent = selectedOption?.textContent || '';
+    optionButtons.forEach(optionButton => {
+      const selected = optionButton.dataset.value === select.value;
+      optionButton.classList.toggle('selected', selected);
+      optionButton.setAttribute('aria-selected', String(selected));
+    });
+  }
+
+  function setDropdownOpen(open) {
+    menu.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+  }
+
+  function focusOption(index) {
+    optionButtons[Math.max(0, Math.min(index, optionButtons.length - 1))]?.focus();
+  }
+
+  button.addEventListener('click', () => setDropdownOpen(menu.hidden));
+  button.addEventListener('keydown', event => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    setDropdownOpen(true);
+    const selectedIndex = optionButtons.findIndex(optionButton => optionButton.dataset.value === select.value);
+    focusOption(event.key === 'ArrowUp' ? optionButtons.length - 1 : Math.max(0, selectedIndex));
+  });
+
+  menu.addEventListener('keydown', event => {
+    const currentIndex = optionButtons.indexOf(document.activeElement);
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setDropdownOpen(false);
+      button.focus();
+      return;
+    }
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      focusOption((currentIndex + direction + optionButtons.length) % optionButtons.length);
+    }
+  });
+
+  document.addEventListener('click', event => {
+    if (!wrapper.contains(event.target)) setDropdownOpen(false);
+  });
+  select.addEventListener('change', syncSelectedOption);
+
+  syncSelectedOption();
+}
+
+initializeGroupSearchDropdown(document.getElementById('groupSearchType'));
 
 document.querySelectorAll('.chip').forEach(chip => {
   chip.addEventListener('click', ()=>{

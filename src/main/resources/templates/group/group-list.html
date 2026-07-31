@@ -33,9 +33,13 @@
           <option value="NAME" selected>모임 이름</option>
         </select>
         <input id="groupSearch" type="search" maxlength="100" placeholder="모임 이름을 검색하세요">
-        <button class="group-btn group-btn-sky" id="btnGroupSearch" type="button">검색</button>
+        <button class="group-search-button" id="btnGroupSearch" type="button" aria-label="검색" title="검색">
+          <svg class="group-search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m16.5 16.5 4 4"></path>
+          </svg>
+        </button>
       </div>
-      <div class="group-result-count" id="groupResultCount">총 0개</div>
     </div>
   </div>
   <div class="list-grid" id="groupGrid"></div>

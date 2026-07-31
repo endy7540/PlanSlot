@@ -142,9 +142,26 @@ const API_BASE = window.location.origin;
                 document.getElementById('description-row').style.display = 'none';
             }
 
-            if (s.deadlineDate) {
+            let finalDeadlineDate = s.deadlineDate;
+            if (dateParam && s.startDate && s.deadlineDate) {
+                const origStartOnly = s.startDate.split('T')[0];
+                if (origStartOnly !== dateParam) {
+                    const origStartD = new Date(origStartOnly);
+                    const targetD = new Date(dateParam);
+                    const diffTime = targetD.getTime() - origStartD.getTime();
+                    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                    if (diffDays !== 0) {
+                        const origDeadlineD = new Date(s.deadlineDate);
+                        origDeadlineD.setDate(origDeadlineD.getDate() + diffDays);
+                        const pad = (n) => String(n).padStart(2, '0');
+                        finalDeadlineDate = `${origDeadlineD.getFullYear()}-${pad(origDeadlineD.getMonth()+1)}-${pad(origDeadlineD.getDate())}`;
+                    }
+                }
+            }
+
+            if (finalDeadlineDate) {
                 document.getElementById('deadline-row').style.display = '';
-                document.getElementById('detail-deadline-val').textContent = s.deadlineDate;
+                document.getElementById('detail-deadline-val').textContent = finalDeadlineDate;
             } else {
                 document.getElementById('deadline-row').style.display = 'none';
             }

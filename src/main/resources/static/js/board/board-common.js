@@ -285,6 +285,7 @@ function showBoardToast(message, isError = false, type = '') {
   const toast = document.getElementById('boardToast');
 
   if (!toast) return;
+  if (toast.parentElement !== document.body) document.body.appendChild(toast);
 
   toast.textContent = message;
   toast.className = `board-toast show${isError ? ' error' : type ? ` ${type}` : ''}`;

@@ -208,9 +208,17 @@ public class ScheduleServiceImpl implements ScheduleService {
                 if (matches) {
                     LocalDateTime newStart = date.atTime(eventStart.toLocalTime());
                     LocalDateTime newEnd = (duration != null) ? newStart.plus(duration) : null;
+                    
+                    LocalDate newDeadline = null;
+                    if (baseDto.getDeadlineDate() != null) {
+                        long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(limitStart, date);
+                        newDeadline = baseDto.getDeadlineDate().plusDays(daysBetween);
+                    }
+
                     result.add(baseDto.toBuilder()
                             .startDate(newStart)
                             .endDate(newEnd)
+                            .deadlineDate(newDeadline)
                             .build());
                 }
             }

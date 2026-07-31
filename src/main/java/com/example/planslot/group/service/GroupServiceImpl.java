@@ -1,5 +1,6 @@
 package com.example.planslot.group.service;
 
+
 import com.example.planslot.group.dto.GroupDTO;
 import com.example.planslot.group.entity.Group;
 import com.example.planslot.group.entity.GroupMember;
@@ -158,13 +159,15 @@ public class GroupServiceImpl implements GroupService {
 
         List<GroupSchedule> myGroupSchedules = groupScheduleRepository.findByGroup_IdAndSharer_Id(groupId, memberId);
         
-        List<GroupDTO.ScheduleInfo> mySchedules = myGroupSchedules.stream().map(gs -> {
+        List<GroupDTO.ScheduleInfo> mySchedules = myGroupSchedules.stream()
+                .filter(gs -> gs.getSchedule().getDeletedAt() == null)
+                .map(gs -> {
             LocalDateTime start = gs.getSchedule().getStartDate();
             String dateStr = start != null ? start.toLocalDate().toString() : "";
             String timeStr = start != null ? start.toLocalTime().toString() : "";
             String visibility = gs.isVisible() ? "public" : "private";
             return new GroupDTO.ScheduleInfo(
-                    gs.getId().toString(),
+                    gs.getSchedule().getScheduleId().toString(),
                     gs.getSchedule().getTitle(),
                     dateStr,
                     timeStr,
@@ -373,7 +376,7 @@ public class GroupServiceImpl implements GroupService {
         for (GroupMember gm : groupMembers) {
             if (gm.getMemberStatus() == GroupMemberStatus.ACTIVE) {
                 Long targetMemberId = gm.getMember().getId();
-                String nickname = gm.getMember().getDisplayName();
+                String nickname = gm.getNickname();
                 List<Schedule> schedules;
                 if (start != null && end != null) {
                     schedules = scheduleRepository.findAllByMemberIdAndPeriodCandidate(targetMemberId, start, end);

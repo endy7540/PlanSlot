@@ -1406,7 +1406,7 @@ function showDayDetail(dateStr, forceOpen = false) {
     if (s.myScheduleId) {
       actionsHtml = `
         <div style="display:flex; gap:4px; margin-left:8px;">
-          <button class="btn btn-ghost btn-sm" style="font-size:12px; padding:4px 8px; color:#0284C7;" onclick="event.stopPropagation(); editMySchedule('${s.myScheduleId}')">수정</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:12px; padding:4px 8px; color:#0284C7;" onclick="event.stopPropagation(); editMySchedule('${s.myScheduleId}', '${dateStr}')">수정</button>
           <button class="btn btn-ghost btn-sm" style="font-size:12px; padding:4px 8px; color:#EF4444;" onclick="event.stopPropagation(); deleteMySchedule('${s.myScheduleId}', '${(s.title || '').replace(/'/g, "\\'")}', '${dateStr}')">삭제</button>
         </div>
       `;
@@ -1424,7 +1424,7 @@ function showDayDetail(dateStr, forceOpen = false) {
     }
 
     return `
-      <div class="sched-item" style="cursor:pointer; border:1px solid ${borderColor}; border-left:5px solid ${borderColor}; background:#ffffff; border-radius:6px; padding:8px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;" onclick="openScheduleIframeModal('/schedule/${s.myScheduleId || s.id}?groupId=${group.id}')">
+      <div class="sched-item" style="cursor:${s.myScheduleId ? 'pointer' : 'default'}; border:1px solid ${borderColor}; border-left:5px solid ${borderColor}; background:#ffffff; border-radius:6px; padding:8px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;" onclick="if(${s.myScheduleId ? 'true' : 'false'}) openScheduleIframeModal('/schedule/${s.myScheduleId || s.id}?groupId=${group.id}&date=${dateStr}')">
         <div style="display:flex; flex-direction:column;">
           <div style="display:flex; align-items:center;">
             <b style="font-size:13px; color:#1E293B;">${s.title}</b>
@@ -1455,8 +1455,8 @@ window.openScheduleModal = function() {
   openScheduleIframeModal('/schedule/new?date=' + (currentDetailDate || '') + '&groupId=' + group.id);
 };
 
-window.editMySchedule = function(id) {
-  openScheduleIframeModal('/schedule/' + id + '/edit?groupId=' + group.id);
+window.editMySchedule = function(id, dateStr) {
+  openScheduleIframeModal('/schedule/' + id + '/edit?groupId=' + group.id + (dateStr ? '&date=' + dateStr : ''));
 };
 
 
@@ -1987,46 +1987,85 @@ window.deleteSelectedDateSchedules = async function(targetDate) {
     if (!btnGroup) {
         
     }
-    document.querySelector('#deleteConfirmModal h3').textContent = '당일 일정 일괄 삭제 확인';
-    document.getElementById('deleteConfirmModalMsg').innerHTML =
-        targetDate + ' 날짜에 포함된 본인 일정 ' + mySchedules.length + '개를 삭제하시겠습니까?<br><br><span style=\'color:#EF4444; font-size:12.5px;\'>※ 여러 날짜에 걸친 일정의 경우, <b>해당 날짜만 단축</b>되며 전체가 삭제되지는 않습니다.</span>';
+    const hasMultiDay = mySchedules.some(s => {
+        const startStr = s.startDate ? s.startDate.slice(0, 10) : '';
+        const endStr = s.endDate ? s.endDate.slice(0, 10) : startStr;
+        return startStr !== endStr;
+    });
 
-    btnGroup.style.flexDirection = 'row';
-    btnGroup.innerHTML = "<button class='ghost' onclick='closeDeleteConfirmModal()' style='flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer;'>취소</button>" +
-        "<button id='batchDeleteBtn' class='primary' style='flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer; margin-left: 8px;'>🗑️ 일괄 삭제 (단축) 진행</button>";
+    const escapeHtml = (str) => {
+        if (!str) return '';
+        return String(str).replace(/[&<>'"]/g, match => {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' };
+            return map[match];
+        });
+    };
+    const listHtml = mySchedules.map(s => `<li style="font-weight: 700; color: #1E293B; margin-bottom: 4px; list-style-position: inside; text-align: left;">• ${escapeHtml(s.title)}</li>`).join('');
 
-    document.getElementById('batchDeleteBtn').onclick = async () => {
+    if (hasMultiDay) {
+        document.querySelector('#deleteConfirmModal h3').textContent = '연속 일정 삭제 선택';
+        document.getElementById('deleteConfirmModalMsg').innerHTML =
+            `선택한 날인 <strong>${targetDate}</strong>에 등록된 일정 중 연속 일정이 포함되어 있습니다.<br><br>` +
+            `<div style="text-align: left; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; margin-bottom: 16px;">` +
+            `  <span style="font-weight: 800; color: #0F172A; display: block; margin-bottom: 8px; font-size: 13.5px;">📋 선택한 날의 본인 일정 (${mySchedules.length}개)</span>` +
+            `  <ul style="margin: 0; padding: 0; font-size: 12.5px; color: #334155; list-style: none;">${listHtml}</ul>` +
+            `</div>` +
+            `이 날의 일정만 지우시겠습니까(기간 단축)?<br>아니면 연결된 전체 일정을 삭제하시겠습니까?`;
+        btnGroup.style.flexDirection = 'column';
+        btnGroup.innerHTML = "<button id='batchDeleteSingleBtn' class='primary' style='padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #3B82F6; color: white; font-weight: bold; cursor: pointer; transition: 0.15s; width: 100%;'>👉 선택한 날의 일정만 삭제 (기간 단축)</button>" +
+            "<button id='batchDeleteAllBtn' class='primary' style='padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer; transition: 0.15s; width: 100%; margin-top: 8px;'>🗑️ 연속 일정 포함 해당일 일정 모두 완전 삭제</button>" +
+            "<button class='ghost' onclick='closeDeleteConfirmModal()' style='padding: 10px; font-size: 13px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer; margin-top: 8px; width: 100%;'>취소</button>";
+    } else {
+        document.querySelector('#deleteConfirmModal h3').textContent = '일정 일괄 삭제';
+        document.getElementById('deleteConfirmModalMsg').innerHTML =
+            `선택한 날인 <strong>${targetDate}</strong>의 모든 본인 일정 (${mySchedules.length}개)을 삭제하시겠습니까?<br><br>` +
+            `<div style="text-align: left; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; margin-bottom: 16px;">` +
+            `  <span style="font-weight: 800; color: #0F172A; display: block; margin-bottom: 8px; font-size: 13.5px;">📋 선택한 날의 본인 일정 (${mySchedules.length}개)</span>` +
+            `  <ul style="margin: 0; padding: 0; font-size: 12.5px; color: #334155; list-style: none;">${listHtml}</ul>` +
+            `</div>`;
+        btnGroup.style.flexDirection = 'row';
+        btnGroup.innerHTML = "<button class='ghost' onclick='closeDeleteConfirmModal()' style='flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer;'>취소</button>" +
+            "<button id='batchDeleteBtn' class='primary' style='flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer; margin-left: 8px;'>🗑️ 일괄 삭제 진행</button>";
+    }
+
+    const processBatchDelete = async (isShorten) => {
         closeDeleteConfirmModal();
         showToast('일괄 처리 중입니다... 잠시만 기다려주세요.');
         try {
             let successCount = 0;
-            for (const s of mySchedules) {
-                const id = s.id;
-                const startDateStr = s.startDate ? s.startDate.slice(0, 10) : '';
-                const endDateStr = s.endDate ? s.endDate.slice(0, 10) : startDateStr;
+            for (const schedInfo of mySchedules) {
+                const id = schedInfo.id;
+                const startDateStr = schedInfo.startDate ? schedInfo.startDate.slice(0, 10) : '';
+                const endDateStr = schedInfo.endDate ? schedInfo.endDate.slice(0, 10) : startDateStr;
                 const isMultiDay = startDateStr !== endDateStr;
 
-                if (isMultiDay) {
+                if (isMultiDay && isShorten) {
+                    const res = await fetchApi('/schedule/' + id);
+                    if (!res.ok) continue;
+                    const fullS = await res.json();
+                    
                     const startD = new Date(startDateStr);
                     const endD = new Date(endDateStr);
                     if (targetDate === startDateStr) {
                         startD.setDate(startD.getDate() + 1);
-                        const newStartStr = startD.getFullYear()+'-'+String(startD.getMonth()+1).padStart(2,'0')+'-'+String(startD.getDate()).padStart(2,'0')+'T'+(s.startDate.split('T')[1]||'00:00:00');
-                        await fetchApi('/schedule/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({...s, startDate: newStartStr}) });
+                        const newStartStr = startD.getFullYear()+'-'+String(startD.getMonth()+1).padStart(2,'0')+'-'+String(startD.getDate()).padStart(2,'0')+'T'+(fullS.startDate.split('T')[1]||'00:00:00');
+                        await fetchApi('/schedule/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({...fullS, startDate: newStartStr}) });
                     } else if (targetDate === endDateStr) {
                         endD.setDate(endD.getDate() - 1);
-                        const newEndStr = endD.getFullYear()+'-'+String(endD.getMonth()+1).padStart(2,'0')+'-'+String(endD.getDate()).padStart(2,'0')+'T'+(s.endDate.split('T')[1]||'00:00:00');
-                        await fetchApi('/schedule/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({...s, endDate: newEndStr}) });
+                        const newEndStr = endD.getFullYear()+'-'+String(endD.getMonth()+1).padStart(2,'0')+'-'+String(endD.getDate()).padStart(2,'0')+'T'+(fullS.endDate.split('T')[1]||'00:00:00');
+                        await fetchApi('/schedule/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({...fullS, endDate: newEndStr}) });
                     } else {
                         const frontEndD = new Date(targetDate);
                         frontEndD.setDate(frontEndD.getDate() - 1);
                         const frontEndStr = frontEndD.getFullYear()+'-'+String(frontEndD.getMonth()+1).padStart(2,'0')+'-'+String(frontEndD.getDate()).padStart(2,'0')+'T23:59:59';
-                        await fetchApi('/schedule/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({...s, endDate: frontEndStr}) });
+                        await fetchApi('/schedule/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({...fullS, endDate: frontEndStr}) });
 
                         const backStartD = new Date(targetDate);
                         backStartD.setDate(backStartD.getDate() + 1);
                         const backStartStr = backStartD.getFullYear()+'-'+String(backStartD.getMonth()+1).padStart(2,'0')+'-'+String(backStartD.getDate()).padStart(2,'0')+'T00:00:00';
-                        await fetchApi('/group/' + group.id + '/schedules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({...s, startDate: backStartStr}) });
+                        const splitSchedule = { ...fullS, startDate: backStartStr };
+                        delete splitSchedule.scheduleId;
+                        await fetchApi('/group/' + group.id + '/schedules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(splitSchedule) });
                     }
                     successCount++;
                 } else {
@@ -2041,6 +2080,13 @@ window.deleteSelectedDateSchedules = async function(targetDate) {
             showToast('일괄 처리 중 오류가 발생했습니다.', true);
         }
     };
+
+    if (hasMultiDay) {
+        document.getElementById('batchDeleteSingleBtn').onclick = () => processBatchDelete(true);
+        document.getElementById('batchDeleteAllBtn').onclick = () => processBatchDelete(false);
+    } else {
+        document.getElementById('batchDeleteBtn').onclick = () => processBatchDelete(false);
+    }
     document.getElementById('deleteConfirmModal').style.display = 'flex';
 };
 

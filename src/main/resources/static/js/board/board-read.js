@@ -96,7 +96,7 @@ async function initializeBoardRead() {
   const boardId = getPathNumberAfter('read');
 
   if (!boardId) {
-    showBoardToast('게시글 주소가 올바르지 않습니다.', true);
+    redirectToBoardHome('게시글 주소가 올바르지 않습니다.');
     return;
   }
 
@@ -158,6 +158,11 @@ async function loadBoardRead(boardId) {
     document.getElementById('boardReadLoading').hidden = true;
     return true;
   } catch (error) {
+    if (error.status === 404 || error.status === 410) {
+      redirectToBoardHome(error.message);
+      return false;
+    }
+
     const message = error.status ? error.message : '게시글 정보를 불러오는 중 오류가 발생했습니다.';
     document.getElementById('boardReadLoading').innerHTML = `<div class="board-error">${escapeBoardHtml(message)}</div>`;
     return false;

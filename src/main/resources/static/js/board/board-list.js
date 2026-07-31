@@ -135,12 +135,6 @@ async function initializeBoardList() {
     event.preventDefault();
     const keyword = searchInput?.value.trim().slice(0, 100) || '';
 
-    if (keyword.length < 1) {
-      showBoardToast('검색어는 1자 이상 입력해 주세요.', true);
-      searchInput?.focus();
-      return;
-    }
-
     currentListPage = 0;
     currentListSearchType = searchTypeSelect?.value || 'titleContent';
     currentListKeyword = keyword;

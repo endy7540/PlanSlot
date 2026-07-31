@@ -56,7 +56,7 @@ public class NotificationController {
     public ResponseEntity<Page<NotificationDTO>> getNotificationPage(
             @RequestParam(defaultValue = "ALL") String filter,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "10") int size,
             Principal principal) {
 
         if (page < 0 || size < 1 || size > 50) {

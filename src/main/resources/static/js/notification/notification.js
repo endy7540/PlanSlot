@@ -1,6 +1,6 @@
 const NOTIFICATION_API = '/notification';
 const NOTIFICATION_LOGIN_URL = '/auth/login';
-const NOTIFICATION_PAGE_SIZE = 20;
+const NOTIFICATION_PAGE_SIZE = 10;
 
 const NOTIFICATION_TARGET_ROUTES = {
     POST: targetId => `/board/read/${encodeURIComponent(targetId)}`,

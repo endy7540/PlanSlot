@@ -25,6 +25,18 @@
 
 </head>
 <body>
+<!-- iframe 내부 전용 최상단 토스트 알림창 -->
+<div id="iframeToast" style="display: none; position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #FEF2F2; border: 2px solid #FCA5A5; color: #991B1B; font-weight: 800; font-size: 13.5px; padding: 12px 24px; border-radius: 12px; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.15); z-index: 99999; text-align: center; width: 90%; max-width: 380px; align-items: center; justify-content: center; gap: 8px; animation: slideDown 0.3s ease-out;">
+    <span style="font-size: 16px;">⚠️</span>
+    <span id="iframeToastText">종료 시간은 시작 시간보다 빠를 수 없습니다.</span>
+</div>
+
+<style>
+@keyframes slideDown {
+    from { top: -50px; opacity: 0; }
+    to { top: 16px; opacity: 1; }
+}
+</style>
 
 <div th:replace="~{global/header :: headerFragment}"></div>
 
@@ -116,7 +128,7 @@
             <div class="form-row" id="timeInputRow">
                 <div id="timeInputs" style="grid-column: span 2; width: 100%; position: relative;">
                     <label>일정 시간 범위 선택 *</label>
-                    <input id="f-timeRange" type="text" readonly class="chip-input" placeholder="시간을 선택하세요 (예: 09:00 ~ 10:00)" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff; cursor: pointer;" required onclick="toggleTimeDropdown()">
+                    <input id="f-timeRange" type="text" readonly class="chip-input" placeholder="시간을 선택하세요 (예: 09:00 ~ 10:00)" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff; cursor: pointer;" onclick="toggleTimeDropdown()">
 
                     <!-- 시간 범위 드롭다운 레이어 -->
                     <div id="timeRangeDropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 2px solid #DCEFFC; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 100; padding: 16px; margin-top: 6px;">
@@ -152,6 +164,11 @@
                     <input id="f-notifyDaysBefore" type="number" min="0" placeholder="예: 1">
                 </div>
             </div>
+            <div class="form-row" id="deadlineNotificationCalcRow" style="display: none; margin-top: -6px; margin-bottom: 12px; padding: 6px 12px; background: #F0FDF4; border: 1px dashed #BBF7D0; border-radius: 8px; width: 100%;">
+                <span id="deadlineNotificationCalcText" style="font-size: 12.5px; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 4px;">
+                    🔔 알림 발송 예정일: -
+                </span>
+            </div>
             <div style="display: flex; align-items: center; justify-content: space-between; background: #F3FAFF; border: 2px solid #DCEFFC; border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; margin-top: 12px; width: fit-content; min-width: 200px;">
                 <span style="font-size: 14px; font-weight: 700; color: #075985;">공개 일정으로 등록</span>
                 <label class="toggle-switch" style="margin: 0;">
@@ -170,6 +187,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script th:src="@{/js/schedule/schedule-modify.js(v='1.1.8')}"></script>
+<script th:src="@{/js/schedule/schedule-modify.js(v='1.2.3')}"></script>
 </body>
 </html>

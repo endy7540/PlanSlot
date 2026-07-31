@@ -90,16 +90,17 @@ const HOLIDAYS = {
                 const toggle = document.getElementById('googleSyncToggle');
                 
                 if (isLinked) {
-                    toggle.checked = isEnabled;
+                    if (toggle) toggle.checked = isEnabled;
                     if (isEnabled) {
                         // 페이지 로드 시에도 연동되어 있다면 한 번 긁어온다.
-                        // (원치 않으면 이 줄은 빼도 되지만 '자동으로 가져오게해'에 맞춤)
                         syncGoogleCalendarNow(true);
                     }
                 } else {
-                    toggle.disabled = true;
-                    toggle.parentElement.parentElement.style.opacity = '0.5';
-                    toggle.parentElement.parentElement.title = "마이페이지에서 구글 로그인을 먼저 진행해주세요.";
+                    if (toggle) {
+                        toggle.disabled = true;
+                        toggle.parentElement.parentElement.style.opacity = '0.5';
+                        toggle.parentElement.parentElement.title = "마이페이지에서 구글 로그인을 먼저 진행해주세요.";
+                    }
                 }
             }
         } catch (e) {

@@ -32,7 +32,23 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
         OAuth2User oAuth2User = oauthToken.getPrincipal();
         
-        String linkEmail = (String) request.getSession().getAttribute("LINK_GOOGLE_EMAIL");
+        String linkEmail = null;
+        if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                if ("LINK_GOOGLE_EMAIL".equals(cookie.getName())) {
+                    linkEmail = cookie.getValue();
+                    jakarta.servlet.http.Cookie clearCookie = new jakarta.servlet.http.Cookie("LINK_GOOGLE_EMAIL", null);
+                    clearCookie.setPath("/");
+                    clearCookie.setMaxAge(0);
+                    response.addCookie(clearCookie);
+                    break;
+                }
+            }
+        }
+        if (linkEmail == null) {
+            linkEmail = (String) request.getSession().getAttribute("LINK_GOOGLE_EMAIL");
+        }
+        
         if (linkEmail != null) {
             Member member = memberRepository.findByEmail(linkEmail)
                     .orElseThrow(() -> new IllegalArgumentException("계정을 찾을 수 없습니다."));

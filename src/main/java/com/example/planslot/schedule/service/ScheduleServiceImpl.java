@@ -306,8 +306,9 @@ public class ScheduleServiceImpl implements ScheduleService {
                     scheduleRepository.save(schedule);
                 }
             } catch (Exception ex) {
-                // 특정 이벤트 처리 실패 시 다른 이벤트에 영향을 주지 않도록 로깅만 함
+                // 특정 이벤트 처리 실패 시 예외를 던져서 프론트엔드에서 확인할 수 있게 함
                 System.err.println("Failed to sync event " + e.getId() + ": " + ex.getMessage());
+                throw new RuntimeException("일정 [" + (e.getSummary() != null ? e.getSummary() : "제목 없음") + "] 동기화 중 오류: " + ex.getMessage(), ex);
             }
         }
     }

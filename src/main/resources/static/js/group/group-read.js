@@ -1287,41 +1287,82 @@ function renderDynamicCalendar() {
         const tooltip = `${s.title} (${tooltipNames})`;
         const displayTime = s.title.startsWith('모임 일정') ? '' : ` ${s.time || ''}`;
 
-        let bgColor = '';
+        let bgStyle = '';
         let colorStyle = '';
         if (s.nicknames && s.nicknames.length > 1) {
-            const includesMe = s.nicknames.some(n => n === myName || n === `${myName} (나-비공개)` || n.startsWith(`${myName} `));
-            if (includesMe) {
-                const myObj = group.members.find(m => String(m.id) === String(group.myMemberId));
-                bgColor = myObj ? getMemberColor(myObj) : '#3B82F6';
+            let publicNicks = s.nicknames.filter(n => !n.includes('(나-비공개)'));
+            if (publicNicks.length >= 2) {
+                let colors = [];
+                publicNicks.forEach(nick => {
+                    const m = group.members.find(member => member.name === nick);
+                    if (m) colors.push(getMemberColor(m));
+                });
+                
+                if (colors.length >= 2) {
+                    bgStyle = `background: linear-gradient(to right, ${colors.join(', ')});`;
+                } else if (colors.length === 1) {
+                    bgStyle = `background: ${colors[0]};`;
+                } else {
+                    bgStyle = `background: #94A3B8;`;
+                }
                 colorStyle = `color: white; text-shadow: 0px 1px 2px rgba(0,0,0,0.3);`;
             } else {
-                bgColor = '#E0F2FE';
-                colorStyle = 'color: #0284C7;';
+                let singleNick = publicNicks.length > 0 ? publicNicks[0] : s.nicknames[0].replace(' (나-비공개)', '');
+                const mObj = group.members.find(m => m.name === singleNick);
+                bgStyle = `background: ${mObj ? getMemberColor(mObj) : '#bae6fd'};`;
+                colorStyle = `color: white; text-shadow: 0px 1px 2px rgba(0,0,0,0.3);`;
             }
         } else {
             const isMine = (s.nickname === myName);
             const mObj = group.members.find(m => m.name === s.nickname);
             if (isMine) {
-                bgColor = mObj ? getMemberColor(mObj) : '#E2E8F0';
+                bgStyle = `background: ${mObj ? getMemberColor(mObj) : '#E2E8F0'};`;
             } else {
-                bgColor = mObj ? getMemberColor(mObj) : '#94A3B8';
+                bgStyle = `background: ${mObj ? getMemberColor(mObj) : '#94A3B8'};`;
             }
             colorStyle = 'color: white; text-shadow: 0px 1px 2px rgba(0,0,0,0.3);';
         }
         if (s.isPublic === 'N') colorStyle += ' opacity: 0.5;';
         if (s.isTemp) {
-                cls += ' blinking-temp-schedule';
-                if (!document.getElementById('blinking-style')) {
-                    const style = document.createElement('style');
-                    style.id = 'blinking-style';
-                    style.innerHTML = `@keyframes temp-blink { 0% {opacity:1; transform:scale(1);} 50% {opacity:0.4; transform:scale(0.95);} 100% {opacity:1; transform:scale(1);} } .blinking-temp-schedule { animation: temp-blink 1.2s infinite ease-in-out !important; box-shadow: 0 0 8px rgba(59,130,246,0.8); }`;
-                    document.head.appendChild(style);
+            cls += ' blinking-temp-schedule';
+            const myObj = group.members.find(m => String(m.id) === String(group.myMemberId));
+            const myColor = myObj ? getMemberColor(myObj) : '#3B82F6';
+            
+            // bgStyle is currently the evaluated gradient or color from the merged group schedule.
+            let publicBg = bgStyle.replace('background: ', '').replace(';', '').trim();
+            
+            // If it didn't merge with the sharer (e.g. not in groupSchedules yet), artificially simulate the gradient
+            if (!publicBg.includes('linear-gradient') && s.sharerName) {
+                const sharerObj = group.members.find(m => m.name === s.sharerName);
+                if (sharerObj) {
+                    const sharerColor = getMemberColor(sharerObj);
+                    publicBg = `linear-gradient(to right, ${sharerColor}, ${myColor})`;
                 }
             }
+            
+            let privateBg = myColor;
 
+            // Set the initial style based on tempImportSchedule state
+            const isPreviewPrivate = tempImportSchedule && tempImportSchedule.isPublic === 'N';
+            if (isPreviewPrivate) {
+                bgStyle = `background: ${privateBg};`;
+            } else {
+                bgStyle = `background: ${publicBg};`;
+            }
+            
+            colorStyle = `color: white; text-shadow: 0px 1px 2px rgba(0,0,0,0.3); border: 1px solid ${myColor};`;
+            
+            if (!document.getElementById('blinking-style')) {
+                const style = document.createElement('style');
+                style.id = 'blinking-style';
+                style.innerHTML = `@keyframes temp-blink { 0% {opacity:1; transform:scale(1);} 50% {opacity:0.4; transform:scale(0.95);} 100% {opacity:1; transform:scale(1);} } .blinking-temp-schedule { animation: temp-blink 1.2s infinite ease-in-out !important; }`;
+                document.head.appendChild(style);
+            }
 
-        eventsHtml += `<em class="${cls}" title="${tooltip}" style="background-color: ${bgColor}; ${colorStyle}" onclick="event.stopPropagation(); showDayDetail('${dateStr}')">${displayTitle}${displayTitle !== '&nbsp;' ? displayTime : ''}</em>`;
+            eventsHtml += `<em class="${cls}" title="${tooltip}" data-public-bg="${publicBg}" data-private-bg="${privateBg}" style="${bgStyle} ${colorStyle}" onclick="event.stopPropagation(); showDayDetail('${dateStr}')">${displayTitle}${displayTitle !== '&nbsp;' ? displayTime : ''}</em>`;
+        } else {
+            eventsHtml += `<em class="${cls}" title="${tooltip}" style="${bgStyle} ${colorStyle}" onclick="event.stopPropagation(); showDayDetail('${dateStr}')">${displayTitle}${displayTitle !== '&nbsp;' ? displayTime : ''}</em>`;
+        }
       }
     }
 
@@ -1446,9 +1487,32 @@ function showDayDetail(dateStr, forceOpen = false) {
     const isPrivate = s.isPublic === 'N';
     const isShared = s.nicknames && s.nicknames.length > 1;
     let borderColor = '#bae6fd';
+    let isGradient = false;
+    let gradientCss = '';
     
     if (isShared) {
-      borderColor = '#bae6fd';
+      let publicNicks = s.nicknames.filter(n => !n.includes('(나-비공개)'));
+      if (publicNicks.length >= 2) {
+          isGradient = true;
+          let colors = [];
+          publicNicks.forEach(nick => {
+              const m = group.members.find(member => member.name === nick);
+              if (m) colors.push(getMemberColor(m));
+          });
+          
+          if (colors.length >= 2) {
+              gradientCss = `linear-gradient(to bottom, ${colors.join(', ')})`;
+          } else if (colors.length === 1) {
+              gradientCss = colors[0];
+          } else {
+              gradientCss = '#94A3B8';
+          }
+          borderColor = '#E2E8F0'; // Fallback border for the box
+      } else {
+          let singleNick = publicNicks.length > 0 ? publicNicks[0] : s.nicknames[0].replace(' (나-비공개)', '');
+          const mObj = group.members.find(m => m.name === singleNick);
+          borderColor = mObj ? getMemberColor(mObj) : '#bae6fd';
+      }
     } else {
       let firstNick = s.nicknames && s.nicknames.length > 0 ? s.nicknames[0] : s.nickname;
       if (firstNick && firstNick.includes(' (나-비공개)')) {
@@ -1463,9 +1527,10 @@ function showDayDetail(dateStr, forceOpen = false) {
       borderColor = `color-mix(in srgb, ${borderColor} 50%, white)`;
     }
 
+    const badgeBg = isGradient ? gradientCss.replace('to bottom', 'to right') : borderColor;
     const badge = isPrivate
-      ? `<span style="font-size:10px; padding:3px 7px; background:${borderColor}; color:#1e293b; font-weight:800; border-radius:4px; margin-right:6px;">비공개</span>`
-      : `<span style="font-size:10px; padding:3px 7px; background:${borderColor}; color:#1e293b; font-weight:800; border-radius:4px; margin-right:6px;">공개</span>`;
+      ? `<span style="font-size:10px; padding:3px 7px; background:${badgeBg}; color:#1e293b; font-weight:800; border-radius:4px; margin-right:6px;">비공개</span>`
+      : `<span style="font-size:10px; padding:3px 7px; background:${badgeBg}; color:#1e293b; font-weight:800; border-radius:4px; margin-right:6px;">공개</span>`;
 
     const resolvedNames = (s.nicknames || []).map(rawNick => resolveDisplayName(rawNick, group));
     const namesDisplay = resolvedNames.length > 0 ? resolvedNames.join(', ') : '알 수 없음';
@@ -1473,7 +1538,7 @@ function showDayDetail(dateStr, forceOpen = false) {
     let actionsHtml = '';
     if (s.myScheduleId) {
       actionsHtml = `
-        <div style="display:flex; gap:4px; margin-left:8px;">
+        <div style="display:flex; gap:4px; margin-left:8px; position:relative; z-index:2;">
           <button class="btn btn-ghost btn-sm" style="font-size:12px; padding:4px 8px; color:#0284C7;" onclick="event.stopPropagation(); editMySchedule('${s.myScheduleId}', '${dateStr}')">수정</button>
           <button class="btn btn-ghost btn-sm" style="font-size:12px; padding:4px 8px; color:#EF4444;" onclick="event.stopPropagation(); deleteMySchedule('${s.myScheduleId}', '${(s.title || '').replace(/'/g, "\\'")}', '${dateStr}')">삭제</button>
         </div>
@@ -1492,8 +1557,9 @@ function showDayDetail(dateStr, forceOpen = false) {
     }
 
     return `
-      <div class="sched-item" style="cursor:${s.myScheduleId ? 'pointer' : 'default'}; border:1px solid ${borderColor}; border-left:5px solid ${borderColor}; background:#ffffff; border-radius:6px; padding:8px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;" onclick="if(${s.myScheduleId ? 'true' : 'false'}) openScheduleIframeModal('/schedule/${s.myScheduleId || s.id}?groupId=${group.id}&date=${dateStr}')">
-        <div style="display:flex; flex-direction:column;">
+      <div class="sched-item" style="cursor:${s.myScheduleId ? 'pointer' : 'default'}; border:1px solid ${isGradient ? '#E2E8F0' : borderColor}; background:#ffffff; border-radius:6px; padding:8px 12px 8px 17px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden;" onclick="if(${s.myScheduleId ? 'true' : 'false'}) openScheduleIframeModal('/schedule/${s.myScheduleId || s.id}?groupId=${group.id}&date=${dateStr}')">
+        <div style="position:absolute; left:0; top:0; bottom:0; width:5px; background:${isGradient ? gradientCss : borderColor};"></div>
+        <div style="display:flex; flex-direction:column; position:relative; z-index:2;">
           <div style="display:flex; align-items:center;">
             ${badge}
             <b style="font-size:13px; color:#1E293B;">${s.title}</b>
@@ -1584,6 +1650,7 @@ function renderSharedPeerSchedules() {
 }
 
 let tempImportSchedule = null;
+let tempImportInterval = null;
 
 function hasOverlap(targetDateStr, targetTimeStr, myName) {
   if (!targetTimeStr || !targetDateStr) return false;
@@ -1619,10 +1686,31 @@ function previewImportSharedPeerSchedule(shareId) {
     startDate: s.date,
     time: s.time,
     nickname: myName,
-    isPublic: 'N', // 가상으로 보여줄 때는 비공개 스타일
+    sharerName: s.sharerName,
+    isPublic: 'N', // 기본은 비공개로 시작
     isTemp: true,
     scheduleType: s.scheduleType
   };
+
+  // 기존 인터벌이 있으면 정리
+  if (tempImportInterval) {
+    clearInterval(tempImportInterval);
+  }
+
+  // 1.5초마다 공개/비공개 상태를 토글 (DOM 재렌더링 없이 background만 변경하여 애니메이션 끊김 방지)
+  tempImportInterval = setInterval(() => {
+    if (tempImportSchedule) {
+      tempImportSchedule.isPublic = tempImportSchedule.isPublic === 'N' ? 'Y' : 'N';
+      const isPrivate = tempImportSchedule.isPublic === 'N';
+      document.querySelectorAll('.blinking-temp-schedule').forEach(el => {
+        const publicBg = el.getAttribute('data-public-bg');
+        const privateBg = el.getAttribute('data-private-bg');
+        if (publicBg && privateBg) {
+            el.style.background = isPrivate ? privateBg : publicBg;
+        }
+      });
+    }
+  }, 1000);
 
   // 달력 렌더링
   setTab('schedule');
@@ -1634,7 +1722,7 @@ function previewImportSharedPeerSchedule(shareId) {
   if (overlapped) {
     msgSpan.textContent = "같은 시간대에 일정이 있습니다. 덮어씌우시겠습니까?";
   } else {
-    msgSpan.textContent = "선택한 일정을 캘린더에 비공개로 추가하시겠습니까?";
+    msgSpan.textContent = "선택한 일정을 캘린더에 추가하시겠습니까?";
   }
 
   // 하단 바 띄우기
@@ -1662,6 +1750,10 @@ function previewImportSharedPeerSchedule(shareId) {
 
 function cleanupPreviewImport() {
   tempImportSchedule = null;
+  if (tempImportInterval) {
+    clearInterval(tempImportInterval);
+    tempImportInterval = null;
+  }
   document.getElementById('importConfirmBar').style.display = 'none';
   renderDynamicCalendar();
 

@@ -387,8 +387,8 @@ public class GroupServiceImpl implements GroupService {
                     for (Schedule s : schedules) {
                         if ("Y".equals(s.getIsPublic()) || targetMemberId.equals(memberId)) {
                             if (s.getScheduleType() == null || s.getScheduleType() == ScheduleType.DAILY || s.getScheduleType() == ScheduleType.NONE) {
-                                String dateStr = s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : "";
-                                String endDateStr = s.getEndDate() != null ? s.getEndDate().toLocalDate().toString() : dateStr;
+                                String dateStr = s.getStartDate() != null ? s.getStartDate().toString() : "";
+                                String endDateStr = s.getEndDate() != null ? s.getEndDate().toString() : dateStr;
                                 String timeStr = s.getStartDate() != null ? s.getStartDate().toLocalTime().toString() : "";
                                 result.add(new GroupDTO.CalendarScheduleInfo(
                                         s.getScheduleId().toString(),
@@ -437,14 +437,15 @@ public class GroupServiceImpl implements GroupService {
                                     }
 
                                     if (matches) {
-                                        String dateStr = date.toString();
+                                        String dateStr = date.toString() + "T" + eventStart.toLocalTime().toString();
+                                        String endStr = date.toString() + "T" + (s.getEndDate() != null ? s.getEndDate().toLocalTime().toString() : eventStart.toLocalTime().toString());
                                         String timeStr = eventStart.toLocalTime().toString();
                                         result.add(new GroupDTO.CalendarScheduleInfo(
                                                 s.getScheduleId().toString(),
                                                 nickname,
                                                 s.getTitle(),
                                                 dateStr,
-                                                dateStr,
+                                                endStr,
                                                 timeStr,
                                                 s.getIsPublic()
                                         ));
@@ -457,8 +458,8 @@ public class GroupServiceImpl implements GroupService {
                     schedules = scheduleRepository.findAllByMemberId(targetMemberId);
                     for (Schedule s : schedules) {
                         if ("Y".equals(s.getIsPublic()) || targetMemberId.equals(memberId)) {
-                            String dateStr = s.getStartDate() != null ? s.getStartDate().toLocalDate().toString() : "";
-                            String endDateStr = s.getEndDate() != null ? s.getEndDate().toLocalDate().toString() : dateStr;
+                            String dateStr = s.getStartDate() != null ? s.getStartDate().toString() : "";
+                            String endDateStr = s.getEndDate() != null ? s.getEndDate().toString() : dateStr;
                             String timeStr = s.getStartDate() != null ? s.getStartDate().toLocalTime().toString() : "";
                             result.add(new GroupDTO.CalendarScheduleInfo(
                                     s.getScheduleId().toString(),

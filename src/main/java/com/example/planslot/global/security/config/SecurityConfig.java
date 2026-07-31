@@ -82,9 +82,9 @@ public class SecurityConfig {
                                 new RegexRequestMatcher("^/board/\\d+/comments(?:\\?.*)?$", "GET")
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/schedule", "/schedule/*").permitAll()
-                        // 홈 AI 이용 안내 챗봇은 로그인 여부와 관계없이 사용 가능
                         .requestMatchers(HttpMethod.POST, "/api/chatbot/message").permitAll()
                         .requestMatchers("/api/chatbot/**").authenticated()
+                        .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

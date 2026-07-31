@@ -248,7 +248,7 @@
     box-shadow:0 16px 40px rgba(7,89,133,.10);
     display:grid;
     grid-template-columns:minmax(0,1fr) auto;
-    align-items:center;
+    align-items:end;
     gap:20px;
 }
 
@@ -273,7 +273,7 @@
     font-weight:900;
     box-shadow:none;
     transition:.18s;
-    align-self:center;
+    align-self:end;
     justify-self:end;
     white-space:nowrap;
 }
@@ -402,7 +402,7 @@
 @media(max-width:760px){
     .notification-page{overflow-x:hidden;}
     .notification-page-main{width:calc(100% - 32px);padding:28px 0 56px;}
-    .notification-page-title{align-items:center;}
+    .notification-page-title{align-items:end;}
     .notification-list-head{align-items:flex-start;flex-direction:column;gap:13px;}
     .notification-list-heading{width:100%;justify-content:space-between;gap:12px;}
     .notification-filter{width:auto;}
@@ -411,11 +411,11 @@
 
 @media(max-width:620px){
     .notification-page-main{width:100%;padding:22px 12px 44px;}
-    .notification-page-title{margin-bottom:20px;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:24px 22px;border-radius:18px;}
+    .notification-page-title{margin-bottom:20px;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px;padding:24px 22px;border-radius:18px;}
     .notification-page-label{margin-bottom:5px;font-size:12px;}
     .notification-page-title h1{font-size:25px;line-height:1.2;}
     .notification-page-title p{margin-top:6px;font-size:12.5px;line-height:1.55;word-break:keep-all;}
-    .notification-read-all-button{align-self:center;justify-self:end;width:auto;min-height:40px;padding:9px 12px;font-size:12px;}
+    .notification-read-all-button{align-self:end;justify-self:end;width:auto;min-height:40px;padding:9px 12px;font-size:12px;}
 
     .notification-list-card{border-radius:12px;box-shadow:3px 3px 0 rgba(8,32,51,.04);}
     .notification-list-head{min-height:0;padding:14px;gap:12px;}

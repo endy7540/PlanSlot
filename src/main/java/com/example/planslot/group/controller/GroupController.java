@@ -34,6 +34,7 @@ public class GroupController {
     private final GroupService groupService;
     private final GroupRecommendationService groupRecommendationService;
     private final MemberRepository memberRepository;
+    private final com.example.planslot.group.repository.GroupMemberRepository groupMemberRepository;
 
     private Long getAuthenticatedMemberId(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -52,13 +53,31 @@ public class GroupController {
 
     // 모임 상세 화면 반환
     @GetMapping("/read")
-    public String groupDetail() {
+    public String groupDetail(@org.springframework.web.bind.annotation.RequestParam(value = "id", required = false) Long id, Authentication authentication) {
+        if (id == null) return "redirect:/group/list";
+        try {
+            Long memberId = getAuthenticatedMemberId(authentication);
+            if (!groupMemberRepository.existsByGroup_IdAndMember_Id(id, memberId)) {
+                return "redirect:/group/list";
+            }
+        } catch (Exception e) {
+            return "redirect:/auth/login";
+        }
         return "group/group-read";
     }
 
     // AI 추천 화면 반환
     @GetMapping("/recommend")
-    public String groupRecommend() {
+    public String groupRecommend(@org.springframework.web.bind.annotation.RequestParam(value = "id", required = false) Long id, Authentication authentication) {
+        if (id == null) return "redirect:/group/list";
+        try {
+            Long memberId = getAuthenticatedMemberId(authentication);
+            if (!groupMemberRepository.existsByGroup_IdAndMember_Id(id, memberId)) {
+                return "redirect:/group/list";
+            }
+        } catch (Exception e) {
+            return "redirect:/auth/login";
+        }
         return "group/ai-recommend";
     }
 

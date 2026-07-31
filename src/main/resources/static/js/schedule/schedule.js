@@ -621,7 +621,9 @@ const HOLIDAYS = {
                 🗑️ 모든 일정 삭제 확정
             </button>
         `;
-        document.getElementById('deleteConfirmModal').style.display = 'flex';
+        const modal = document.getElementById('deleteConfirmModal');
+        modal.style.display = 'flex';
+        modal.focus();
 
     }
 
@@ -882,7 +884,7 @@ const HOLIDAYS = {
 
         const dayEvents = schedulesByDate[dateKey] || [];
         if (dayEvents.length === 0) {
-            list.innerHTML = `<div class="empty-notice" style="padding: 20px; font-weight: 700; color: #94A3B8;">등록된 일정이 없습니다.<br><span style="font-size:12px; font-weight:500;">(한 번 더 누르면 새로운 일정을 추가합니다.)</span></div>`;
+            list.innerHTML = `<div class="empty-notice" style="padding: 20px; font-weight: 700; color: #94A3B8;">등록된 일정이 없습니다.</div>`;
             return;
         }
 
@@ -901,19 +903,23 @@ const HOLIDAYS = {
                      timeText = `${startT} ~ ${endT}`;
                 }
             }
+
             const isPub = (s.isPublic === true || s.isPublic === 'Y' || s.public === true || s.public === 'Y');
+            const baseColor = window.personalCalendarColor || '#3B82F6';
+            const borderColor = isPub ? baseColor : `color-mix(in srgb, ${baseColor} 50%, white)`;
+
             const visibilityBadge = isPub 
-                ? `<span style="font-size: 11px; font-weight: 800; color: #0284C7; background: #E0F2FE; padding: 2px 6px; border-radius: 4px; margin-right: 6px; display: inline-flex; align-items: center; gap: 2px; line-height: 1;">공개</span>`
-                : `<span style="font-size: 11px; font-weight: 800; color: #6B21A8; background: #F3E8FF; padding: 2px 6px; border-radius: 4px; margin-right: 6px; display: inline-flex; align-items: center; gap: 2px; line-height: 1;">비공개</span>`;
+                ? `<span style="font-size:10px; padding:3px 7px; background:${borderColor}; color:#1e293b; font-weight:800; border-radius:4px; margin-right:6px;">공개</span>`
+                : `<span style="font-size:10px; padding:3px 7px; background:${borderColor}; color:#1e293b; font-weight:800; border-radius:4px; margin-right:6px;">비공개</span>`;
 
             return `
-                <div class="selected-event-item${searchClass}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; cursor: pointer; border-left: 4px solid ${window.personalCalendarColor || '#3B82F6'};" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
+                <div class="selected-event-item${searchClass}" style="cursor: pointer; border: 1px solid ${borderColor}; border-left: 5px solid ${borderColor}; background: #ffffff; border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
                     <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
                         ${visibilityBadge}
                         <span class="selected-event-title" style="font-weight: 700; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(s.title)}</span>
                     </div>
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <span class="selected-event-time" style="font-size: 12px; color: #64748B; font-weight: 500; white-space: nowrap;">${timeText}</span>
+                        <span class="selected-event-time" style="font-size: 12px; color: #64748B; font-weight: 600; white-space: nowrap;">${timeText}</span>
                         <div style="display:flex; gap:4px;">
                             <button class="btn-edit" onclick="event.stopPropagation(); openScheduleModify(${s.scheduleId}, '${dateKey}')">수정</button>
                             <button class="btn-delete" onclick="event.stopPropagation(); deleteSingleSchedule(${s.scheduleId}, '${escapeHtml(s.title).replace(/'/g, "\\'")}', '${dateKey}')">삭제</button>
@@ -1883,26 +1889,26 @@ const HOLIDAYS = {
 
             const btnGroup = document.getElementById('deleteModalBtnGroup');
 
-            if ((isMultiDay || isRecurrent) && targetDate) {
-                document.querySelector('#deleteConfirmModal h3').textContent = '연속 일정 삭제 선택';
-                document.getElementById('deleteConfirmModalMsg').innerHTML = 
-                    `'${escapeHtml(title)}' 일정은 연속/반복 일정입니다.<br>선택한 날인 <strong>${targetDate}</strong>의 일정만 삭제하시겠습니까?<br>아니면 전체 일정을 삭제하시겠습니까?`;
-                
-                btnGroup.style.flexDirection = 'column';
-                btnGroup.innerHTML = `
-                    <button id="deleteSingleBtn" class="primary" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #3B82F6; color: white; font-weight: bold; cursor: pointer; transition: 0.15s; width: 100%;">
-                        👉 선택한 날의 일정만 삭제 (기간 단축)
-                    </button>
-                    <button id="deleteAllBtn" class="primary" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer; transition: 0.15s; width: 100%;">
-                        🗑️ 연결된 전체 일정 삭제
-                    </button>
-                    <button class="ghost" onclick="closeDeleteConfirmModal()" style="padding: 10px; font-size: 13px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer; margin-top: 4px; width: 100%;">
-                        취소
-                    </button>
-                `;
+            // 연속/반복 일정이든 일반 일정이든 가로 2버튼 모달창으로 무조건 통일하여 노출시킵니다!
+            document.querySelector('#deleteConfirmModal h3').textContent = '일정 삭제 확인';
+            document.getElementById('deleteConfirmModalMsg').innerHTML = 
+                `⚠️ 정말로 '${escapeHtml(title)}' 일정을 삭제하시겠습니까?`;
+            
+            btnGroup.style.flexDirection = 'row';
+            btnGroup.innerHTML = `
+                <button class="ghost" onclick="closeDeleteConfirmModal()" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer;">
+                    취소
+                </button>
+                <button id="deleteAllBtn" class="primary" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer;">
+                    🗑️ 일정 삭제 확정
+                </button>
+            `;
 
-                document.getElementById('deleteSingleBtn').onclick = async () => {
-                    closeDeleteConfirmModal();
+            document.getElementById('deleteAllBtn').onclick = async () => {
+                closeDeleteConfirmModal();
+
+                if ((isMultiDay || isRecurrent) && targetDate) {
+                    // 연속/반복 일정이면 당일 쪼개기(단축) 삭감 API 실행
                     showToast('일정 단축 처리 중...');
                     try {
                         if (isRecurrent) {
@@ -1973,38 +1979,8 @@ const HOLIDAYS = {
                         console.error(err);
                         showToast('단축 삭제 중 오류 발생', true);
                     }
-                };
-
-                document.getElementById('deleteAllBtn').onclick = async () => {
-                    closeDeleteConfirmModal();
-                    showToast('일정을 전체 삭제하는 중입니다...');
-                    const delRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, { method: 'DELETE', headers: authHeaders() });
-                    if (delRes.ok) {
-                        showToast('일정이 성공적으로 삭제되었습니다.');
-                        if (window.closeScheduleIframeModal) closeScheduleIframeModal();
-                        await loadMonthSchedules();
-                        if (selectedDateKey) renderSelectedDateEvents(selectedDateKey);
-                    } else {
-                        showToast('삭제 실패', true);
-                    }
-                };
-            } else {
-                document.querySelector('#deleteConfirmModal h3').textContent = '일정 삭제 확인';
-                document.getElementById('deleteConfirmModalMsg').innerHTML = 
-                    `⚠️ 정말로 '${escapeHtml(title)}' 일정을 삭제하시겠습니까?`;
-                
-                btnGroup.style.flexDirection = 'row';
-                btnGroup.innerHTML = `
-                    <button class="ghost" onclick="closeDeleteConfirmModal()" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer;">
-                        취소
-                    </button>
-                    <button id="deleteAllBtn" class="primary" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer;">
-                        🗑️ 일정 삭제 확정
-                    </button>
-                `;
-
-                document.getElementById('deleteAllBtn').onclick = async () => {
-                    closeDeleteConfirmModal();
+                } else {
+                    // 단일 일정이면 단순 DELETE API 실행
                     showToast('일정을 삭제하는 중입니다...');
                     const delRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, { method: 'DELETE', headers: authHeaders() });
                     if (delRes.ok) {
@@ -2015,8 +1991,12 @@ const HOLIDAYS = {
                     } else {
                         showToast('삭제 실패', true);
                     }
-                };
-            }
+                }
+            };
+
+            const modal = document.getElementById('deleteConfirmModal');
+            modal.style.display = 'flex';
+            modal.focus();
             // 삭제 선택 창을 띄우기 전에, 뒤에 있던 조회/수정 모달창을 닫아 깔끔하게 처리합니다.
             if (window.closeScheduleIframeModal) {
                 closeScheduleIframeModal();
@@ -2045,7 +2025,11 @@ const HOLIDAYS = {
             // 1. 삭제 확인 모달 닫기 (최우선)
             const delModal = document.getElementById('deleteConfirmModal');
             if (delModal && delModal.style.display === 'flex') {
-                if (typeof closeDeleteConfirmModal === 'function') closeDeleteConfirmModal();
+                if (typeof window.closeDeleteConfirmModal === 'function') {
+                    window.closeDeleteConfirmModal();
+                } else if (typeof closeDeleteConfirmModal === 'function') {
+                    closeDeleteConfirmModal();
+                }
                 event.stopPropagation();
                 event.preventDefault();
                 return;

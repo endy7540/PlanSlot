@@ -38,10 +38,37 @@ const API_BASE = window.location.origin;
     let token = '';
 
     function showToast(msg, isError) {
-        const t = document.getElementById('toast');
-        t.textContent = msg;
-        t.className = 'toast show' + (isError ? ' error' : '');
-        setTimeout(() => t.classList.remove('show'), 2200);
+        const t = document.getElementById('iframeToast');
+        const txt = document.getElementById('iframeToastText');
+        if (t && txt) {
+            txt.textContent = msg;
+            t.style.display = 'flex';
+            if (isError) {
+                t.style.background = '#FEF2F2';
+                t.style.borderColor = '#FCA5A5';
+                t.style.color = '#991B1B';
+            } else {
+                t.style.background = '#F0FDF4';
+                t.style.borderColor = '#BBF7D0';
+                t.style.color = '#166534';
+            }
+            if (window.iframeToastTimer) clearTimeout(window.iframeToastTimer);
+            window.iframeToastTimer = setTimeout(() => {
+                t.style.display = 'none';
+            }, 3000);
+            return;
+        }
+
+        if (window.parent && typeof window.parent.showToast === 'function') {
+            window.parent.showToast(msg, isError);
+            return;
+        }
+        const ot = document.getElementById('toast');
+        if (ot) {
+            ot.textContent = msg;
+            ot.className = 'toast show' + (isError ? ' error' : '');
+            setTimeout(() => ot.classList.remove('show'), 2200);
+        }
     }
 
     function updateDescCounter(el) {
@@ -117,7 +144,13 @@ const API_BASE = window.location.origin;
         });
 
         flatpickr("#f-recurrenceEndDate", { locale: "ko", dateFormat: "Y-m-d" });
-        deadlineFpInstance = flatpickr("#f-deadlineDate", { locale: "ko", dateFormat: "Y-m-d" });
+        deadlineFpInstance = flatpickr("#f-deadlineDate", {
+            locale: "ko",
+            dateFormat: "Y-m-d",
+            onChange: function() {
+                updateDeadlineNotificationCalc();
+            }
+        });
     }
 
     // 커스텀 시간 범위 관련 구현
@@ -152,35 +185,13 @@ const API_BASE = window.location.origin;
     }
 
     function selectTimeVal(type, hh, mm) {
-        let nextStartH = selectedStartHour;
-        let nextStartM = selectedStartMin;
-        let nextEndH = selectedEndHour;
-        let nextEndM = selectedEndMin;
-
         if (type === 'start') {
-            nextStartH = hh;
-            nextStartM = mm;
+            selectedStartHour = hh;
+            selectedStartMin = mm;
         } else {
-            nextEndH = hh;
-            nextEndM = mm;
+            selectedEndHour = hh;
+            selectedEndMin = mm;
         }
-
-        const startTotalMin = parseInt(nextStartH, 10) * 60 + parseInt(nextStartM, 10);
-        const endTotalMin = parseInt(nextEndH, 10) * 60 + parseInt(nextEndM, 10);
-
-        if (endTotalMin < startTotalMin) {
-            if (typeof showToast === 'function') {
-                showToast('종료 시간은 시작 시간보다 빠를 수 없습니다.', true);
-            } else {
-                alert('종료 시간은 시작 시간보다 빠를 수 없습니다.');
-            }
-            return;
-        }
-
-        selectedStartHour = nextStartH;
-        selectedStartMin = nextStartM;
-        selectedEndHour = nextEndH;
-        selectedEndMin = nextEndM;
 
         renderTimeOptions();
 
@@ -204,16 +215,25 @@ const API_BASE = window.location.origin;
     }
 
     function confirmTimeRange() {
+        const startTotalMin = parseInt(selectedStartHour, 10) * 60 + parseInt(selectedStartMin, 10);
+        const endTotalMin = parseInt(selectedEndHour, 10) * 60 + parseInt(selectedEndMin, 10);
+
+        if (endTotalMin < startTotalMin) {
+            showToast('종료 시간은 시작 시간보다 빠를 수 없습니다.', true);
+            return;
+        }
+
         const input = document.getElementById('f-timeRange');
         input.value = `${selectedStartHour}:${selectedStartMin} ~ ${selectedEndHour}:${selectedEndMin}`;
         toggleTimeDropdown(false);
+        updateDeadlineNotificationCalc();
     }
 
-    // 외부 클릭 시 드롭다운 닫기
+    // 외부 클릭 시 드롭다운 닫기 (detached 엘리먼트 버그 방지 포함)
     document.addEventListener('click', (e) => {
         const dropdown = document.getElementById('timeRangeDropdown');
         const input = document.getElementById('f-timeRange');
-        if (dropdown && input && !dropdown.contains(e.target) && e.target !== input) {
+        if (dropdown && input && !dropdown.contains(e.target) && e.target !== input && !e.target.classList.contains('time-select-item')) {
             dropdown.style.display = 'none';
         }
     });
@@ -227,11 +247,11 @@ const API_BASE = window.location.origin;
     function handlePeriodToggle(checked) {
         const currentDates = fpInstance ? fpInstance.selectedDates : [];
         initFlatpickr(checked);
-        if (currentDates.length > 0) {
-            if (!checked) {
+        if (checked) {
+            fpInstance.clear();
+        } else {
+            if (currentDates.length > 0) {
                 fpInstance.setDate(currentDates[0]);
-            } else {
-                fpInstance.setDate(currentDates);
             }
         }
         updateDeadlineMax();
@@ -242,15 +262,12 @@ const API_BASE = window.location.origin;
 
     function toggleAllDay(checked) {
         const timeInputs = document.getElementById('timeInputs');
-        const timeInputEl = document.getElementById('f-timeRange');
         if (checked) {
             timeInputs.style.opacity = '0.4';
             timeInputs.style.pointerEvents = 'none';
-            timeInputEl.required = false;
         } else {
             timeInputs.style.opacity = '1';
             timeInputs.style.pointerEvents = 'auto';
-            timeInputEl.required = true;
         }
     }
 
@@ -352,6 +369,11 @@ const API_BASE = window.location.origin;
             showToast('일정 날짜를 선택해주세요.', true);
             return;
         }
+        const timeInputVal = document.getElementById('f-timeRange').value.trim();
+        if (!isAllDay && !timeInputVal) {
+            showToast('일정 시간을 선택해주세요.', true);
+            return;
+        }
 
         const startDtStr = isAllDay ? `${dateVal}T00:00:00` : `${dateVal}T${startTime}:00`;
         const endDtStr = isAllDay ? `${endDateVal}T23:59:59` : `${endDateVal}T${endTime}:00`;
@@ -424,17 +446,13 @@ const API_BASE = window.location.origin;
         const dateParam = new URLSearchParams(window.location.search).get('date');
         if (fpInstance) {
             const isRangeMode = fpInstance.config.mode === "range";
-            if (dateParam) {
-                if (isRangeMode) {
-                    fpInstance.setDate([dateParam, dateParam]);
-                } else {
-                    fpInstance.setDate(dateParam);
-                }
+            if (isRangeMode) {
+                fpInstance.clear();
             } else {
-                const todayStr = new Date().toISOString().slice(0, 10);
-                if (isRangeMode) {
-                    fpInstance.setDate([todayStr, todayStr]);
+                if (dateParam) {
+                    fpInstance.setDate(dateParam);
                 } else {
+                    const todayStr = new Date().toISOString().slice(0, 10);
                     fpInstance.setDate(todayStr);
                 }
             }
@@ -459,6 +477,71 @@ const API_BASE = window.location.origin;
             }
         }
     }
+
+    function updateDeadlineNotificationCalc() {
+        const deadlineVal = document.getElementById('f-deadlineDate').value;
+        const daysVal = document.getElementById('f-notifyDaysBefore').value;
+        const calcRow = document.getElementById('deadlineNotificationCalcRow');
+        const calcText = document.getElementById('deadlineNotificationCalcText');
+        
+        if (!calcRow || !calcText) return;
+        
+        const triggerHeightAdjust = () => {
+            if (window.parent && typeof window.parent.adjustScheduleIframeHeight === 'function') {
+                window.parent.adjustScheduleIframeHeight();
+            }
+        };
+
+        if (!deadlineVal) {
+            calcRow.style.display = 'none';
+            triggerHeightAdjust();
+            return;
+        }
+        
+        const days = parseInt(daysVal, 10);
+        if (isNaN(days) || days < 0) {
+            calcRow.style.display = 'none';
+            triggerHeightAdjust();
+            return;
+        }
+        
+        const deadlineDate = new Date(deadlineVal.replace(' ', 'T'));
+        if (isNaN(deadlineDate.getTime())) {
+            calcRow.style.display = 'none';
+            triggerHeightAdjust();
+            return;
+        }
+        
+        const calcDate = new Date(deadlineDate.getTime());
+        calcDate.setDate(calcDate.getDate() - days);
+        
+        const formatted = `${calcDate.getFullYear()}년 ${calcDate.getMonth() + 1}월 ${calcDate.getDate()}일`;
+
+        // 시작 시간 추출 및 포맷팅
+        const isAllDay = document.getElementById('f-allDay').checked;
+        let timeStr = '09:00';
+        if (!isAllDay) {
+            const { startTime } = parseSelectedTimes();
+            if (startTime) timeStr = startTime;
+        }
+        
+        const parts = timeStr.split(':');
+        const hh = parseInt(parts[0] || '9', 10);
+        const mm = parseInt(parts[1] || '0', 10);
+        const ampm = hh < 12 ? '오전' : '오후';
+        const displayHour = hh === 0 ? 12 : (hh > 12 ? hh - 12 : hh);
+        const displayMin = String(mm).padStart(2, '0');
+        const formattedTime = `${ampm} ${displayHour}시 ${displayMin}분`;
+        
+        calcText.innerHTML = `🔔 지정하신 마감일의 <strong style="color:#15803d; font-size:13px;">${days}일 전</strong>인 <strong style="color:#15803d; font-size:13px;">${formatted} ${formattedTime}</strong>에 알림이 발송됩니다.`;
+        calcRow.style.display = 'block';
+        triggerHeightAdjust();
+    }
+
+    document.getElementById('f-notifyDaysBefore').addEventListener('input', updateDeadlineNotificationCalc);
+    document.getElementById('f-notifyDaysBefore').addEventListener('change', updateDeadlineNotificationCalc);
+    document.getElementById('f-deadlineDate').addEventListener('change', updateDeadlineNotificationCalc);
+    document.getElementById('f-allDay').addEventListener('change', updateDeadlineNotificationCalc);
 
     if (checkAuth()) {
         initFlatpickr(false);

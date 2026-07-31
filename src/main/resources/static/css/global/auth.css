@@ -1,13 +1,15 @@
 *{box-sizing:border-box}
         body{
             margin:0;
-            height:100vh;
-            overflow:hidden;
+            min-height:100vh;
+            height:auto;
+            overflow-y:auto;
+            padding:24px 16px;
             font-family:Pretendard,'Malgun Gothic',Arial,sans-serif;
             background:#F3FAFF!important;
             color:#182B3A!important;
             display:flex;
-            align-items:center;
+            align-items:flex-start;
             justify-content:center;
         }
         button,input,select,textarea{font-family:inherit}
@@ -102,6 +104,7 @@
             width:100%;
             max-width:400px;
             position:relative;
+            margin:auto 0;
         }
         .auth-page{
             display:none;

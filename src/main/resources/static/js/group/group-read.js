@@ -159,10 +159,8 @@ function renderHead(){
   document.getElementById('groupTitle').textContent = group.name;
   const myMemberInfo = group.members.find(m => m.id === group.myMemberId);
   const myColor = myMemberInfo && myMemberInfo.color ? myMemberInfo.color : '#bae6fd';
-
   document.getElementById('groupMeta').innerHTML = `
-    <span style="display:inline-flex; align-items:center;">참여자 ${group.members.length}명</span>
-    <span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; margin-left:14px; color:#f8fafc;">
+    <span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; margin-right:14px; color:#f8fafc;">
       <span style="display:inline-flex; align-items:center; gap:4px;">
         <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${myColor};"></span> 공개
       </span>
@@ -170,6 +168,7 @@ function renderHead(){
         <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:color-mix(in srgb, ${myColor} 50%, white);"></span> 비공개
       </span>
     </span>
+    <span style="display:inline-flex; align-items:center;">참여자 ${group.members.length}명</span>
   `;
   document.getElementById('settingsGroupName').value = group.name;
 
@@ -1391,11 +1390,6 @@ function showDayDetail(dateStr, forceOpen = false) {
     <div style="margin-bottom: 12px; border-bottom: 2px solid #E2E8F0; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; width: 100%;">
         <div style="display: flex; flex-direction: column; gap: 4px;">
             <h3 style="margin: 0; font-size: 16px; color: #075985; font-weight: 800;">${formattedDate}</h3>
-            <div style="display: flex; gap: 8px; align-items: center; font-size: 11.5px; margin-top: 2px;">
-                <span style="color: #64748B; font-weight: 700; display: inline-flex; align-items: center; gap: 2px;">일정 유형:</span>
-                <span style="color: #0369A1; font-weight: 800; background: #E0F2FE; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px;">공개</span>
-                <span style="color: #6B21A8; font-weight: 800; background: #F3E8FF; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px; margin-left: 2px;">비공개</span>
-            </div>
         </div>
         <button class="btn-ghost" style="color: #EF4444; border: 1px solid #FEE2E2; background: #FEF2F2; font-weight: 800; font-size: 12px; padding: 6px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px;" onclick="deleteSelectedDateSchedules('${dateStr}')">
             🗑️ 당일 일정 삭제
@@ -1450,20 +1444,12 @@ function showDayDetail(dateStr, forceOpen = false) {
   // 일정이 있을 때
   list.innerHTML = toRender.map(s => {
     const isPrivate = s.isPublic === 'N';
-    const badge = isPrivate
-      ? `<span style="font-size:10px; padding:3px 7px; background:#e2e8f0; color:#1e293b; font-weight:800; border-radius:4px; margin-left:6px;">비공개</span>`
-      : `<span style="font-size:10px; padding:3px 7px; background:#bae6fd; color:#0369a1; font-weight:800; border-radius:4px; margin-left:6px;">공개</span>`;
-
-    const resolvedNames = (s.nicknames || []).map(rawNick => resolveDisplayName(rawNick, group));
-    const namesDisplay = resolvedNames.length > 0 ? resolvedNames.join(', ') : '알 수 없음';
-    
     const isShared = s.nicknames && s.nicknames.length > 1;
     let borderColor = '#bae6fd';
     
     if (isShared) {
       borderColor = '#bae6fd';
     } else {
-      // s.nicknames[0]의 이름에서 "(나-비공개)" 같은 접미사를 제거한 원래 닉네임 추출
       let firstNick = s.nicknames && s.nicknames.length > 0 ? s.nicknames[0] : s.nickname;
       if (firstNick && firstNick.includes(' (나-비공개)')) {
         firstNick = firstNick.replace(' (나-비공개)', '');
@@ -1477,6 +1463,13 @@ function showDayDetail(dateStr, forceOpen = false) {
       borderColor = `color-mix(in srgb, ${borderColor} 50%, white)`;
     }
 
+    const badge = isPrivate
+      ? `<span style="font-size:10px; padding:3px 7px; background:${borderColor}; color:#1e293b; font-weight:800; border-radius:4px; margin-right:6px;">비공개</span>`
+      : `<span style="font-size:10px; padding:3px 7px; background:${borderColor}; color:#1e293b; font-weight:800; border-radius:4px; margin-right:6px;">공개</span>`;
+
+    const resolvedNames = (s.nicknames || []).map(rawNick => resolveDisplayName(rawNick, group));
+    const namesDisplay = resolvedNames.length > 0 ? resolvedNames.join(', ') : '알 수 없음';
+    
     let actionsHtml = '';
     if (s.myScheduleId) {
       actionsHtml = `
@@ -1499,11 +1492,11 @@ function showDayDetail(dateStr, forceOpen = false) {
     }
 
     return `
-      <div class="sched-item" style="cursor:${s.myScheduleId ? 'pointer' : 'default'}; border:1px solid ${borderColor}; border-left:${isShared ? '5px' : '1px'} solid ${borderColor}; background:#ffffff; border-radius:6px; padding:8px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;" onclick="if(${s.myScheduleId ? 'true' : 'false'}) openScheduleIframeModal('/schedule/${s.myScheduleId || s.id}?groupId=${group.id}&date=${dateStr}')">
+      <div class="sched-item" style="cursor:${s.myScheduleId ? 'pointer' : 'default'}; border:1px solid ${borderColor}; border-left:5px solid ${borderColor}; background:#ffffff; border-radius:6px; padding:8px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;" onclick="if(${s.myScheduleId ? 'true' : 'false'}) openScheduleIframeModal('/schedule/${s.myScheduleId || s.id}?groupId=${group.id}&date=${dateStr}')">
         <div style="display:flex; flex-direction:column;">
           <div style="display:flex; align-items:center;">
-            <b style="font-size:13px; color:#1E293B;">${s.title}</b>
             ${badge}
+            <b style="font-size:13px; color:#1E293B;">${s.title}</b>
           </div>
           <div style="font-size:11px; color:#64748B; margin-top:2px;">${namesDisplay}</div>
         </div>

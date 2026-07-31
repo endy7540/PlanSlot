@@ -116,6 +116,12 @@ public class MemberController {
     public void linkGoogleCalendar(@RequestParam("token") String token, HttpServletRequest request, HttpServletResponse response) throws IOException {
         String email = jwtTokenProvider.getEmailFromToken(token);
         if (email != null) {
+            // 브라우저 쿠키를 이용해 상태 유지 (세션 유실 대비)
+            Cookie cookie = new Cookie("LINK_GOOGLE_EMAIL", email);
+            cookie.setPath("/");
+            cookie.setMaxAge(300); // 5분 유지
+            response.addCookie(cookie);
+            
             request.getSession().setAttribute("LINK_GOOGLE_EMAIL", email);
             response.sendRedirect("/oauth2/authorization/google");
         } else {

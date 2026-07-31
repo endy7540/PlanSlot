@@ -6,6 +6,40 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    // Mobile MyPage Sidebar
+    const mypageMenuToggle = document.getElementById('mypageMenuToggle');
+    const mypageMenuClose = document.getElementById('mypageMenuClose');
+    const mypageSidebar = document.getElementById('mypageSidebar');
+    const mypageSidebarOverlay = document.getElementById('mypageSidebarOverlay');
+
+    function openMyPageSidebar() {
+        if (!mypageSidebar || !mypageSidebarOverlay || !mypageMenuToggle) return;
+        mypageSidebar.classList.add('is-open');
+        mypageSidebarOverlay.classList.add('is-open');
+        mypageMenuToggle.setAttribute('aria-expanded', 'true');
+        document.body.classList.add('mypage-drawer-open');
+    }
+
+    function closeMyPageSidebar() {
+        if (!mypageSidebar || !mypageSidebarOverlay || !mypageMenuToggle) return;
+        mypageSidebar.classList.remove('is-open');
+        mypageSidebarOverlay.classList.remove('is-open');
+        mypageMenuToggle.setAttribute('aria-expanded', 'false');
+        document.body.classList.remove('mypage-drawer-open');
+    }
+
+    mypageMenuToggle?.addEventListener('click', openMyPageSidebar);
+    mypageMenuClose?.addEventListener('click', closeMyPageSidebar);
+    mypageSidebarOverlay?.addEventListener('click', closeMyPageSidebar);
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeMyPageSidebar();
+    });
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) closeMyPageSidebar();
+    });
+
     // View Elements
     const viewMode = document.getElementById('viewMode');
     const viewEmail = document.getElementById('viewEmail');
@@ -462,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnShowWithdraw && withdrawModal) {
         btnShowWithdraw.addEventListener('click', (e) => {
             e.preventDefault();
+            closeMyPageSidebar();
             withdrawModal.style.display = 'flex';
             withdrawConfirmText.value = '';
             btnSubmitWithdraw.disabled = true;
@@ -521,6 +556,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabId === 'notifications' && !notificationSettingsLoaded) {
             loadNotificationSettings();
         }
+
+        if (window.innerWidth <= 768) closeMyPageSidebar();
     };
 
     async function fetchMyPageJson(url, options = {}) {

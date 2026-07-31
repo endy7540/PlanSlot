@@ -707,9 +707,21 @@ const HOLIDAYS = {
         renderSelectedDateEvents(selectedDateKey);
     }
 
-    function closeDeleteConfirmModal() {
+    window.closeDeleteConfirmModal = function() {
         document.getElementById('deleteConfirmModal').style.display = 'none';
-    }
+        
+        // 삭제 모달이 닫힐 때 뒤의 조회/등록/수정 iframe 창이 띄워져 있다면 포커스를 복구하여 연속 ESC 작동 보장
+        const iframeModal = document.getElementById('scheduleIframeContainer');
+        const iframe = document.getElementById('scheduleIframe');
+        if (iframeModal && iframeModal.classList.contains('open') && iframe) {
+            setTimeout(() => {
+                iframe.focus();
+                if (iframe.contentWindow) {
+                    iframe.contentWindow.focus();
+                }
+            }, 50);
+        }
+    };
 
     // 일정 날짜 업데이트 PUT 호출 도우미
     async function updateScheduleDates(originalSchedule, newStart, newEnd) {
@@ -1756,6 +1768,9 @@ const HOLIDAYS = {
         if (modal && iframe) {
             iframe.src = '';
             modal.style.display = 'none';
+            // 포커스를 즉시 부모 윈도우/바디로 가져와서 ESC 등 키 감지 상태 복원
+            window.focus();
+            document.body.focus();
         }
     };
 
@@ -1895,7 +1910,22 @@ const HOLIDAYS = {
                     }
                 };
             }
-            document.getElementById('deleteConfirmModal').style.display = 'flex';
+            // 삭제 선택 창을 띄우기 전에, 뒤에 있던 조회/수정 모달창을 닫아 깔끔하게 처리합니다.
+            if (window.closeScheduleIframeModal) {
+                closeScheduleIframeModal();
+            }
+
+            const delModal = document.getElementById('deleteConfirmModal');
+            delModal.style.display = 'flex';
+            delModal.setAttribute('tabindex', '-1');
+            setTimeout(() => {
+                const cancelBtn = delModal.querySelector('.ghost');
+                if (cancelBtn) {
+                    cancelBtn.focus();
+                } else {
+                    delModal.focus();
+                }
+            }, 60);
         } catch (e) {
             console.error(e);
             showToast('삭제 조회 중 오류 발생', true);
@@ -1905,15 +1935,21 @@ const HOLIDAYS = {
     // ESC 키 입력 시 모든 활성 모달 닫기
     function handleEscKey(event) {
         if (event.key === 'Escape' || event.key === 'Esc' || event.keyCode === 27) {
-            // 1. AI 이미지 모달 닫기
-            const aiModal = document.getElementById('aiImageModal');
-            if (aiModal && (aiModal.style.display === 'flex' || aiModal.classList.contains('open'))) {
-                if (typeof closeAiImageModal === 'function') closeAiImageModal();
-            }
-            // 2. 삭제 확인 모달 닫기
+            // 1. 삭제 확인 모달 닫기 (최우선)
             const delModal = document.getElementById('deleteConfirmModal');
             if (delModal && delModal.style.display === 'flex') {
                 if (typeof closeDeleteConfirmModal === 'function') closeDeleteConfirmModal();
+                event.stopPropagation();
+                event.preventDefault();
+                return;
+            }
+            // 2. AI 이미지 모달 닫기
+            const aiModal = document.getElementById('aiImageModal');
+            if (aiModal && (aiModal.style.display === 'flex' || aiModal.classList.contains('open'))) {
+                if (typeof closeAiImageModal === 'function') closeAiImageModal();
+                event.stopPropagation();
+                event.preventDefault();
+                return;
             }
             // 3. iframe 일정 등록/수정/상세 모달 닫기
             const iframeModal = document.getElementById('scheduleIframeContainer');

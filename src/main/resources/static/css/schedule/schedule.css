@@ -523,6 +523,9 @@
 }
 
 /* ===== 삭제 확인 모달 ===== */
+#deleteConfirmModal {
+    z-index: 10010 !important;
+}
 .delete-confirm-panel {
     width: 100%;
     max-width: 440px;

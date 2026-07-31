@@ -574,6 +574,18 @@ const API_BASE = window.location.origin;
 
     function handleEscInIframe(event) {
         if (event.key === 'Escape' || event.key === 'Esc' || event.keyCode === 27) {
+            // 부모창에 삭제 확인 모달이 떠있다면 그 모달부터 닫음
+            if (window.parent && window.parent.document) {
+                const delModal = window.parent.document.getElementById('deleteConfirmModal');
+                if (delModal && delModal.style.display === 'flex') {
+                    if (typeof window.parent.closeDeleteConfirmModal === 'function') {
+                        window.parent.closeDeleteConfirmModal();
+                        event.stopPropagation();
+                        event.preventDefault();
+                        return;
+                    }
+                }
+            }
             if (window.parent && typeof window.parent.closeScheduleIframeModal === 'function') {
                 window.parent.closeScheduleIframeModal();
             }

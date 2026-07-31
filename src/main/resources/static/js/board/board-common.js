@@ -55,6 +55,10 @@ function buildBoardUrlWithReturnTo(path, returnTo) {
 function buildBoardReadUrl(boardId, returnTo) {
   return buildBoardUrlWithReturnTo(`/board/read/${encodeURIComponent(boardId)}`, returnTo);
 }
+function redirectToBoardHome(message) {
+  if (message) storeBoardToast(message, true);
+  location.replace('/board');
+}
 async function runBoardRequest(key, button, pendingText, request) {
   if (boardRequestLocks.has(key)) return false;
 

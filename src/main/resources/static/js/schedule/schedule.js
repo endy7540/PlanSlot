@@ -588,79 +588,89 @@ const HOLIDAYS = {
             return;
         }
 
-        // 연속 일정 존재 여부 판별
-        let hasMultiDay = false;
+        // 연속 일정 또는 반복 일정 존재 여부 판별
+        let hasMultiDayOrRecurrent = false;
         daySchedules.forEach(s => {
             const startDateStr = getDateOnly(s.startDate);
             const endDateStr = s.endDate ? getDateOnly(s.endDate) : startDateStr;
-            if (startDateStr !== endDateStr) {
-                hasMultiDay = true;
+            const isRecurrent = s.scheduleType && s.scheduleType !== 'DAILY';
+            if (startDateStr !== endDateStr || isRecurrent) {
+                hasMultiDayOrRecurrent = true;
             }
         });
 
         const listHtml = daySchedules.map(s => `<li style="font-weight: 700; color: #1E293B; margin-bottom: 4px; list-style-position: inside; text-align: left;">• ${escapeHtml(s.title)}</li>`).join('');
         const btnGroup = document.getElementById('deleteModalBtnGroup');
 
-        if (hasMultiDay) {
-            // 연속 일정이 있다면: 단 한 번만 모달을 띄워 물어봅니다! (세로 3버튼)
-            document.querySelector('#deleteConfirmModal h3').textContent = '연속 일정 삭제 선택';
-            document.getElementById('deleteConfirmModalMsg').innerHTML =
-                `선택한 날인 <strong>${selectedDateKey}</strong>에 등록된 일정 중 연속 일정이 포함되어 있습니다.<br><br>` +
-                `<div style="text-align: left; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; margin-bottom: 16px;">` +
-                `  <span style="font-weight: 800; color: #0F172A; display: block; margin-bottom: 8px; font-size: 13.5px;">📋 선택한 날의 일정 (${daySchedules.length}개)</span>` +
-                `  <ul style="margin: 0; padding: 0; font-size: 12.5px; color: #334155; list-style: none;">${listHtml}</ul>` +
-                `</div>` +
-                `이 날의 일정만 지우시겠습니까(기간 단축)?<br>아니면 연결된 전체 일정을 삭제하시겠습니까?`;
+        // 가로 2버튼 모달창 복원
+        document.querySelector('#deleteConfirmModal h3').textContent = '일정 일괄 삭제';
+        document.getElementById('deleteConfirmModalMsg').innerHTML =
+            `선택한 날인 <strong>${selectedDateKey}</strong>의 모든 일정 (${daySchedules.length}개)을 삭제하시겠습니까?<br><br>` +
+            `<div style="text-align: left; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; margin-bottom: 16px;">` +
+            `  <span style="font-weight: 800; color: #0F172A; display: block; margin-bottom: 8px; font-size: 13.5px;">📋 선택한 날의 일정 (${daySchedules.length}개)</span>` +
+            `  <ul style="margin: 0; padding: 0; font-size: 12.5px; color: #334155; list-style: none;">${listHtml}</ul>` +
+            `</div>`;
 
-            btnGroup.style.flexDirection = 'column';
-            btnGroup.innerHTML = `
-                <button id="deleteSingleBtn" class="primary" onclick="executeDeleteChoice('single')" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #3B82F6; color: white; font-weight: bold; cursor: pointer; transition: 0.15s; width: 100%;">
-                    👉 선택한 날의 일정만 삭제 (기간 단축)
-                </button>
-                <button id="deleteAllBtn" class="primary" onclick="executeDeleteChoice('all')" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer; transition: 0.15s; width: 100%;">
-                    🗑️ 연결된 전체 일정 삭제
-                </button>
-                <button class="ghost" onclick="closeDeleteConfirmModal()" style="padding: 10px; font-size: 13px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer; margin-top: 4px; width: 100%;">
-                    취소
-                </button>
-            `;
-        } else {
-            // 연속 일정이 없다면: 단일 일정들이므로 커스텀 모달창 띄우기! (가로 2버튼)
-            document.querySelector('#deleteConfirmModal h3').textContent = '일정 일괄 삭제';
-            document.getElementById('deleteConfirmModalMsg').innerHTML =
-                `선택한 날인 <strong>${selectedDateKey}</strong>의 모든 일정 (${daySchedules.length}개)을 삭제하시겠습니까?<br><br>` +
-                `<div style="text-align: left; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; margin-bottom: 16px;">` +
-                `  <span style="font-weight: 800; color: #0F172A; display: block; margin-bottom: 8px; font-size: 13.5px;">📋 선택한 날의 일정 (${daySchedules.length}개)</span>` +
-                `  <ul style="margin: 0; padding: 0; font-size: 12.5px; color: #334155; list-style: none;">${listHtml}</ul>` +
-                `</div>`;
-
-            btnGroup.style.flexDirection = 'row';
-            btnGroup.innerHTML = `
-                <button class="ghost" onclick="closeDeleteConfirmModal()" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer;">
-                    취소
-                </button>
-                <button id="deleteAllBtn" class="primary" onclick="executeDeleteChoice('all')" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer;">
-                    🗑️ 모든 일정 삭제 확정
-                </button>
-            `;
-        }
+        btnGroup.style.flexDirection = 'row';
+        btnGroup.innerHTML = `
+            <button class="ghost" onclick="closeDeleteConfirmModal()" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer;">
+                취소
+            </button>
+            <button id="deleteAllBtn" class="primary" onclick="executeDeleteChoice('single')" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer;">
+                🗑️ 모든 일정 삭제 확정
+            </button>
+        `;
         document.getElementById('deleteConfirmModal').style.display = 'flex';
 
     }
 
-    // 사용자가 모달에서 결정을 내리면, 이 함수가 단 한 번 호출되어 일괄적으로 적용합니다!
+    function getNextRecurrentDate(dateStr, type) {
+        const d = new Date(dateStr.replace(' ', 'T'));
+        if (type === 'WEEKLY') {
+            d.setDate(d.getDate() + 7);
+        } else if (type === 'MONTHLY') {
+            d.setMonth(d.getMonth() + 1);
+        } else if (type === 'YEARLY') {
+            d.setFullYear(d.getFullYear() + 1);
+        }
+        return d;
+    }
+
+    function getPrevRecurrentDate(dateStr, type) {
+        const d = new Date(dateStr.replace(' ', 'T'));
+        if (type === 'WEEKLY') {
+            d.setDate(d.getDate() - 7);
+        } else if (type === 'MONTHLY') {
+            d.setMonth(d.getMonth() - 1);
+        } else if (type === 'YEARLY') {
+            d.setFullYear(d.getFullYear() - 1);
+        }
+        return d;
+    }
+
     async function executeDeleteChoice(choice) {
         closeDeleteConfirmModal();
         showToast('선택하신 일정 삭제 처리 중...');
 
         const daySchedules = schedulesByDate[selectedDateKey] || [];
 
-        for (let s of daySchedules) {
+        for (let tempS of daySchedules) {
+            let s = tempS;
+            try {
+                const res = await fetch(`${API_BASE}/schedule/${tempS.scheduleId}`, { headers: authHeaders() });
+                if (res.ok) {
+                    s = await res.json();
+                }
+            } catch (e) {
+                console.error("DB 원본 일정 상세 로드 실패:", e);
+            }
+
             const startDateStr = getDateOnly(s.startDate);
             const endDateStr = s.endDate ? getDateOnly(s.endDate) : startDateStr;
             const isMultiDay = startDateStr !== endDateStr;
+            const isRecurrent = s.scheduleType && s.scheduleType !== 'DAILY';
 
-            if (choice === 'all' || !isMultiDay) {
+            if (choice === 'all' || (!isMultiDay && !isRecurrent)) {
                 // 전체 삭제 대상이거나, 단일 일정인 경우 무조건 삭제(DELETE)
                 try {
                     await fetch(`${API_BASE}/schedule/${s.scheduleId}`, {
@@ -670,38 +680,80 @@ const HOLIDAYS = {
                 } catch (e) {
                     console.error("일정 삭제 실패:", e);
                 }
-            } else if (choice === 'single' && isMultiDay) {
-                // 연속 일정이면서 부분 삭제 대상인 경우
-                const startD = new Date(startDateStr);
-                const endD = new Date(endDateStr);
-
-                try {
-                    if (selectedDateKey === startDateStr) {
-                        // 시작일 삭제 -> 시작일 1일 뒤로
-                        startD.setDate(startD.getDate() + 1);
-                        const newStartStr = fmtLocalDateTime(startD);
-                        await updateScheduleDates(s, newStartStr, s.endDate);
-                    } else if (selectedDateKey === endDateStr) {
-                        // 종료일 삭제 -> 종료일 1일 앞으로
-                        endD.setDate(endD.getDate() - 1);
-                        const newEndStr = fmtLocalDateTime(endD);
-                        await updateScheduleDates(s, s.startDate, newEndStr);
-                    } else {
-                        // 중간일 삭제 -> 앞부분 단축 & 뒷부분 신규 등록
-                        const frontEndD = new Date(selectedDateKey);
-                        frontEndD.setDate(frontEndD.getDate() - 1);
-                        frontEndD.setHours(23, 59, 59, 0);
-                        const frontEndStr = fmtLocalDateTime(frontEndD);
-                        await updateScheduleDates(s, s.startDate, frontEndStr);
-
-                        const backStartD = new Date(selectedDateKey);
-                        backStartD.setDate(backStartD.getDate() + 1);
-                        backStartD.setHours(0, 0, 0, 0);
-                        const backStartStr = fmtLocalDateTime(backStartD);
-                        await createSplitSchedule(s, backStartStr, s.endDate);
+            } else if (choice === 'single') {
+                if (isRecurrent) {
+                    // 반복 일정 중 하루만 삭제
+                    try {
+                        const recurEndStr = s.recurrenceEndDate || null;
+                        
+                        if (selectedDateKey === startDateStr) {
+                            // 시작일 삭제 -> 다음 반복일로 시작일 미루기
+                            const nextStart = getNextRecurrentDate(s.startDate, s.scheduleType);
+                            const nextStartStr = fmtLocalDateTime(nextStart);
+                            let nextEndStr = null;
+                            if (s.endDate) {
+                                const origStart = new Date(s.startDate.replace(' ', 'T'));
+                                const origEnd = new Date(s.endDate.replace(' ', 'T'));
+                                const diff = origEnd.getTime() - origStart.getTime();
+                                const nextEnd = new Date(nextStart.getTime() + diff);
+                                nextEndStr = fmtLocalDateTime(nextEnd);
+                            }
+                            await updateScheduleDates(s, nextStartStr, nextEndStr, s.recurrenceEndDate);
+                        } else if (recurEndStr && selectedDateKey === recurEndStr) {
+                            // 마지막일 삭제 -> 반복 종료일을 이전 반복일로 당기기
+                            const prevEnd = getPrevRecurrentDate(recurEndStr, s.scheduleType);
+                            const prevEndStr = prevEnd.getFullYear() + '-' + String(prevEnd.getMonth()+1).padStart(2,'0') + '-' + String(prevEnd.getDate()).padStart(2,'0');
+                            await updateScheduleDates(s, s.startDate, s.endDate, prevEndStr);
+                        } else {
+                            // 중간일 삭제 -> 앞부분 단축 (반복 종료일을 이전 반복일로) & 뒷부분 신규 생성 (다음 반복일로)
+                            const prevEnd = getPrevRecurrentDate(selectedDateKey, s.scheduleType);
+                            const prevEndStr = prevEnd.getFullYear() + '-' + String(prevEnd.getMonth()+1).padStart(2,'0') + '-' + String(prevEnd.getDate()).padStart(2,'0');
+                            await updateScheduleDates(s, s.startDate, s.endDate, prevEndStr);
+                            
+                            const nextStart = getNextRecurrentDate(selectedDateKey, s.scheduleType);
+                            const nextStartStr = fmtLocalDateTime(nextStart);
+                            let nextEndStr = null;
+                            if (s.endDate) {
+                                const origStart = new Date(s.startDate.replace(' ', 'T'));
+                                const origEnd = new Date(s.endDate.replace(' ', 'T'));
+                                const diff = origEnd.getTime() - origStart.getTime();
+                                const nextEnd = new Date(nextStart.getTime() + diff);
+                                nextEndStr = fmtLocalDateTime(nextEnd);
+                            }
+                            await createSplitSchedule(s, nextStartStr, nextEndStr, s.recurrenceEndDate);
+                        }
+                    } catch (e) {
+                        console.error("반복 일정 부분 삭제 실패:", e);
                     }
-                } catch (e) {
-                    console.error("연속 일정 부분 삭제 실패:", e);
+                } else if (isMultiDay) {
+                    // 연속 일정 부분 삭제
+                    const startD = new Date(startDateStr);
+                    const endD = new Date(endDateStr);
+                    try {
+                        if (selectedDateKey === startDateStr) {
+                            startD.setDate(startD.getDate() + 1);
+                            const newStartStr = fmtLocalDateTime(startD);
+                            await updateScheduleDates(s, newStartStr, s.endDate, s.recurrenceEndDate);
+                        } else if (selectedDateKey === endDateStr) {
+                            endD.setDate(endD.getDate() - 1);
+                            const newEndStr = fmtLocalDateTime(endD);
+                            await updateScheduleDates(s, s.startDate, newEndStr, s.recurrenceEndDate);
+                        } else {
+                            const frontEndD = new Date(selectedDateKey);
+                            frontEndD.setDate(frontEndD.getDate() - 1);
+                            frontEndD.setHours(23, 59, 59, 0);
+                            const frontEndStr = fmtLocalDateTime(frontEndD);
+                            await updateScheduleDates(s, s.startDate, frontEndStr, s.recurrenceEndDate);
+
+                            const backStartD = new Date(selectedDateKey);
+                            backStartD.setDate(backStartD.getDate() + 1);
+                            backStartD.setHours(0, 0, 0, 0);
+                            const backStartStr = fmtLocalDateTime(backStartD);
+                            await createSplitSchedule(s, backStartStr, s.endDate, s.recurrenceEndDate);
+                        }
+                    } catch (e) {
+                        console.error("연속 일정 부분 삭제 실패:", e);
+                    }
                 }
             }
         }
@@ -728,16 +780,19 @@ const HOLIDAYS = {
     };
 
     // 일정 날짜 업데이트 PUT 호출 도우미
-    async function updateScheduleDates(originalSchedule, newStart, newEnd) {
+    async function updateScheduleDates(originalSchedule, newStart, newEnd, newRecurEnd) {
+        const fmtStart = newStart ? fmtLocalDateTime(new Date(newStart.replace(' ', 'T'))) : null;
+        const fmtEnd = newEnd ? fmtLocalDateTime(new Date(newEnd.replace(' ', 'T'))) : null;
+
         const payload = {
             title: originalSchedule.title,
             description: originalSchedule.description,
             scheduleType: originalSchedule.scheduleType,
-            startDate: newStart,
-            endDate: newEnd,
+            startDate: fmtStart,
+            endDate: fmtEnd,
             isPublic: (originalSchedule.isPublic === 'Y' || originalSchedule.isPublic === true || originalSchedule.public === 'Y' || originalSchedule.public === true),
             location: originalSchedule.location,
-            recurrenceEndDate: originalSchedule.recurrenceEndDate
+            recurrenceEndDate: (newRecurEnd !== undefined) ? newRecurEnd : originalSchedule.recurrenceEndDate
         };
 
         const res = await fetch(`${API_BASE}/schedule/${originalSchedule.scheduleId}`, {
@@ -753,16 +808,19 @@ const HOLIDAYS = {
     }
 
     // 쪼개진 일정 생성 POST 호출 도우미
-    async function createSplitSchedule(originalSchedule, start, end) {
+    async function createSplitSchedule(originalSchedule, start, end, newRecurEnd) {
+        const fmtStart = start ? fmtLocalDateTime(new Date(start.replace(' ', 'T'))) : null;
+        const fmtEnd = end ? fmtLocalDateTime(new Date(end.replace(' ', 'T'))) : null;
+
         const payload = {
             title: originalSchedule.title,
             description: originalSchedule.description,
             scheduleType: originalSchedule.scheduleType,
-            startDate: start,
-            endDate: end,
+            startDate: fmtStart,
+            endDate: fmtEnd,
             isPublic: (originalSchedule.isPublic === 'Y' || originalSchedule.isPublic === true || originalSchedule.public === 'Y' || originalSchedule.public === true),
             location: originalSchedule.location,
-            recurrenceEndDate: originalSchedule.recurrenceEndDate
+            recurrenceEndDate: (newRecurEnd !== undefined) ? newRecurEnd : originalSchedule.recurrenceEndDate
         };
 
         const res = await fetch(`${API_BASE}/schedule`, {
@@ -1072,6 +1130,7 @@ const HOLIDAYS = {
                 .then(r => r.json())
                 .then(data => {
                     window.personalCalendarColor = data.calendarColor || '#3B82F6';
+                    renderPersonalGuide();
                     renderCalendar();
                     renderSelectedDateEvents(selectedDateKey);
                 }).catch(e => console.error('Failed to load user color:', e));
@@ -1845,29 +1904,64 @@ const HOLIDAYS = {
                     closeDeleteConfirmModal();
                     showToast('일정 단축 처리 중...');
                     try {
-                        if (isMultiDay) {
+                        if (isRecurrent) {
+                            const recurEndStr = s.recurrenceEndDate || null;
+                            if (targetDate === startDateStr) {
+                                const nextStart = getNextRecurrentDate(s.startDate, s.scheduleType);
+                                const nextStartStr = fmtLocalDateTime(nextStart);
+                                let nextEndStr = null;
+                                if (s.endDate) {
+                                    const origStart = new Date(s.startDate.replace(' ', 'T'));
+                                    const origEnd = new Date(s.endDate.replace(' ', 'T'));
+                                    const diff = origEnd.getTime() - origStart.getTime();
+                                    const nextEnd = new Date(nextStart.getTime() + diff);
+                                    nextEndStr = fmtLocalDateTime(nextEnd);
+                                }
+                                await updateScheduleDates(s, nextStartStr, nextEndStr, s.recurrenceEndDate);
+                            } else if (recurEndStr && targetDate === recurEndStr) {
+                                const prevEnd = getPrevRecurrentDate(recurEndStr, s.scheduleType);
+                                const prevEndStr = prevEnd.getFullYear() + '-' + String(prevEnd.getMonth()+1).padStart(2,'0') + '-' + String(prevEnd.getDate()).padStart(2,'0');
+                                await updateScheduleDates(s, s.startDate, s.endDate, prevEndStr);
+                            } else {
+                                const prevEnd = getPrevRecurrentDate(targetDate, s.scheduleType);
+                                const prevEndStr = prevEnd.getFullYear() + '-' + String(prevEnd.getMonth()+1).padStart(2,'0') + '-' + String(prevEnd.getDate()).padStart(2,'0');
+                                await updateScheduleDates(s, s.startDate, s.endDate, prevEndStr);
+
+                                const nextStart = getNextRecurrentDate(targetDate, s.scheduleType);
+                                const nextStartStr = fmtLocalDateTime(nextStart);
+                                let nextEndStr = null;
+                                if (s.endDate) {
+                                    const origStart = new Date(s.startDate.replace(' ', 'T'));
+                                    const origEnd = new Date(s.endDate.replace(' ', 'T'));
+                                    const diff = origEnd.getTime() - origStart.getTime();
+                                    const nextEnd = new Date(nextStart.getTime() + diff);
+                                    nextEndStr = fmtLocalDateTime(nextEnd);
+                                }
+                                await createSplitSchedule(s, nextStartStr, nextEndStr, s.recurrenceEndDate);
+                            }
+                        } else if (isMultiDay) {
                             const startD = new Date(startDateStr);
                             const endD = new Date(endDateStr);
                             if (targetDate === startDateStr) {
                                 startD.setDate(startD.getDate() + 1);
                                 const newStartStr = fmtLocalDateTime(startD);
-                                await updateScheduleDates(s, newStartStr, s.endDate);
+                                await updateScheduleDates(s, newStartStr, s.endDate, s.recurrenceEndDate);
                             } else if (targetDate === endDateStr) {
                                 endD.setDate(endD.getDate() - 1);
                                 const newEndStr = fmtLocalDateTime(endD);
-                                await updateScheduleDates(s, s.startDate, newEndStr);
+                                await updateScheduleDates(s, s.startDate, newEndStr, s.recurrenceEndDate);
                             } else {
                                 const frontEndD = new Date(targetDate);
                                 frontEndD.setDate(frontEndD.getDate() - 1);
                                 frontEndD.setHours(23, 59, 59, 0);
                                 const frontEndStr = fmtLocalDateTime(frontEndD);
-                                await updateScheduleDates(s, s.startDate, frontEndStr);
+                                await updateScheduleDates(s, s.startDate, frontEndStr, s.recurrenceEndDate);
 
                                 const backStartD = new Date(targetDate);
                                 backStartD.setDate(backStartD.getDate() + 1);
                                 backStartD.setHours(0, 0, 0, 0);
                                 const backStartStr = fmtLocalDateTime(backStartD);
-                                await createSplitSchedule(s, backStartStr, s.endDate);
+                                await createSplitSchedule(s, backStartStr, s.endDate, s.recurrenceEndDate);
                             }
                         }
                         showToast('일정이 성공적으로 단축 삭제되었습니다.');
@@ -1972,3 +2066,75 @@ const HOLIDAYS = {
     }
     window.addEventListener('keydown', handleEscKey, true);
     window.addEventListener('keyup', handleEscKey, true);
+
+    window.currentPersonalPaletteMode = null;
+    function renderPersonalGuide() {
+        const wrapper = document.getElementById('personalGuideWrapper');
+        if (!wrapper) return;
+        
+        const myColor = window.personalCalendarColor || '#3B82F6';
+        
+        wrapper.innerHTML = `
+            <span id="btnGuidePublic" style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: #f8fafc;">
+                <span id="guidePublicDot" style="display:inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${myColor};"></span> 공개
+            </span>
+            <span id="btnGuidePrivate" style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: #f8fafc; margin-left: 8px;">
+                <span id="guidePrivateDot" style="display:inline-block; width: 10px; height: 10px; border-radius: 50%; background: color-mix(in srgb, ${myColor} 50%, white);"></span> 비공개
+            </span>
+        `;
+        
+        const palette = document.getElementById('personalPaletteSection');
+        const customPalette = document.getElementById('personalColorPaletteContainer');
+        const paletteTitle = document.getElementById('personalPaletteTitle');
+        
+        if (!customPalette) return;
+        
+        const colors = ["#EF4444", "#F97316", "#F59E0B", "#10B981", "#6366F1", "#8B5CF6", "#D946EF", "#F43F5E", "#14B8A6", "#84CC16", "#059669", "#7C3AED", "#3B82F6", "#94A3B8"];
+        customPalette.innerHTML = '';
+        colors.forEach(c => {
+            const circle = document.createElement('div');
+            circle.style.width = '20px';
+            circle.style.height = '20px';
+            circle.style.borderRadius = '50%';
+            circle.style.backgroundColor = c;
+            circle.style.cursor = 'pointer';
+            circle.style.border = '1px solid #CBD5E1';
+            circle.title = '이 색상으로 변경';
+            circle.onclick = async () => {
+                try {
+                    await fetch('/members/me/calendar-color', {
+                        method: 'PATCH',
+                        headers: Object.assign({'Content-Type': 'application/json'}, authHeaders()),
+                        body: JSON.stringify({ calendarColor: c })
+                    });
+                    window.personalCalendarColor = c;
+                    window.personalPublicColor = c;
+                    window.personalPrivateColor = c;
+                    
+                    renderPersonalGuide();
+                } catch(e) { console.error('DB 색상 동기화 실패:', e); }
+                
+                renderCalendar();
+                if (selectedDateKey) {
+                    renderSelectedDateEvents(selectedDateKey);
+                }
+                palette.style.display = 'none';
+                window.currentPersonalPaletteMode = null;
+            };
+            customPalette.appendChild(circle);
+        });
+        
+        const togglePalette = () => {
+            if (palette.style.display === 'block') {
+                palette.style.display = 'none';
+            } else {
+                palette.style.display = 'block';
+                paletteTitle.textContent = '캘린더 테마 색상 선택';
+            }
+        };
+
+        const btnPublic = document.getElementById('btnGuidePublic');
+        const btnPrivate = document.getElementById('btnGuidePrivate');
+        if (btnPublic) btnPublic.onclick = togglePalette;
+        if (btnPrivate) btnPrivate.onclick = togglePalette;
+    }

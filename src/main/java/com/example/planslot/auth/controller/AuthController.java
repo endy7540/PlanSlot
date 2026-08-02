@@ -22,7 +22,7 @@ public class AuthController {
     private final EmailService emailService;
 
     @PostMapping("/signup")
-    public ResponseEntity<String> signUp(@RequestBody MemberRequestDTO.SignUp request) {
+    public ResponseEntity<String> signUp(@jakarta.validation.Valid @RequestBody MemberRequestDTO.SignUp request) {
         Long memberId = memberService.signUp(request);
         return ResponseEntity.ok("회원가입 성공");
     }

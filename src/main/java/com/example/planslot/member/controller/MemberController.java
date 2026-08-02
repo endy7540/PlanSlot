@@ -44,7 +44,7 @@ public class MemberController {
     }
 
     @PutMapping("/me")
-    public ResponseEntity<?> updateMyPage(Authentication authentication, @RequestBody MemberRequestDTO.UpdateInfo request) {
+    public ResponseEntity<?> updateMyPage(Authentication authentication, @jakarta.validation.Valid @RequestBody MemberRequestDTO.UpdateInfo request) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }

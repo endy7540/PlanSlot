@@ -535,8 +535,10 @@ function handleNotificationUnauthorized() {
     localStorage.removeItem('memberId');
     updateUnreadCount(0);
     renderNotificationLoginRequired();
-    showNotificationToast('로그인이 필요합니다. 로그인 화면으로 이동합니다.');
-    window.setTimeout(() => { window.location.href = NOTIFICATION_LOGIN_URL; }, 700);
+    
+    // 홈페이지나 비로그인 허용 페이지에서는 새로고침하여 비로그인 상태로 화면 갱신
+    // 보안이 필요한 페이지라면 해당 페이지 자체의 JS에서 리다이렉트 처리됨
+    window.location.reload();
 }
 
 function renderNotificationError() {

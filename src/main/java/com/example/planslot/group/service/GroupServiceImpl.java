@@ -138,7 +138,7 @@ public class GroupServiceImpl implements GroupService {
 
         for (GroupMember gm : allMembers) {
             String mId = gm.getMember().getId().toString();
-            String mName = gm.getNickname();
+            String mName = gm.getDisplayNickname();
             if (gm.getMemberStatus().name().equals("WAITING")) {
                 boolean isMe = mId.equals(memberId.toString());
                 String inviterName = gm.getInviter() != null ? gm.getInviter().getDisplayName() : group.getOwner().getDisplayName();
@@ -303,9 +303,15 @@ public class GroupServiceImpl implements GroupService {
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
         if (!group.getOwner().getId().equals(memberId)) throw new IllegalArgumentException("권한이 없습니다.");
         Member targetMember = memberRepository.findByNickname(nickname).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
-        if (groupMemberRepository.existsByGroup_IdAndMember_Id(groupId, targetMember.getId())) {
-            throw new IllegalArgumentException("이미 초대되었거나 참여 중인 사용자입니다.");
-        }
+        groupMemberRepository.findByGroup_IdAndMember_Id(groupId, targetMember.getId()).ifPresent(gm -> {
+            if (gm.getMemberStatus() == GroupMemberStatus.WAITING) {
+                throw new IllegalArgumentException("이미 초대 대기 중입니다.");
+            } else if (gm.getMemberStatus() == GroupMemberStatus.ACTIVE) {
+                throw new IllegalArgumentException("이미 모임에 속해있는 인원입니다.");
+            } else {
+                throw new IllegalArgumentException("이미 초대되었거나 참여 중인 사용자입니다.");
+            }
+        });
         Member inviterMember = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("초대자를 찾을 수 없습니다."));
         GroupMember membership = GroupMember.createInvited(group, targetMember, inviterMember);
@@ -337,6 +343,7 @@ public class GroupServiceImpl implements GroupService {
         
         membership.changeColor(memberColor);
         membership.changeStatus(GroupMemberStatus.ACTIVE);
+        membership.changeNickname(membership.getMember().getDisplayName());
         membership.getGroup().increasePersonCount();
 
         // 기존 모임원들에게 새로운 멤버 입장 알림 전송
@@ -380,7 +387,7 @@ public class GroupServiceImpl implements GroupService {
         for (GroupMember gm : groupMembers) {
             if (gm.getMemberStatus() == GroupMemberStatus.ACTIVE) {
                 Long targetMemberId = gm.getMember().getId();
-                String nickname = gm.getNickname();
+                String nickname = gm.getDisplayNickname();
                 List<Schedule> schedules;
                 if (start != null && end != null) {
                     schedules = scheduleRepository.findAllByMemberIdAndPeriodCandidate(targetMemberId, start, end);

@@ -56,7 +56,7 @@
           <label style="cursor:pointer;"><input type="checkbox" name="recTime" value="오후(12~18시)" style="display:none;"> <span class="chip-btn">오후 (12~18시)</span></label>
           <label style="cursor:pointer;"><input type="checkbox" name="recTime" value="저녁(18~24시)" style="display:none;"> <span class="chip-btn">저녁 (18~24시)</span></label>
         </div>
-        <button class="refresh-btn" id="btnRecommend" style="align-self: flex-end; margin-top:8px; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.2);">새로 추천받기 ✨</button>
+        <button class="refresh-btn" id="btnRecommend" style="align-self: flex-end; margin-top:8px; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.2);">✨일정 추천받기</button>
       </div>
       <div class="fallback-note">전원 가능한 시간이 없으면 최다 인원이 가능한 시간을 대신 추천해요.</div>
       <div id="recList">
@@ -111,15 +111,30 @@
       <label for="exactRegAllDay" style="font-size:13px; font-weight:700; cursor:pointer; margin:0;">하루종일</label>
     </div>
 
-    <div id="exactTimeInputs" style="display:flex; gap:10px; margin-bottom:12px; transition: opacity 0.2s;">
-      <div style="flex:1;">
-        <label style="font-size:13px; font-weight:700; margin-bottom:4px; display:block;">시작 시간</label>
-        <input type="time" id="exactRegStartTime" class="chip-input" style="width:100%; border:1px solid var(--border); font-size:14px;">
+    <div id="exactTimeInputs" style="display:flex; flex-direction:column; gap:4px; margin-bottom:12px; position:relative; transition: opacity 0.2s;">
+      <label style="font-size:13px; font-weight:700; margin-bottom:0px; display:block;">일정 시간 범위 선택 *</label>
+      <input id="exactRegTimeRange" type="text" readonly class="chip-input" style="width:100%; border:1px solid var(--border); font-size:14px; cursor:pointer;" placeholder="시간을 선택하세요 (예: 09:00 ~ 10:00)" onclick="toggleExactTimeDropdown()">
+      
+      <!-- 시간 범위 드롭다운 레이어 -->
+      <div id="exactTimeRangeDropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 2px solid #DCEFFC; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 100; padding: 16px; margin-top: 6px;">
+          <div style="display: flex; gap: 12px;">
+              <div style="flex: 1;">
+                  <div style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 6px; text-align: center;">시작 시간</div>
+                  <div id="exactStartTimeList" style="max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 6px; background:#fff;"></div>
+              </div>
+              <div style="flex: 1;">
+                  <div style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 6px; text-align: center;">종료 시간</div>
+                  <div id="exactEndTimeList" style="max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 6px; background:#fff;"></div>
+              </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; border-top: 1px solid #F1F5F9; padding-top: 10px;">
+              <button type="button" style="padding: 6px 12px; font-size: 12px; border-radius:6px; background:transparent; color:#64748b; border:2px solid transparent; font-weight:900; cursor:pointer;" onclick="toggleExactTimeDropdown(false)">닫기</button>
+              <button type="button" style="padding: 6px 12px; font-size: 12px; border-radius:6px; background:#0ea5e9; color:white; border:2px solid transparent; font-weight:900; cursor:pointer;" onclick="confirmExactTimeRange()">선택 완료</button>
+          </div>
       </div>
-      <div style="flex:1;">
-        <label style="font-size:13px; font-weight:700; margin-bottom:4px; display:block;">종료 시간</label>
-        <input type="time" id="exactRegEndTime" class="chip-input" style="width:100%; border:1px solid var(--border); font-size:14px;">
-      </div>
+      <!-- Hidden inputs for backward compatibility with existing JS logic -->
+      <input type="hidden" id="exactRegStartTime" value="">
+      <input type="hidden" id="exactRegEndTime" value="">
     </div>
 
     <div style="margin-bottom:20px;">
@@ -143,7 +158,21 @@
     </div>
   </div>
 </div>
+
+<!-- 가져온 일정 미리보기 모달 -->
+<div class="modal-overlay" id="previewScheduleModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+  <div class="modal-box" style="background:#fff; padding:24px; border-radius:16px; width:95%; max-width:900px; box-shadow:0 10px 25px rgba(0,0,0,0.1); max-height:95vh; overflow-y:auto;">
+    <h3><span id="previewScheduleDateTitle"></span> 내 캘린더</h3>
+    <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">일정이 성공적으로 추가되었습니다.</p>
+    <div id="previewScheduleList">
+    </div>
+    <div class="modal-actions" style="margin-top:16px; display:flex; justify-content:center;">
+      <button class="btn btn-primary" onclick="document.getElementById('previewScheduleModal').style.display='none'; location.href='/group/read?id=' + encodeURIComponent(new URLSearchParams(window.location.search).get('id'));">확인 및 돌아가기</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
-<script th:src="@{/js/group/ai-recommend.js}" src="../../static/js/group/ai-recommend.js"></script>
+<script th:src="@{/js/group/ai-recommend.js(v='1.1.2')}" src="../../static/js/group/ai-recommend.js"></script>
 </body>
 </html>

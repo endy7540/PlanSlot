@@ -34,7 +34,8 @@ public class NotificationController {
     // 로그인 사용자의 실시간 알림 연결
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @ResponseBody
-    public SseEmitter subscribe(Principal principal) {
+    public SseEmitter subscribe(Principal principal, jakarta.servlet.http.HttpServletResponse response) {
+        response.setHeader("X-Accel-Buffering", "no");
         return notificationSseService.subscribe(getLoginMemberId(principal));
     }
 

@@ -113,6 +113,10 @@ button {
     margin: 0;
 }
 
+.admin-menu-toggle {
+    display: none;
+}
+
 @media (max-width: 768px) {
     body.admin-drawer-open {
         overflow: hidden;

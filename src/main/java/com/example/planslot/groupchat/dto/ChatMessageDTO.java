@@ -18,7 +18,7 @@ public class ChatMessageDTO {
     
     // 메시지 종류: 입장(ENTER), 일반 메시지(TALK)
     public enum MessageType {
-        ENTER, TALK, UPDATE, DELETE
+        ENTER, LEAVE, TALK, UPDATE, DELETE
     }
 
     private MessageType type; // 메시지 타입
@@ -31,12 +31,16 @@ public class ChatMessageDTO {
     private Boolean isEdited; // 수정 여부
 
     public static ChatMessageDTO from(ChatMessage message) {
+        return from(message, message.getSender().getDisplayName());
+    }
+
+    public static ChatMessageDTO from(ChatMessage message, String senderName) {
         return ChatMessageDTO.builder()
                 .id(message.getId())
-                .type(MessageType.TALK)
+                .type(message.getType() != null ? message.getType() : MessageType.TALK)
                 .groupId(message.getGroupChatRoom().getGroup().getId())
                 .senderId(message.getSender().getId())
-                .senderName(message.getSender().getDisplayName())
+                .senderName(senderName)
                 .content(message.getContent())
                 .createdAt(message.getCreatedAt())
                 .isEdited(message.isEdited())

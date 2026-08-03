@@ -106,7 +106,9 @@ public class GroupChatAiService {
         
         promptBuilder.append("\n현재 날짜는 ").append(today).append(" 입니다. (이후 일정 계산 시 참고하세요)\n");
         promptBuilder.append("위 대화 기록을 바탕으로 다음 두 가지를 수행해 주세요.\n");
-        promptBuilder.append("1. 'summary': 대화의 핵심 내용과 흐름을 요약해 주세요.\n");
+        promptBuilder.append("1. 'summary': 전체 대화를 단순 요약하지 말고, '향후 일정 추천이나 제안'과 관련된 대화만 중점적으로 요약해 주세요.\n");
+        promptBuilder.append("   - 새로운 일정 제안으로 이어지지 않는 단순 과거 일정에 대한 잡담이나 무관한 대화는 요약에서 제외하여 텍스트 길이를 최소화하세요.\n");
+        promptBuilder.append("   - 단, 일정 제안이나 추천의 맥락이 되는 대화(일정 수립과 관련된 가벼운 잡담 포함)는 요약에 포함하여 자연스럽게 흐름을 알 수 있게 하세요.\n");
         promptBuilder.append("2. 'proposedSchedules': 대화 중 제안되거나 언급된 **모든** 모임 일정들을 배열 형태로 추출해 주세요.\n");
         promptBuilder.append("   - 가장 마지막 일정 하나만 추출하지 말고, 대화에 나온 모든 유효한 일정 후보를 전부 추출하세요. (없으면 빈 배열)\n");
         promptBuilder.append("   - 단, 오늘 날짜를 기준으로 이미 완전히 지나간 과거 일정은 철저히 제외하세요.\n");

@@ -465,6 +465,7 @@ function renderSingleComment(comment, reply) {
 
   const isLoggedIn = Boolean(currentBoardMember);
   const isWriter = isLoggedIn && Number(currentBoardMember.memberId) === Number(comment.writerId);
+  const isAdmin = currentBoardMember?.role === 'ADMIN';
   const nickname = comment.writerNickname || '알 수 없음';
   let actionButtons = '';
 
@@ -475,6 +476,8 @@ function renderSingleComment(comment, reply) {
       <button class="board-text-button" data-comment-action="edit">수정</button>
       <button class="board-text-button danger" data-comment-action="delete">삭제</button>
     `;
+  } else if (isAdmin) {
+    actionButtons += '<button class="board-text-button danger" data-comment-action="delete">삭제</button>';
   } else {
     actionButtons += '<button class="board-text-button danger" data-comment-action="report">신고</button>';
   }
@@ -601,13 +604,15 @@ async function updateBoardComment(commentId, content, boardId, button) {
   });
 }
 async function deleteBoardComment(commentId, boardId, button) {
-  if (!requireBoardLogin() || !confirm('댓글을 삭제하시겠습니까?')) return;
+  const isReply = button?.closest('.board-comment')?.classList.contains('reply');
+  const targetLabel = isReply ? '대댓글' : '댓글';
+  if (!requireBoardLogin() || !confirm(`${targetLabel}을 삭제하시겠습니까?`)) return;
 
   await runBoardRequest(`delete-comment-${commentId}`, button, '삭제 중...', async () => {
     try {
       await fetchBoardJson(`/board/comment/${commentId}`, { method: 'DELETE' });
       updateBoardCommentCount(-1);
-      showBoardToast('댓글을 삭제했습니다.', false, 'success');
+      showBoardToast(`${targetLabel}을 삭제했습니다.`, false, 'success');
       await loadBoardComments(boardId);
     } catch (error) {
       showBoardToast(error.message, true);

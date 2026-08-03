@@ -12,7 +12,7 @@
 <div th:replace="~{global/header :: headerFragment}"></div>
 
 <!-- 모바일 어드민 메뉴 버튼 -->
-<button type="button" class="admin-menu-toggle" id="adminMenuToggle" aria-label="관리자 메뉴 열기" aria-controls="adminSidebar" aria-expanded="false" style="display:none;">
+<button type="button" class="admin-menu-toggle" id="adminMenuToggle" aria-label="관리자 메뉴 열기" aria-controls="adminSidebar" aria-expanded="false">
     <svg viewBox="0 0 24 24" aria-hidden="true">
         <rect x="3" y="4" width="18" height="16" rx="2"></rect>
         <path d="M8 4v16"></path>
@@ -26,7 +26,7 @@
 
     <main class="admin-content">
         <div class="admin-container">
-            <div class="admin-page-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="admin-page-title">
                 <div>
                     <h1>신고 접수함</h1>
                 </div>
@@ -46,29 +46,29 @@
                 </div>
             </div>
 
-            <div style="font-size: 13px; color: #64748b; margin-bottom: 12px; font-weight: bold;">
-                총 접수 건 <strong style="color:#0ea5e9;" id="totalReportCountSpan" th:text="${reports.size()}">0</strong>건
+            <div class="admin-report-count-wrapper">
+                총 접수 건 <strong class="admin-report-count-number" id="totalReportCountSpan" th:text="${reports.size()}">0</strong>건
             </div>
 
             <div class="table-responsive">
                 <table class="admin-table" id="reportTable">
                 <thead>
                     <tr>
-                        <th class="no-wrap" style="width: 50px;">ID</th>
-                        <th class="no-wrap" style="width: 60px;">유형</th>
-                        <th style="width: 200px;">신고 대상 (제목)</th>
-                        <th style="width: 150px;">신고 사유</th>
-                        <th class="no-wrap" style="width: 80px;">신고자</th>
-                        <th class="no-wrap" style="width: 80px;">피신고자</th>
-                        <th class="no-wrap" style="width: 90px;">접수일</th>
-                        <th class="no-wrap" style="width: 90px;">상태</th>
-                        <th class="no-wrap" style="width: 80px;">관리</th>
+                        <th class="no-wrap col-id">ID</th>
+                        <th class="no-wrap col-type">유형</th>
+                        <th class="col-target">신고 대상 (제목)</th>
+                        <th class="col-reason">신고 사유</th>
+                        <th class="no-wrap col-reporter">신고자</th>
+                        <th class="no-wrap col-reported">피신고자</th>
+                        <th class="no-wrap col-regdate">접수일</th>
+                        <th class="no-wrap col-status">상태</th>
+                        <th class="no-wrap col-manage">관리</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:if="${#lists.isEmpty(reports)}">
-                        <td colspan="10" style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <td colspan="10" class="admin-table-empty">
                             접수된 신고 내역이 없습니다.
                         </td>
                     </tr>
@@ -85,7 +85,7 @@
                             <div class="truncate truncate-reporter report-reporter" th:text="${report.reporterNickname}">홍길동</div>
                         </td>
                         <td class="no-wrap">
-                            <div class="truncate truncate-reporter report-reported" th:text="${report.reportedNickname}" style="color: #ef4444; font-weight: 500;">작성자</div>
+                            <div class="truncate truncate-reporter report-reported modal-reported" th:text="${report.reportedNickname}">작성자</div>
                         </td>
                         <td class="no-wrap" th:text="${#temporals.format(report.createdAt, 'yyyy-MM-dd')}">2026-07-17</td>
                         <td class="no-wrap">
@@ -93,11 +93,11 @@
                                   th:text="${report.status == 'WAITING' ? '대기중' : (report.status == 'APPROVED' ? '삭제 조치' : '기각됨')}">대기중</span>
                         </td>
                         <td class="no-wrap">
-                            <div th:if="${report.status == 'WAITING'}" style="display:flex; flex-direction:column; gap: 6px; align-items:center; justify-content:center; width: 100%;">
-                                <button type="button" class="btn-approve" th:attr="onclick=|processReport('${report.reportId}', 'approve')|" style="padding: 6px 0; width: 60px; font-size: 11px; box-sizing: border-box; text-align: center; display: block; margin: 0; line-height: 1;">삭제조치</button>
-                                <button type="button" class="btn-reject" th:attr="onclick=|processReport('${report.reportId}', 'reject')|" style="padding: 6px 0; width: 60px; font-size: 11px; box-sizing: border-box; text-align: center; display: block; margin: 0; line-height: 1;">기각</button>
+                            <div th:if="${report.status == 'WAITING'}" class="report-action-wrapper">
+                                <button type="button" class="btn-approve" th:attr="onclick=|processReport('${report.reportId}', 'approve')|">삭제조치</button>
+                                <button type="button" class="btn-reject" th:attr="onclick=|processReport('${report.reportId}', 'reject')|">기각</button>
                             </div>
-                            <span th:if="${report.status != 'WAITING'}" style="color:#94a3b8; font-size:13px;">처리됨</span>
+                            <span th:if="${report.status != 'WAITING'}" class="report-status-text">처리됨</span>
                         </td>
                         <td></td>
                     </tr>
@@ -119,38 +119,38 @@
             <button class="modal-close" onclick="closeModal(event)">&times;</button>
         </div>
         <div class="modal-body">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
-                <div class="modal-body-item" style="margin: 0;">
-                    <div class="modal-body-label">신고 사유</div>
-                    <div id="modalReasonCode" style="color: #ef4444; font-weight: 600;"></div>
+            <div class="modal-header-actions">
+                <div class="modal-header-left">
+                    <span id="modalReportType" class="badge-status badge-waiting">BOARD</span>
+                    <div id="modalReasonCode" class="modal-reason-code"></div>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 8px; text-align: right;">
-                    <div class="modal-body-item" style="margin: 0;">
-                        <div class="modal-body-label">피신고자</div>
-                        <div id="modalReported" style="color: #ef4444; font-size: 13px; font-weight: 600;"></div>
+                <div class="modal-header-right">
+                    <div class="modal-header-left">
+                        <span class="modal-label-text">피신고자</span>
+                        <div id="modalReported" class="modal-reported"></div>
                     </div>
-                    <div class="modal-body-item" style="margin: 0;">
-                        <div class="modal-body-label">신고자</div>
-                        <div id="modalReporter" style="color: #64748b; font-size: 13px;"></div>
+                    <div class="modal-header-left">
+                        <span class="modal-label-text">신고자</span>
+                        <div id="modalReporter" class="modal-reporter"></div>
                     </div>
                 </div>
             </div>
             
             <div class="modal-body-item">
                 <div class="modal-body-label">상세 내용 (신고자 작성)</div>
-                <div class="modal-body-content" id="modalReasonDetail" style="min-height: 40px;"></div>
+                <div class="modal-body-content modal-reason-detail" id="modalReasonDetail"></div>
             </div>
             <div class="modal-body-item">
                 <div class="modal-body-label" id="modalTargetLabel">신고 대상</div>
-                <div class="modal-body-content" style="min-height: 60px;">
-                    <div style="margin-bottom: 4px;">
-                        <span id="modalTitleBadge" style="font-size: 11px; background-color: #e2e8f0; color: #475569; padding: 3px 6px; border-radius: 4px; font-weight: bold; display: inline-block; margin-bottom: 8px; line-height: 1;">제목</span>
-                        <div id="modalTargetContent" style="font-size: 13px; color: #475569; line-height: 1.5;"></div>
+                <div class="modal-body-content modal-target-content">
+                    <div class="modal-target-header">
+                        <span id="modalTitleBadge" class="modal-badge-title">제목</span>
+                        <div id="modalTargetContent" class="modal-target-text"></div>
                     </div>
                     
-                    <div id="modalTargetBodyContainer" style="display: none; border-top: 1px dashed #cbd5e1; padding-top: 12px; margin-top: 10px;">
-                        <span style="font-size: 11px; background-color: #e2e8f0; color: #475569; padding: 3px 6px; border-radius: 4px; font-weight: bold; display: inline-block; margin-bottom: 8px; line-height: 1;">본문</span>
-                        <div id="modalTargetBody" style="white-space: pre-wrap; font-size: 13px; color: #475569; line-height: 1.5;"></div>
+                    <div id="modalTargetBodyContainer" class="modal-target-body-container">
+                        <span id="modalContentBadge" class="modal-badge-content">내용</span>
+                        <div id="modalTargetBody" class="modal-target-text"></div>
                     </div>
                 </div>
             </div>

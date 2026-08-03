@@ -78,7 +78,7 @@ public class GroupMember {
                 .group(group)
                 .member(owner)
                 .inviter(owner)
-                .nickname(owner.getNickname())
+                .nickname(owner.getDisplayName())
                 .memberStatus(GroupMemberStatus.ACTIVE)
                 .build();
     }
@@ -115,5 +115,36 @@ public class GroupMember {
 
     public void toggleFavorite() {
         this.isFavorite = !this.isFavorite;
+    }
+
+    public String getDisplayNickname() {
+        if (this.memberStatus == GroupMemberStatus.WAITING) {
+            return this.nickname;
+        }
+        
+        String baseNickname = this.nickname;
+        if (baseNickname != null) {
+            int hashIndex = baseNickname.lastIndexOf('#');
+            if (hashIndex > 0 && hashIndex < baseNickname.length() - 1) {
+                String tagPart = baseNickname.substring(hashIndex + 1);
+                boolean isNumeric = true;
+                for (int i = 0; i < tagPart.length(); i++) {
+                    if (!Character.isDigit(tagPart.charAt(i))) {
+                        isNumeric = false;
+                        break;
+                    }
+                }
+                if (isNumeric) {
+                    baseNickname = baseNickname.substring(0, hashIndex);
+                }
+            }
+        }
+        
+        String originalNickname = this.member != null ? this.member.getDisplayName() : null;
+        if (originalNickname != null && baseNickname != null && !baseNickname.equals(originalNickname)) {
+            return baseNickname + " (" + originalNickname + ")";
+        }
+        
+        return baseNickname;
     }
 }

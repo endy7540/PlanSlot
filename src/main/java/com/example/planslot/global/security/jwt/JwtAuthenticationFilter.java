@@ -40,7 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 쿠키 갱신
                 Cookie cookie = new Cookie("jwtToken", newToken);
                 cookie.setPath("/");
-                cookie.setHttpOnly(true);
+                cookie.setHttpOnly(false); // JS logout must be able to clear this
                 cookie.setMaxAge(jwtTokenProvider.isKeepLogin(newToken) ? 30 * 24 * 60 * 60 : 60 * 60);
                 response.addCookie(cookie);
                 

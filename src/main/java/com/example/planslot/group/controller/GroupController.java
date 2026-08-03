@@ -308,10 +308,14 @@ public class GroupController {
     // 모임 초대
     @PostMapping("/{groupId}/invitation")
     @ResponseBody
-    public ResponseEntity<Void> inviteMember(@PathVariable("groupId") Long groupId, @RequestBody Map<String, String> body, Authentication authentication) {
+    public ResponseEntity<?> inviteMember(@PathVariable("groupId") Long groupId, @RequestBody Map<String, String> body, Authentication authentication) {
         Long memberId = getAuthenticatedMemberId(authentication);
-        groupService.inviteMember(groupId, body.get("nickname"), memberId);
-        return ResponseEntity.ok().build();
+        try {
+            groupService.inviteMember(groupId, body.get("nickname"), memberId);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     // 초대 수락/거절

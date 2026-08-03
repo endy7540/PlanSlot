@@ -34,6 +34,8 @@ import com.example.planslot.schedule.entity.SourceType;
 import com.example.planslot.groupchat.entity.GroupChatRoom;
 import com.example.planslot.groupchat.entity.ChatMessage;
 import com.example.planslot.group.entity.GroupScheduleShare;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
+import com.example.planslot.groupchat.dto.ChatMessageDTO;
 import java.time.Duration;
 
 @Service
@@ -50,6 +52,7 @@ public class GroupServiceImpl implements GroupService {
     private final GroupScheduleShareRepository groupScheduleShareRepository;
     private final GroupChatRoomRepository groupChatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final SimpMessageSendingOperations messagingTemplate;
     private final SourceType sourceType = null; // Unused dummy to prevent import issue
 
     @Override
@@ -138,7 +141,7 @@ public class GroupServiceImpl implements GroupService {
 
         for (GroupMember gm : allMembers) {
             String mId = gm.getMember().getId().toString();
-            String mName = gm.getNickname();
+            String mName = gm.getDisplayNickname();
             if (gm.getMemberStatus().name().equals("WAITING")) {
                 boolean isMe = mId.equals(memberId.toString());
                 String inviterName = gm.getInviter() != null ? gm.getInviter().getDisplayName() : group.getOwner().getDisplayName();
@@ -269,6 +272,27 @@ public class GroupServiceImpl implements GroupService {
         groupScheduleRepository.deleteByGroup_IdAndSharer_Id(groupId, memberId);
         groupScheduleShareRepository.deleteByGroup_IdAndSharer_Id(groupId, memberId);
         groupScheduleShareRepository.deleteByGroup_IdAndTargetMember_Id(groupId, memberId);
+        // 채팅방에 퇴장 메시지 전송
+        GroupChatRoom chatRoom = groupChatRoomRepository.findByGroup_Id(groupId).orElse(null);
+        if (chatRoom != null) {
+            ChatMessage dbMessage = ChatMessage.builder()
+                    .groupChatRoom(chatRoom)
+                    .sender(membership.getMember())
+                    .content(membership.getNickname() + "님이 모임을 나갔습니다.")
+                    .type(ChatMessageDTO.MessageType.LEAVE)
+                    .build();
+            chatMessageRepository.save(dbMessage);
+            
+            ChatMessageDTO leaveMessage = ChatMessageDTO.builder()
+                    .type(ChatMessageDTO.MessageType.LEAVE)
+                    .groupId(groupId)
+                    .senderId(memberId)
+                    .senderName(membership.getNickname())
+                    .content(membership.getNickname() + "님이 모임을 나갔습니다.")
+                    .build();
+            messagingTemplate.convertAndSend("/sub/chat/room/" + groupId, leaveMessage);
+        }
+        
         group.decreasePersonCount();
     }
 
@@ -289,6 +313,26 @@ public class GroupServiceImpl implements GroupService {
                     "group_kick",
                     groupId
             );
+            // 채팅방에 강퇴 메시지 전송
+            GroupChatRoom chatRoom = groupChatRoomRepository.findByGroup_Id(groupId).orElse(null);
+            if (chatRoom != null) {
+                ChatMessage dbMessage = ChatMessage.builder()
+                        .groupChatRoom(chatRoom)
+                        .sender(target.getMember())
+                        .content(target.getNickname() + "님이 모임에서 강퇴되었습니다.")
+                        .type(ChatMessageDTO.MessageType.LEAVE)
+                        .build();
+                chatMessageRepository.save(dbMessage);
+                
+                ChatMessageDTO leaveMessage = ChatMessageDTO.builder()
+                        .type(ChatMessageDTO.MessageType.LEAVE)
+                        .groupId(groupId)
+                        .senderId(targetMemberId)
+                        .senderName(target.getNickname())
+                        .content(target.getNickname() + "님이 모임에서 강퇴되었습니다.")
+                        .build();
+                messagingTemplate.convertAndSend("/sub/chat/room/" + groupId, leaveMessage);
+            }
             group.decreasePersonCount();
         }
         groupMemberRepository.delete(target);
@@ -303,9 +347,15 @@ public class GroupServiceImpl implements GroupService {
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
         if (!group.getOwner().getId().equals(memberId)) throw new IllegalArgumentException("권한이 없습니다.");
         Member targetMember = memberRepository.findByNickname(nickname).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
-        if (groupMemberRepository.existsByGroup_IdAndMember_Id(groupId, targetMember.getId())) {
-            throw new IllegalArgumentException("이미 초대되었거나 참여 중인 사용자입니다.");
-        }
+        groupMemberRepository.findByGroup_IdAndMember_Id(groupId, targetMember.getId()).ifPresent(gm -> {
+            if (gm.getMemberStatus() == GroupMemberStatus.WAITING) {
+                throw new IllegalArgumentException("이미 초대 대기 중입니다.");
+            } else if (gm.getMemberStatus() == GroupMemberStatus.ACTIVE) {
+                throw new IllegalArgumentException("이미 모임에 속해있는 인원입니다.");
+            } else {
+                throw new IllegalArgumentException("이미 초대되었거나 참여 중인 사용자입니다.");
+            }
+        });
         Member inviterMember = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("초대자를 찾을 수 없습니다."));
         GroupMember membership = GroupMember.createInvited(group, targetMember, inviterMember);
@@ -337,6 +387,7 @@ public class GroupServiceImpl implements GroupService {
         
         membership.changeColor(memberColor);
         membership.changeStatus(GroupMemberStatus.ACTIVE);
+        membership.changeNickname(membership.getMember().getDisplayName());
         membership.getGroup().increasePersonCount();
 
         // 기존 모임원들에게 새로운 멤버 입장 알림 전송
@@ -358,6 +409,28 @@ public class GroupServiceImpl implements GroupService {
                 
         // 모임 초대 알림 삭제 처리 (수락 후 알림에서 바로 사라지도록)
         notificationService.deleteNotificationsByTarget(memberId, "GROUP", groupId);
+
+        // 채팅방에 입장 메시지 전송
+        GroupChatRoom chatRoom = groupChatRoomRepository.findByGroup_Id(groupId)
+                .orElse(null);
+        if (chatRoom != null) {
+            ChatMessage dbMessage = ChatMessage.builder()
+                    .groupChatRoom(chatRoom)
+                    .sender(membership.getMember())
+                    .content(newMemberName + "님이 입장하셨습니다.")
+                    .type(ChatMessageDTO.MessageType.ENTER)
+                    .build();
+            chatMessageRepository.save(dbMessage);
+        }
+
+        ChatMessageDTO enterMessage = ChatMessageDTO.builder()
+                .type(ChatMessageDTO.MessageType.ENTER)
+                .groupId(groupId)
+                .senderId(memberId)
+                .senderName(newMemberName)
+                .content(newMemberName + "님이 입장하셨습니다.")
+                .build();
+        messagingTemplate.convertAndSend("/sub/chat/room/" + groupId, enterMessage);
     }
 
     @Override
@@ -380,7 +453,7 @@ public class GroupServiceImpl implements GroupService {
         for (GroupMember gm : groupMembers) {
             if (gm.getMemberStatus() == GroupMemberStatus.ACTIVE) {
                 Long targetMemberId = gm.getMember().getId();
-                String nickname = gm.getNickname();
+                String nickname = gm.getDisplayNickname();
                 List<Schedule> schedules;
                 if (start != null && end != null) {
                     schedules = scheduleRepository.findAllByMemberIdAndPeriodCandidate(targetMemberId, start, end);
@@ -534,6 +607,21 @@ public class GroupServiceImpl implements GroupService {
                 .build();
 
         groupScheduleRepository.save(groupSchedule);
+
+        // 모임 내 다른 멤버들에게 알림 전송
+        List<GroupMember> groupMembers = groupMemberRepository.findByGroup_Id(groupId);
+        for (GroupMember gm : groupMembers) {
+            if (!gm.getMember().getId().equals(memberId) && gm.getMemberStatus() == GroupMemberStatus.ACTIVE) {
+                notificationService.sendScheduleMessage(
+                        gm.getMember().getId(),
+                        groupId,
+                        "모임 일정 추가",
+                        member.getNickname() + "님이 모임 캘린더에 새 일정을 등록했습니다.",
+                        "GROUP_SCHEDULE",
+                        groupId
+                );
+            }
+        }
     }
 
     @Override
@@ -557,6 +645,16 @@ public class GroupServiceImpl implements GroupService {
                         .sharedTitle(schedule.getTitle())
                         .build();
                 groupScheduleShareRepository.save(share);
+
+                // 알림 전송 (새로운 공유 일정 수신자)
+                notificationService.sendScheduleMessage(
+                        targetMemberId,
+                        groupId,
+                        "새로운 일정 공유",
+                        sharer.getNickname() + "님이 일정을 공유했습니다.",
+                        "GROUP_SCHEDULE_SHARE",
+                        groupId
+                );
             }
         }
     }

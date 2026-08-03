@@ -121,3 +121,7 @@ let allRows = [];
             selectElement.value = selectElement.getAttribute('data-original');
         }
     }
+function changeMemberStatus(memberId, selectId) {
+    const select = document.getElementById(selectId);
+    updateStatus(memberId, select.value, select);
+}

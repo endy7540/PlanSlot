@@ -56,6 +56,7 @@ public class GroupChatServiceImpl implements GroupChatService {
                 .groupChatRoom(chatRoom)
                 .sender(sender)
                 .content(messageDTO.getContent())
+                .type(messageDTO.getType())
                 .build();
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
@@ -76,8 +77,15 @@ public class GroupChatServiceImpl implements GroupChatService {
                 );
             }
         }
+        String senderNickname = sender.getDisplayName();
+        for (GroupMember gm : groupMembers) {
+            if (gm.getMember().getId().equals(sender.getId())) {
+                senderNickname = gm.getDisplayNickname();
+                break;
+            }
+        }
         
-        return ChatMessageDTO.from(savedMessage);
+        return ChatMessageDTO.from(savedMessage, senderNickname);
     }
 
     @Override
@@ -92,10 +100,16 @@ public class GroupChatServiceImpl implements GroupChatService {
                 });
 
         List<ChatMessage> messages = chatMessageRepository.findByGroupChatRoom_IdOrderByCreatedAtAsc(chatRoom.getId());
+        List<GroupMember> groupMembers = groupMemberRepository.findByGroup_Id(groupId);
+        java.util.Map<Long, String> nicknameMap = groupMembers.stream()
+                .collect(java.util.stream.Collectors.toMap(gm -> gm.getMember().getId(), com.example.planslot.group.entity.GroupMember::getDisplayNickname));
         
         return messages.stream()
-                .map(ChatMessageDTO::from)
-                .collect(Collectors.toList());
+                .map(msg -> {
+                    String senderName = nicknameMap.getOrDefault(msg.getSender().getId(), msg.getSender().getDisplayName());
+                    return ChatMessageDTO.from(msg, senderName);
+                })
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @Override

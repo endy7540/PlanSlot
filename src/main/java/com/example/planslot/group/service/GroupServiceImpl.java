@@ -34,6 +34,8 @@ import com.example.planslot.schedule.entity.SourceType;
 import com.example.planslot.groupchat.entity.GroupChatRoom;
 import com.example.planslot.groupchat.entity.ChatMessage;
 import com.example.planslot.group.entity.GroupScheduleShare;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
+import com.example.planslot.groupchat.dto.ChatMessageDTO;
 import java.time.Duration;
 
 @Service
@@ -50,6 +52,7 @@ public class GroupServiceImpl implements GroupService {
     private final GroupScheduleShareRepository groupScheduleShareRepository;
     private final GroupChatRoomRepository groupChatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final SimpMessageSendingOperations messagingTemplate;
     private final SourceType sourceType = null; // Unused dummy to prevent import issue
 
     @Override
@@ -365,6 +368,16 @@ public class GroupServiceImpl implements GroupService {
                 
         // 모임 초대 알림 삭제 처리 (수락 후 알림에서 바로 사라지도록)
         notificationService.deleteNotificationsByTarget(memberId, "GROUP", groupId);
+
+        // 채팅방에 입장 메시지 전송
+        ChatMessageDTO enterMessage = ChatMessageDTO.builder()
+                .type(ChatMessageDTO.MessageType.ENTER)
+                .groupId(groupId)
+                .senderId(memberId)
+                .senderName(newMemberName)
+                .content(newMemberName + "님이 입장하셨습니다.")
+                .build();
+        messagingTemplate.convertAndSend("/sub/chat/room/" + groupId, enterMessage);
     }
 
     @Override
@@ -541,6 +554,21 @@ public class GroupServiceImpl implements GroupService {
                 .build();
 
         groupScheduleRepository.save(groupSchedule);
+
+        // 모임 내 다른 멤버들에게 알림 전송
+        List<GroupMember> groupMembers = groupMemberRepository.findByGroup_Id(groupId);
+        for (GroupMember gm : groupMembers) {
+            if (!gm.getMember().getId().equals(memberId) && gm.getMemberStatus() == GroupMemberStatus.ACTIVE) {
+                notificationService.sendScheduleMessage(
+                        gm.getMember().getId(),
+                        groupId,
+                        "모임 일정 추가",
+                        member.getNickname() + "님이 모임 캘린더에 새 일정을 등록했습니다.",
+                        "GROUP_SCHEDULE",
+                        groupId
+                );
+            }
+        }
     }
 
     @Override
@@ -564,6 +592,16 @@ public class GroupServiceImpl implements GroupService {
                         .sharedTitle(schedule.getTitle())
                         .build();
                 groupScheduleShareRepository.save(share);
+
+                // 알림 전송 (새로운 공유 일정 수신자)
+                notificationService.sendScheduleMessage(
+                        targetMemberId,
+                        groupId,
+                        "새로운 일정 공유",
+                        sharer.getNickname() + "님이 일정을 공유했습니다.",
+                        "GROUP_SCHEDULE_SHARE",
+                        groupId
+                );
             }
         }
     }

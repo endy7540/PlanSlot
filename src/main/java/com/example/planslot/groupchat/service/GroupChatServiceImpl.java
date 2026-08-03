@@ -56,6 +56,7 @@ public class GroupChatServiceImpl implements GroupChatService {
                 .groupChatRoom(chatRoom)
                 .sender(sender)
                 .content(messageDTO.getContent())
+                .type(messageDTO.getType())
                 .build();
 
         ChatMessage savedMessage = chatMessageRepository.save(message);

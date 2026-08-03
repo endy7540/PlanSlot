@@ -272,6 +272,27 @@ public class GroupServiceImpl implements GroupService {
         groupScheduleRepository.deleteByGroup_IdAndSharer_Id(groupId, memberId);
         groupScheduleShareRepository.deleteByGroup_IdAndSharer_Id(groupId, memberId);
         groupScheduleShareRepository.deleteByGroup_IdAndTargetMember_Id(groupId, memberId);
+        // 채팅방에 퇴장 메시지 전송
+        GroupChatRoom chatRoom = groupChatRoomRepository.findByGroup_Id(groupId).orElse(null);
+        if (chatRoom != null) {
+            ChatMessage dbMessage = ChatMessage.builder()
+                    .groupChatRoom(chatRoom)
+                    .sender(membership.getMember())
+                    .content(membership.getNickname() + "님이 모임을 나갔습니다.")
+                    .type(ChatMessageDTO.MessageType.LEAVE)
+                    .build();
+            chatMessageRepository.save(dbMessage);
+            
+            ChatMessageDTO leaveMessage = ChatMessageDTO.builder()
+                    .type(ChatMessageDTO.MessageType.LEAVE)
+                    .groupId(groupId)
+                    .senderId(memberId)
+                    .senderName(membership.getNickname())
+                    .content(membership.getNickname() + "님이 모임을 나갔습니다.")
+                    .build();
+            messagingTemplate.convertAndSend("/sub/chat/room/" + groupId, leaveMessage);
+        }
+        
         group.decreasePersonCount();
     }
 
@@ -292,6 +313,26 @@ public class GroupServiceImpl implements GroupService {
                     "group_kick",
                     groupId
             );
+            // 채팅방에 강퇴 메시지 전송
+            GroupChatRoom chatRoom = groupChatRoomRepository.findByGroup_Id(groupId).orElse(null);
+            if (chatRoom != null) {
+                ChatMessage dbMessage = ChatMessage.builder()
+                        .groupChatRoom(chatRoom)
+                        .sender(target.getMember())
+                        .content(target.getNickname() + "님이 모임에서 강퇴되었습니다.")
+                        .type(ChatMessageDTO.MessageType.LEAVE)
+                        .build();
+                chatMessageRepository.save(dbMessage);
+                
+                ChatMessageDTO leaveMessage = ChatMessageDTO.builder()
+                        .type(ChatMessageDTO.MessageType.LEAVE)
+                        .groupId(groupId)
+                        .senderId(targetMemberId)
+                        .senderName(target.getNickname())
+                        .content(target.getNickname() + "님이 모임에서 강퇴되었습니다.")
+                        .build();
+                messagingTemplate.convertAndSend("/sub/chat/room/" + groupId, leaveMessage);
+            }
             group.decreasePersonCount();
         }
         groupMemberRepository.delete(target);
@@ -370,6 +411,18 @@ public class GroupServiceImpl implements GroupService {
         notificationService.deleteNotificationsByTarget(memberId, "GROUP", groupId);
 
         // 채팅방에 입장 메시지 전송
+        GroupChatRoom chatRoom = groupChatRoomRepository.findByGroup_Id(groupId)
+                .orElse(null);
+        if (chatRoom != null) {
+            ChatMessage dbMessage = ChatMessage.builder()
+                    .groupChatRoom(chatRoom)
+                    .sender(membership.getMember())
+                    .content(newMemberName + "님이 입장하셨습니다.")
+                    .type(ChatMessageDTO.MessageType.ENTER)
+                    .build();
+            chatMessageRepository.save(dbMessage);
+        }
+
         ChatMessageDTO enterMessage = ChatMessageDTO.builder()
                 .type(ChatMessageDTO.MessageType.ENTER)
                 .groupId(groupId)

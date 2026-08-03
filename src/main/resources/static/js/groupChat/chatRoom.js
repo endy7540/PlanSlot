@@ -109,7 +109,7 @@ if (!localStorage.getItem('jwtToken')) {
     const dateStr = String(now.getFullYear()) + '-' + String(now.getMonth()+1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     let html = "";
     
-    if (msg.type === 'ENTER') {
+    if (msg.type === 'ENTER' || msg.type === 'LEAVE') {
       html = `<div class="message system msg-item" data-date="${dateStr}">${msg.content}</div>`;
     } else {
       // XSS 방지를 위한 HTML 이스케이프 처리 후 줄바꿈 변환
@@ -199,7 +199,18 @@ if (!localStorage.getItem('jwtToken')) {
 
   function resolveAlias(memberId, defaultName) {
     const alias = localStorage.getItem('alias_' + groupId + '_' + memberId);
-    return alias ? alias : defaultName;
+    if (alias) {
+        let origNick = defaultName;
+        const match = defaultName.match(/\(([^)]+)\)$/);
+        if (match) {
+            origNick = match[1];
+        }
+        if (alias !== origNick) {
+            return `${alias} (${origNick})`;
+        }
+        return alias;
+    }
+    return defaultName;
   }
 
   function applyAliases() {

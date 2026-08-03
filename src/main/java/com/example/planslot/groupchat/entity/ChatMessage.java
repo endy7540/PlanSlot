@@ -44,11 +44,16 @@ public class ChatMessage {
     @Column(name = "is_edited", nullable = false)
     private boolean isEdited = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "message_type", length = 20)
+    private com.example.planslot.groupchat.dto.ChatMessageDTO.MessageType type;
+
     @Builder
-    public ChatMessage(GroupChatRoom groupChatRoom, Member sender, String content) {
+    public ChatMessage(GroupChatRoom groupChatRoom, Member sender, String content, com.example.planslot.groupchat.dto.ChatMessageDTO.MessageType type) {
         this.groupChatRoom = groupChatRoom;
         this.sender = sender;
         this.content = content;
+        this.type = type != null ? type : com.example.planslot.groupchat.dto.ChatMessageDTO.MessageType.TALK;
     }
 
     public void updateContent(String newContent) {

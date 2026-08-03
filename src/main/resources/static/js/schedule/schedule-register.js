@@ -1,5 +1,7 @@
 
-    
+    if (window.self !== window.top) {
+    document.documentElement.classList.add('in-iframe');
+}
 
     // iframe 내부 로드 시 공통 헤더 숨기기 및 레이아웃 최적화
     (function optimizeForIframe() {
@@ -423,7 +425,14 @@ const API_BASE = window.location.origin;
                 body: JSON.stringify(body)
             });
             if (!res.ok) {
-                showToast('등록 실패: ' + res.status, true);
+                let errorMsg = '등록 실패: ' + res.status;
+                try {
+                    const errJson = await res.json();
+                    if (errJson && errJson.message) {
+                        errorMsg = errJson.message;
+                    }
+                } catch(err) {}
+                showToast(errorMsg, true);
                 resetBtnState();
                 return;
             }

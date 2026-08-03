@@ -15,9 +15,15 @@
         <div class="tagline">AI가 함께하는 일정 플랫폼</div>
 
         <div class="form">
-            <input type="text" id="loginId" placeholder="아이디" onkeydown="if(event.key==='Enter') document.getElementById('loginPw').focus()">
-            <input type="password" id="loginPw" placeholder="비밀번호" onpaste="return false;" oncopy="return false;" onkeydown="if(event.key==='Enter') doLogin()">
+            <input type="text" id="loginId" placeholder="아이디" inputmode="email" onkeydown="if(event.key==='Enter') document.getElementById('loginPw').focus()">
+            <div style="position:relative; display:flex;">
+                <input type="password" id="loginPw" placeholder="비밀번호" onpaste="return false;" oncopy="return false;" onkeydown="if(event.key==='Enter') doLogin()" style="width:100%; padding-right:45px;">
+                <button type="button" tabindex="-1" onclick="togglePw('loginPw', this)" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; padding:0; cursor:pointer; color:#64748B;">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                </button>
+            </div>
             <div id="loginPwMsg" class="field-msg"></div>
+            <div id="loginPwCapsMsg" class="caps-msg">⚠️ Caps Lock이 켜져 있습니다.</div>
             
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; color:#182B3A; margin-bottom:16px;">
                 <div style="display:flex; gap:8px;">
@@ -30,7 +36,7 @@
                     <label for="keepLogin" style="cursor:pointer; user-select:none; margin:0;">로그인 상태 유지</label>
                 </div>
             </div>
-            <button class="primary" onclick="doLogin()">로그인</button>
+            <button id="loginBtn" class="primary" onclick="doLogin()">로그인</button>
         </div>
 
         <div class="divider">또는</div>
@@ -81,29 +87,41 @@
 
         <div class="form">
             <div style="display:flex; gap:8px;">
-                <input type="text" id="signupId" placeholder="아이디 (필수)" style="flex:1; margin:0;">
-                <button type="button" class="ghost" style="padding:0 16px; margin:0;" onclick="checkDuplicateIdBtn()">중복 확인</button>
+                <input type="text" id="signupId" placeholder="아이디 (필수)" inputmode="email" style="flex:1; min-width:0; margin:0;">
+                <button type="button" id="checkDuplicateBtn" class="ghost" style="padding:0 16px; margin:0; white-space:nowrap; flex-shrink:0;" onclick="checkDuplicateIdBtn()">중복 확인</button>
             </div>
             <div id="signupIdMsg" class="field-msg"></div>
             
-            <input type="password" id="signupPw" placeholder="비밀번호 (필수)" onpaste="return false;" oncopy="return false;">
+            <div style="position:relative; display:flex;">
+                <input type="password" id="signupPw" placeholder="비밀번호 (필수)" onpaste="return false;" oncopy="return false;" style="width:100%; padding-right:45px;">
+                <button type="button" tabindex="-1" onclick="togglePw('signupPw', this)" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; padding:0; cursor:pointer; color:#64748B;">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                </button>
+            </div>
             <div id="signupPwMsg" class="field-msg"></div>
+            <div id="signupPwCapsMsg" class="caps-msg">⚠️ Caps Lock이 켜져 있습니다.</div>
             
-            <input type="password" id="signupPwConfirm" placeholder="비밀번호 재확인 (필수)" onpaste="return false;" oncopy="return false;">
+            <div style="position:relative; display:flex;">
+                <input type="password" id="signupPwConfirm" placeholder="비밀번호 재확인 (필수)" onpaste="return false;" oncopy="return false;" style="width:100%; padding-right:45px;">
+                <button type="button" tabindex="-1" onclick="togglePw('signupPwConfirm', this)" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; padding:0; cursor:pointer; color:#64748B;">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                </button>
+            </div>
             <div id="signupPwConfirmMsg" class="field-msg"></div>
+            <div id="signupPwConfirmCapsMsg" class="caps-msg">⚠️ Caps Lock이 켜져 있습니다.</div>
             
             <div style="display:flex; gap:8px;">
-                <input type="email" id="signupEmail" placeholder="이메일 (필수)" style="flex:1; margin:0;">
-                <button type="button" class="ghost" style="padding:0 16px; margin:0;" onclick="sendEmailCodeBtn()" id="sendEmailBtn">인증번호 발송</button>
+                <input type="email" id="signupEmail" placeholder="이메일 (필수)" style="flex:1; min-width:0; margin:0;">
+                <button type="button" class="ghost" style="padding:0 16px; margin:0; white-space:nowrap; flex-shrink:0;" onclick="sendEmailCodeBtn()" id="sendEmailBtn">인증번호 발송</button>
             </div>
             <div id="signupEmailMsg" class="field-msg"></div>
             
             <div id="authCodeContainer" style="display:none; gap:8px;">
-                <div style="flex:1; display:flex; align-items:center; position:relative;">
-                    <input type="text" id="signupAuthCode" placeholder="인증번호 6자리" style="width:100%; margin:0; padding-right:50px;">
+                <div style="flex:1; display:flex; align-items:center; position:relative; min-width:0;">
+                    <input type="text" id="signupAuthCode" placeholder="인증번호 6자리" style="width:100%; min-width:0; margin:0; padding-right:50px;">
                     <span id="authTimer" style="position:absolute; right:12px; color:#B91C1C; font-weight:bold; font-size:13px; display:none;">05:00</span>
                 </div>
-                <button type="button" class="ghost" style="padding:0 16px; margin:0;" onclick="verifyEmailCodeBtn()">인증 확인</button>
+                <button type="button" id="verifyEmailBtn" class="primary" style="padding:0 16px; margin:0; white-space:nowrap; flex-shrink:0;" onclick="verifyEmailCodeBtn()">인증 확인</button>
             </div>
             <div id="signupAuthCodeMsg" class="field-msg"></div>
             
@@ -120,7 +138,7 @@
 
 
             <div class="btn-row" style="margin-top:10px;">
-                <button class="primary" onclick="doSignUp()">가입 완료</button>
+                <button id="signupBtn" class="primary" style="margin-top:20px;" onclick="doSignUp()">회원가입 완료</button>
                 <button class="ghost" onclick="togglePage('login')">로그인 화면으로 이동</button>
             </div>
         </div>
@@ -131,14 +149,14 @@
         <div class="tagline" style="margin-bottom:20px;">가입 시 사용한 이메일로 아이디를 찾습니다.</div>
         <div class="form">
             <div style="display:flex; gap:8px;">
-                <input type="email" id="findIdEmail" placeholder="이메일 입력" style="flex:1; margin:0;">
+                <input type="email" id="findIdEmail" placeholder="이메일 입력" style="flex:1; min-width:0; margin:0;">
                 <button type="button" class="ghost" style="padding:0 16px; margin:0; white-space:nowrap;" onclick="sendFindAuthCodeBtn('find-id')" id="findIdSendBtn">인증 발송</button>
             </div>
             <div id="findIdEmailMsg" class="field-msg"></div>
             
             <div id="findIdAuthCodeContainer" style="display:none; gap:8px; margin-top:8px;">
-                <div style="flex:1; display:flex; align-items:center; position:relative;">
-                    <input type="text" id="findIdAuthCode" placeholder="인증번호 6자리" style="width:100%; margin:0; padding-right:50px;">
+                <div style="flex:1; display:flex; align-items:center; position:relative; min-width:0;">
+                    <input type="text" id="findIdAuthCode" placeholder="인증번호 6자리" style="width:100%; min-width:0; margin:0; padding-right:50px;">
                     <span id="findIdAuthTimer" style="position:absolute; right:12px; color:#B91C1C; font-weight:bold; font-size:13px; display:none;">05:00</span>
                 </div>
                 <button type="button" class="ghost" style="padding:0 16px; margin:0; white-space:nowrap;" onclick="doFindId()">인증 확인</button>
@@ -154,14 +172,14 @@
         <div class="form">
             <input type="text" id="findPwId" placeholder="아이디 입력" style="margin-bottom:8px;">
             <div style="display:flex; gap:8px;">
-                <input type="email" id="findPwEmail" placeholder="이메일 입력" style="flex:1; margin:0;">
+                <input type="email" id="findPwEmail" placeholder="이메일 입력" style="flex:1; min-width:0; margin:0;">
                 <button type="button" class="ghost" style="padding:0 16px; margin:0; white-space:nowrap;" onclick="sendFindAuthCodeBtn('find-pw')" id="findPwSendBtn">인증 발송</button>
             </div>
             <div id="findPwEmailMsg" class="field-msg"></div>
             
             <div id="findPwAuthCodeContainer" style="display:none; gap:8px; margin-top:8px;">
-                <div style="flex:1; display:flex; align-items:center; position:relative;">
-                    <input type="text" id="findPwAuthCode" placeholder="인증번호 6자리" style="width:100%; margin:0; padding-right:50px;">
+                <div style="flex:1; display:flex; align-items:center; position:relative; min-width:0;">
+                    <input type="text" id="findPwAuthCode" placeholder="인증번호 6자리" style="width:100%; min-width:0; margin:0; padding-right:50px;">
                     <span id="findPwAuthTimer" style="position:absolute; right:12px; color:#B91C1C; font-weight:bold; font-size:13px; display:none;">05:00</span>
                 </div>
                 <button type="button" class="ghost" style="padding:0 16px; margin:0; white-space:nowrap;" onclick="doFindPw()">인증 확인</button>

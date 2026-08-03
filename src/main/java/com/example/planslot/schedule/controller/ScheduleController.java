@@ -128,12 +128,30 @@ public class ScheduleController {
     }
 
     @GetMapping(value = "/{scheduleId}", produces = MediaType.TEXT_HTML_VALUE)
-    public String scheduleDetailPage(@PathVariable Long scheduleId) {
+    public String scheduleDetailPage(@PathVariable Long scheduleId, Authentication authentication) {
+        if (authentication == null) {
+            return "redirect:/member/login";
+        }
+        Long memberId = extractMemberId(authentication);
+        try {
+            scheduleService.getSchedule(scheduleId, memberId);
+        } catch (Exception e) {
+            return "redirect:/schedule";
+        }
         return "schedule/schedule-detail"; // templates/schedule/schedule-detail.html (상세 조회 뷰)
     }
 
     @GetMapping(value = "/{scheduleId}/edit", produces = MediaType.TEXT_HTML_VALUE)
-    public String scheduleEditPage(@PathVariable Long scheduleId) {
+    public String scheduleEditPage(@PathVariable Long scheduleId, Authentication authentication) {
+        if (authentication == null) {
+            return "redirect:/member/login";
+        }
+        Long memberId = extractMemberId(authentication);
+        try {
+            scheduleService.getSchedule(scheduleId, memberId);
+        } catch (Exception e) {
+            return "redirect:/schedule";
+        }
         return "schedule/schedule-modify"; // templates/schedule/schedule-modify.html (수정 폼)
     }
     private Long extractMemberId(Authentication authentication) {

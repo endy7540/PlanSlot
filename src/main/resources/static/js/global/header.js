@@ -1,3 +1,8 @@
+// IP 주소로 접속한 경우 OAuth2 쿠키가 정상 동작하는 nip.io 주소로 통일한다.
+if (window.location.hostname === '13.209.22.21') {
+    window.location.replace(window.location.href.replace('13.209.22.21', '13.209.22.21.nip.io'));
+}
+
 // Global Fetch Interceptor for Sliding Session
 const originalFetch = window.fetch;
 window.fetch = async function() {
@@ -21,6 +26,34 @@ window.addEventListener("DOMContentLoaded", function() {
     const logoutBtn = document.getElementById("logoutBtn");
     const headerMenuToggle = document.getElementById("headerMenuToggle");
     const headerMenu = document.getElementById("headerMenu");
+    const headerProfileImage = document.getElementById("headerProfileImage");
+    const aiWidgetCloseBtn = document.getElementById("aiWidgetCloseBtn");
+    const aiWidgetActionBtn = document.getElementById("aiWidgetActionBtn");
+    const chatAiWidgetCloseBtn = document.getElementById("chatAiWidgetCloseBtn");
+    const chatAiWidgetActionBtn = document.getElementById("chatAiWidgetActionBtn");
+    const groupAiWidgetCloseBtn = document.getElementById("groupAiWidgetCloseBtn");
+    const groupAiWidgetActionBtn = document.getElementById("groupAiWidgetActionBtn");
+
+    if (loginBtn) {
+        loginBtn.addEventListener("click", function() {
+            window.location.href = "/auth/login";
+        });
+    }
+
+    if (headerProfileImage) {
+        headerProfileImage.addEventListener("error", function() {
+            if (headerProfileImage.dataset.fallbackApplied === "true") return;
+            headerProfileImage.dataset.fallbackApplied = "true";
+            headerProfileImage.src = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+        });
+    }
+
+    if (aiWidgetCloseBtn) aiWidgetCloseBtn.addEventListener("click", closeAiWidget);
+    if (aiWidgetActionBtn) aiWidgetActionBtn.addEventListener("click", openWidgetResult);
+    if (chatAiWidgetCloseBtn) chatAiWidgetCloseBtn.addEventListener("click", closeChatAiWidget);
+    if (chatAiWidgetActionBtn) chatAiWidgetActionBtn.addEventListener("click", openChatAiWidgetResult);
+    if (groupAiWidgetCloseBtn) groupAiWidgetCloseBtn.addEventListener("click", closeGroupAiWidget);
+    if (groupAiWidgetActionBtn) groupAiWidgetActionBtn.addEventListener("click", openGroupAiWidgetResult);
 
     function closeHeaderMenu() {
         if (!headerMenuToggle || !headerMenu) return;
@@ -119,6 +152,7 @@ window.addEventListener("DOMContentLoaded", function() {
                 headerNickname.innerText = (data.displayName || data.nickname) + '님';
                 const headerProfileImage = document.getElementById("headerProfileImage");
                 if (headerProfileImage) {
+                    headerProfileImage.dataset.fallbackApplied = "false";
                     if (data.profileImageUrl) {
                         headerProfileImage.src = data.profileImageUrl;
                     } else {

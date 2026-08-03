@@ -61,8 +61,6 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         // 이메일로 기존 회원 조회 (소셜 연동)
         Member member = memberRepository.findByEmail(email).orElse(null);
         if (member == null) {
-            String loginId = registrationId + "_" + providerId;
-            
             String nickname;
             Random random = new Random();
             int attempts = 0;
@@ -82,8 +80,8 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
             } while (memberRepository.existsByNickname(nickname));
 
             member = Member.builder()
-                    .loginId(loginId)
-                    .password("") // 소셜 로그인은 비밀번호 없음
+                    .loginId(null) // 소셜 로그인은 아이디 없음
+                    .password(null) // 소셜 로그인은 비밀번호 없음
                     .email(email)
                     .nickname(nickname)
                     .profileImageUrl(profileImageUrl)

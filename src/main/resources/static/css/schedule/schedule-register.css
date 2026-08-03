@@ -186,3 +186,15 @@
             background-color: #f1f5f9;
             cursor: not-allowed;
         }
+
+        /* iframe inner layout overrides */
+        html.in-iframe .header-nav,
+        html.in-iframe header { display: none !important; }
+        html.in-iframe body { background: transparent !important; padding: 0 !important; margin: 0 !important; min-height: auto !important; }
+        html.in-iframe .wrap { padding: 10px 20px 16px !important; margin: 0 auto !important; max-width: 100% !important; }
+        html.in-iframe .panel { border: none !important; box-shadow: none !important; margin: 0 !important; padding: 16px 20px !important; }
+
+        @keyframes slideDown {
+            from { top: -50px; opacity: 0; }
+            to { top: 16px; opacity: 1; }
+        }

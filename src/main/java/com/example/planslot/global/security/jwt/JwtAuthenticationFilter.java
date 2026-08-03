@@ -13,6 +13,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import jakarta.servlet.http.Cookie;
 
 @Component
 @RequiredArgsConstructor
@@ -37,7 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String newToken = jwtTokenProvider.renewToken(token);
                 
                 // 쿠키 갱신
-                jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("jwtToken", newToken);
+                Cookie cookie = new Cookie("jwtToken", newToken);
                 cookie.setPath("/");
                 cookie.setHttpOnly(true);
                 cookie.setMaxAge(jwtTokenProvider.isKeepLogin(newToken) ? 30 * 24 * 60 * 60 : 60 * 60);
@@ -64,7 +65,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         // 쿠키에서 토큰 추출 추가 (웹 페이지 이동 시 권한 유지용)
         if (request.getCookies() != null) {
-            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+            for (Cookie cookie : request.getCookies()) {
                 if ("jwtToken".equals(cookie.getName())) {
                     return cookie.getValue();
                 }

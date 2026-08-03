@@ -53,7 +53,7 @@ public class GroupController {
 
     // 모임 상세 화면 반환
     @GetMapping("/read")
-    public String groupDetail(@org.springframework.web.bind.annotation.RequestParam(value = "id", required = false) Long id, Authentication authentication) {
+    public String groupDetail(@RequestParam(value = "id", required = false) Long id, Authentication authentication) {
         if (id == null) return "redirect:/group/list";
         try {
             Long memberId = getAuthenticatedMemberId(authentication);
@@ -68,7 +68,7 @@ public class GroupController {
 
     // AI 추천 화면 반환
     @GetMapping("/recommend")
-    public String groupRecommend(@org.springframework.web.bind.annotation.RequestParam(value = "id", required = false) Long id, Authentication authentication) {
+    public String groupRecommend(@RequestParam(value = "id", required = false) Long id, Authentication authentication) {
         if (id == null) return "redirect:/group/list";
         try {
             Long memberId = getAuthenticatedMemberId(authentication);

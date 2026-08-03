@@ -22,7 +22,13 @@ async function initializeBoardRegister() {
     return;
   }
 
-  const boardId = Number(new URLSearchParams(location.search).get('boardId')) || null;
+  const boardIdParam = new URLSearchParams(location.search).get('boardId');
+  const boardId = boardIdParam === null ? null : Number(boardIdParam);
+  if (boardIdParam !== null && (!Number.isInteger(boardId) || boardId <= 0)) {
+    redirectToBoardHome('게시글 주소가 올바르지 않습니다.');
+    return;
+  }
+
   const returnTo = getBoardReturnUrl(type);
   const form = document.getElementById('boardRegisterForm');
   const titleInput = document.getElementById('boardRegisterTitle');
@@ -55,7 +61,7 @@ async function loadBoardForEdit(boardId, expectedType) {
     const board = await fetchBoardJson(`/board/${boardId}?increaseView=false`);
 
     if (board.boardType !== expectedType) {
-      showRegisterAccessDenied('게시판 유형이 올바르지 않습니다.');
+      redirectToBoardHome('게시판 정보가 올바르지 않습니다.');
       return false;
     }
 
@@ -65,7 +71,7 @@ async function loadBoardForEdit(boardId, expectedType) {
     );
 
     if (!canEditBoard) {
-      showRegisterAccessDenied(expectedType === 'NOTICE' ? '공지사항은 작성자 또는 관리자만 수정할 수 있습니다.' : '게시글 작성자만 수정할 수 있습니다.');
+      redirectToBoardHome(expectedType === 'NOTICE' ? '공지사항은 작성자 또는 관리자만 수정할 수 있습니다.' : '본인이 작성한 게시글만 수정할 수 있습니다.');
       return false;
     }
 
@@ -80,6 +86,11 @@ async function loadBoardForEdit(boardId, expectedType) {
       showRegisterImagePreview(board.boardImage.fileUrl);
     }
   } catch (error) {
+    if (error.status === 404 || error.status === 410) {
+      redirectToBoardHome(error.message);
+      return false;
+    }
+
     showRegisterAccessDenied(error.message);
     return false;
   }

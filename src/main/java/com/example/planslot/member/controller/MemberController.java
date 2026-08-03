@@ -6,6 +6,7 @@ import com.example.planslot.member.entity.Member;
 import com.example.planslot.member.servcie.MemberService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,7 +45,7 @@ public class MemberController {
     }
 
     @PutMapping("/me")
-    public ResponseEntity<?> updateMyPage(Authentication authentication, @jakarta.validation.Valid @RequestBody MemberRequestDTO.UpdateInfo request) {
+    public ResponseEntity<?> updateMyPage(Authentication authentication, @Valid @RequestBody MemberRequestDTO.UpdateInfo request) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }

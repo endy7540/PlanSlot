@@ -911,6 +911,25 @@ const HOLIDAYS = {
         });
         const uniqueDayEvents = Array.from(uniqueDayEventsMap.values());
 
+        // 캘린더 화면과 100% 동일한 정렬 규칙 적용 (기간 긴 일정 -> 시작일 빠른 일정 -> 제목 순)
+        uniqueDayEvents.sort((a, b) => {
+            const aStart = getDateOnly(a.startDate);
+            const aEnd = a.endDate ? getDateOnly(a.endDate) : aStart;
+            const bStart = getDateOnly(b.startDate);
+            const bEnd = b.endDate ? getDateOnly(b.endDate) : bStart;
+
+            const aDuration = (new Date(aEnd) - new Date(aStart));
+            const bDuration = (new Date(bEnd) - new Date(bStart));
+
+            if (aDuration !== bDuration) {
+                return bDuration - aDuration;
+            }
+            if (aStart !== bStart) {
+                return aStart.localeCompare(bStart);
+            }
+            return (a.title || '').localeCompare(b.title || '');
+        });
+
         list.innerHTML = uniqueDayEvents.map(s => {
             const matches = currentSearchQuery && s.title.toLowerCase().includes(currentSearchQuery.toLowerCase());
             const searchClass = currentSearchQuery 
@@ -1912,115 +1931,63 @@ const HOLIDAYS = {
 
             const btnGroup = document.getElementById('deleteModalBtnGroup');
 
-            // 연속/반복 일정이든 일반 일정이든 가로 2버튼 모달창으로 무조건 통일하여 노출시킵니다!
-            document.querySelector('#deleteConfirmModal h3').textContent = '일정 삭제 확인';
-            document.getElementById('deleteConfirmModalMsg').innerHTML = 
-                `⚠️ 정말로 '${escapeHtml(title)}' 일정을 삭제하시겠습니까?`;
-            
-            btnGroup.style.flexDirection = 'row';
-            btnGroup.innerHTML = `
-                <button class="ghost" onclick="closeDeleteConfirmModal()" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer;">
-                    취소
-                </button>
-                <button id="deleteAllBtn" class="primary" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer;">
-                    🗑️ 일정 삭제 확정
-                </button>
-            `;
+            if (isMultiDay || isRecurrent) {
+                // 기간 또는 반복 일정일 때: 3버튼 분기 제공
+                document.querySelector('#deleteConfirmModal h3').textContent = '기간/반복 일정 삭제 선택';
+                document.getElementById('deleteConfirmModalMsg').innerHTML = 
+                    `⚠️ <b>'${escapeHtml(title)}'</b> 일정은 기간 또는 반복 일정입니다.<br>` +
+                    `이 날짜(<b>${targetDate}</b>)의 일정만 삭제하시겠습니까, 아니면 전체 일정을 삭제하시겠습니까?`;
 
-            document.getElementById('deleteAllBtn').onclick = async () => {
-                closeDeleteConfirmModal();
+                btnGroup.style.flexDirection = 'column';
+                btnGroup.style.gap = '8px';
+                btnGroup.innerHTML = `
+                    <button id="deleteDayBtn" class="primary" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #0284C7; color: white; font-weight: bold; cursor: pointer; width: 100%;">
+                        📅 이 날짜만 삭제
+                    </button>
+                    <button id="deleteAllBtn" class="primary" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer; width: 100%;">
+                        🗑️ 전체 일정 삭제
+                    </button>
+                    <button class="ghost" onclick="closeDeleteConfirmModal()" style="padding: 12px; font-size: 13.5px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer; width: 100%;">
+                        취소
+                    </button>
+                `;
 
-                if ((isMultiDay || isRecurrent) && targetDate) {
-                    // 연속/반복 일정이면 당일 쪼개기(단축) 삭감 API 실행
-                    showToast('일정 단축 처리 중...');
-                    try {
-                        if (isRecurrent) {
-                            const recurEndStr = s.recurrenceEndDate || null;
-                            if (targetDate === startDateStr) {
-                                const nextStart = getNextRecurrentDate(s.startDate, s.scheduleType);
-                                const nextStartStr = fmtLocalDateTime(nextStart);
-                                let nextEndStr = null;
-                                if (s.endDate) {
-                                    const origStart = new Date(s.startDate.replace(' ', 'T'));
-                                    const origEnd = new Date(s.endDate.replace(' ', 'T'));
-                                    const diff = origEnd.getTime() - origStart.getTime();
-                                    const nextEnd = new Date(nextStart.getTime() + diff);
-                                    nextEndStr = fmtLocalDateTime(nextEnd);
-                                }
-                                await updateScheduleDates(s, nextStartStr, nextEndStr, s.recurrenceEndDate);
-                            } else if (recurEndStr && targetDate === recurEndStr) {
-                                const prevEnd = getPrevRecurrentDate(recurEndStr, s.scheduleType);
-                                const prevEndStr = prevEnd.getFullYear() + '-' + String(prevEnd.getMonth()+1).padStart(2,'0') + '-' + String(prevEnd.getDate()).padStart(2,'0');
-                                await updateScheduleDates(s, s.startDate, s.endDate, prevEndStr);
-                            } else {
-                                const prevEnd = getPrevRecurrentDate(targetDate, s.scheduleType);
-                                const prevEndStr = prevEnd.getFullYear() + '-' + String(prevEnd.getMonth()+1).padStart(2,'0') + '-' + String(prevEnd.getDate()).padStart(2,'0');
-                                await updateScheduleDates(s, s.startDate, s.endDate, prevEndStr);
+                document.getElementById('deleteDayBtn').onclick = async () => {
+                    closeDeleteConfirmModal();
+                    await executeDeleteDay(s, targetDate, startDateStr, endDateStr, isMultiDay, isRecurrent);
+                };
 
-                                const nextStart = getNextRecurrentDate(targetDate, s.scheduleType);
-                                const nextStartStr = fmtLocalDateTime(nextStart);
-                                let nextEndStr = null;
-                                if (s.endDate) {
-                                    const origStart = new Date(s.startDate.replace(' ', 'T'));
-                                    const origEnd = new Date(s.endDate.replace(' ', 'T'));
-                                    const diff = origEnd.getTime() - origStart.getTime();
-                                    const nextEnd = new Date(nextStart.getTime() + diff);
-                                    nextEndStr = fmtLocalDateTime(nextEnd);
-                                }
-                                await createSplitSchedule(s, nextStartStr, nextEndStr, s.recurrenceEndDate);
-                            }
-                        } else if (isMultiDay) {
-                            const startD = new Date(startDateStr);
-                            const endD = new Date(endDateStr);
-                            if (targetDate === startDateStr) {
-                                startD.setDate(startD.getDate() + 1);
-                                const newStartStr = fmtLocalDateTime(startD);
-                                await updateScheduleDates(s, newStartStr, s.endDate, s.recurrenceEndDate);
-                            } else if (targetDate === endDateStr) {
-                                endD.setDate(endD.getDate() - 1);
-                                const newEndStr = fmtLocalDateTime(endD);
-                                await updateScheduleDates(s, s.startDate, newEndStr, s.recurrenceEndDate);
-                            } else {
-                                const frontEndD = new Date(targetDate);
-                                frontEndD.setDate(frontEndD.getDate() - 1);
-                                frontEndD.setHours(23, 59, 59, 0);
-                                const frontEndStr = fmtLocalDateTime(frontEndD);
-                                await updateScheduleDates(s, s.startDate, frontEndStr, s.recurrenceEndDate);
+                document.getElementById('deleteAllBtn').onclick = async () => {
+                    closeDeleteConfirmModal();
+                    await executeDeleteAll(scheduleId);
+                };
+            } else {
+                // 일반 단일 일정일 때: 2버튼 제공
+                document.querySelector('#deleteConfirmModal h3').textContent = '일정 삭제 확인';
+                document.getElementById('deleteConfirmModalMsg').innerHTML = 
+                    `⚠️ 정말로 '${escapeHtml(title)}' 일정을 삭제하시겠습니까?`;
+                
+                btnGroup.style.flexDirection = 'row';
+                btnGroup.style.gap = '8px';
+                btnGroup.innerHTML = `
+                    <button class="ghost" onclick="closeDeleteConfirmModal()" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 2px solid #E2E8F0; background: white; color: #475569; font-weight: bold; cursor: pointer;">
+                        취소
+                    </button>
+                    <button id="deleteAllBtn" class="primary" style="flex: 1; padding: 12px; font-size: 13.5px; border-radius: 10px; border: 0; background: #EF4444; color: white; font-weight: bold; cursor: pointer;">
+                        🗑️ 일정 삭제 확정
+                    </button>
+                `;
 
-                                const backStartD = new Date(targetDate);
-                                backStartD.setDate(backStartD.getDate() + 1);
-                                backStartD.setHours(0, 0, 0, 0);
-                                const backStartStr = fmtLocalDateTime(backStartD);
-                                await createSplitSchedule(s, backStartStr, s.endDate, s.recurrenceEndDate);
-                            }
-                        }
-                        showToast('일정이 성공적으로 단축 삭제되었습니다.');
-                        if (window.closeScheduleIframeModal) closeScheduleIframeModal();
-                        await loadMonthSchedules();
-                        if (selectedDateKey) renderSelectedDateEvents(selectedDateKey);
-                    } catch (err) {
-                        console.error(err);
-                        showToast('단축 삭제 중 오류 발생', true);
-                    }
-                } else {
-                    // 단일 일정이면 단순 DELETE API 실행
-                    showToast('일정을 삭제하는 중입니다...');
-                    const delRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, { method: 'DELETE', headers: authHeaders() });
-                    if (delRes.ok) {
-                        showToast('일정이 성공적으로 삭제되었습니다.');
-                        if (window.closeScheduleIframeModal) closeScheduleIframeModal();
-                        await loadMonthSchedules();
-                        if (selectedDateKey) renderSelectedDateEvents(selectedDateKey);
-                    } else {
-                        showToast('삭제 실패', true);
-                    }
-                }
-            };
+                document.getElementById('deleteAllBtn').onclick = async () => {
+                    closeDeleteConfirmModal();
+                    await executeDeleteAll(scheduleId);
+                };
+            }
 
             const modal = document.getElementById('deleteConfirmModal');
             modal.style.display = 'flex';
             modal.focus();
-            // 삭제 선택 창을 띄우기 전에, 뒤에 있던 조회/수정 모달창을 닫아 깔끔하게 처리합니다.
+            
             if (window.closeScheduleIframeModal) {
                 closeScheduleIframeModal();
             }
@@ -2041,6 +2008,97 @@ const HOLIDAYS = {
             showToast('삭제 조회 중 오류 발생', true);
         }
     };
+
+    async function executeDeleteDay(s, targetDate, startDateStr, endDateStr, isMultiDay, isRecurrent) {
+        showToast('일정 단축 처리 중...');
+        try {
+            if (isRecurrent) {
+                const recurEndStr = s.recurrenceEndDate || null;
+                if (targetDate === startDateStr) {
+                    const nextStart = getNextRecurrentDate(s.startDate, s.scheduleType);
+                    const nextStartStr = fmtLocalDateTime(nextStart);
+                    let nextEndStr = null;
+                    if (s.endDate) {
+                        const origStart = new Date(s.startDate.replace(' ', 'T'));
+                        const origEnd = new Date(s.endDate.replace(' ', 'T'));
+                        const diff = origEnd.getTime() - origStart.getTime();
+                        const nextEnd = new Date(nextStart.getTime() + diff);
+                        nextEndStr = fmtLocalDateTime(nextEnd);
+                    }
+                    await updateScheduleDates(s, nextStartStr, nextEndStr, s.recurrenceEndDate);
+                } else if (recurEndStr && targetDate === recurEndStr) {
+                    const prevEnd = getPrevRecurrentDate(recurEndStr, s.scheduleType);
+                    const prevEndStr = prevEnd.getFullYear() + '-' + String(prevEnd.getMonth()+1).padStart(2,'0') + '-' + String(prevEnd.getDate()).padStart(2,'0');
+                    await updateScheduleDates(s, s.startDate, s.endDate, prevEndStr);
+                } else {
+                    const prevEnd = getPrevRecurrentDate(targetDate, s.scheduleType);
+                    const prevEndStr = prevEnd.getFullYear() + '-' + String(prevEnd.getMonth()+1).padStart(2,'0') + '-' + String(prevEnd.getDate()).padStart(2,'0');
+                    await updateScheduleDates(s, s.startDate, s.endDate, prevEndStr);
+
+                    const nextStart = getNextRecurrentDate(targetDate, s.scheduleType);
+                    const nextStartStr = fmtLocalDateTime(nextStart);
+                    let nextEndStr = null;
+                    if (s.endDate) {
+                        const origStart = new Date(s.startDate.replace(' ', 'T'));
+                        const origEnd = new Date(s.endDate.replace(' ', 'T'));
+                        const diff = origEnd.getTime() - origStart.getTime();
+                        const nextEnd = new Date(nextStart.getTime() + diff);
+                        nextEndStr = fmtLocalDateTime(nextEnd);
+                    }
+                    await createSplitSchedule(s, nextStartStr, nextEndStr, s.recurrenceEndDate);
+                }
+            } else if (isMultiDay) {
+                const startD = new Date(startDateStr);
+                const endD = new Date(endDateStr);
+                if (targetDate === startDateStr) {
+                    startD.setDate(startD.getDate() + 1);
+                    const newStartStr = fmtLocalDateTime(startD);
+                    await updateScheduleDates(s, newStartStr, s.endDate, s.recurrenceEndDate);
+                } else if (targetDate === endDateStr) {
+                    endD.setDate(endD.getDate() - 1);
+                    const newEndStr = fmtLocalDateTime(endD);
+                    await updateScheduleDates(s, s.startDate, newEndStr, s.recurrenceEndDate);
+                } else {
+                    const frontEndD = new Date(targetDate);
+                    frontEndD.setDate(frontEndD.getDate() - 1);
+                    frontEndD.setHours(23, 59, 59, 0);
+                    const frontEndStr = fmtLocalDateTime(frontEndD);
+                    await updateScheduleDates(s, s.startDate, frontEndStr, s.recurrenceEndDate);
+
+                    const backStartD = new Date(targetDate);
+                    backStartD.setDate(backStartD.getDate() + 1);
+                    backStartD.setHours(0, 0, 0, 0);
+                    const backStartStr = fmtLocalDateTime(backStartD);
+                    await createSplitSchedule(s, backStartStr, s.endDate, s.recurrenceEndDate);
+                }
+            }
+            showToast('일정이 성공적으로 단축 삭제되었습니다.');
+            if (window.closeScheduleIframeModal) closeScheduleIframeModal();
+            await loadMonthSchedules();
+            if (selectedDateKey) renderSelectedDateEvents(selectedDateKey);
+        } catch (err) {
+            console.error(err);
+            showToast('단축 삭제 중 오류 발생', true);
+        }
+    }
+
+    async function executeDeleteAll(scheduleId) {
+        showToast('일정을 삭제하는 중입니다...');
+        try {
+            const delRes = await fetch(`${API_BASE}/schedule/${scheduleId}`, { method: 'DELETE', headers: authHeaders() });
+            if (delRes.ok) {
+                showToast('일정이 성공적으로 삭제되었습니다.');
+                if (window.closeScheduleIframeModal) closeScheduleIframeModal();
+                await loadMonthSchedules();
+                if (selectedDateKey) renderSelectedDateEvents(selectedDateKey);
+            } else {
+                showToast('삭제 실패', true);
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('삭제 중 오류 발생', true);
+        }
+    }
 
     // ESC 키 입력 시 모든 활성 모달 닫기
     function handleEscKey(event) {

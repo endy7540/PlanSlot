@@ -121,10 +121,12 @@ public class GroupMember {
         if (this.memberStatus == GroupMemberStatus.WAITING) {
             return this.nickname;
         }
-        if (this.nickname != null) {
-            int hashIndex = this.nickname.lastIndexOf('#');
-            if (hashIndex > 0 && hashIndex < this.nickname.length() - 1) {
-                String tagPart = this.nickname.substring(hashIndex + 1);
+        
+        String baseNickname = this.nickname;
+        if (baseNickname != null) {
+            int hashIndex = baseNickname.lastIndexOf('#');
+            if (hashIndex > 0 && hashIndex < baseNickname.length() - 1) {
+                String tagPart = baseNickname.substring(hashIndex + 1);
                 boolean isNumeric = true;
                 for (int i = 0; i < tagPart.length(); i++) {
                     if (!Character.isDigit(tagPart.charAt(i))) {
@@ -133,10 +135,16 @@ public class GroupMember {
                     }
                 }
                 if (isNumeric) {
-                    return this.nickname.substring(0, hashIndex);
+                    baseNickname = baseNickname.substring(0, hashIndex);
                 }
             }
         }
-        return this.nickname;
+        
+        String originalNickname = this.member != null ? this.member.getDisplayName() : null;
+        if (originalNickname != null && baseNickname != null && !baseNickname.equals(originalNickname)) {
+            return baseNickname + " (" + originalNickname + ")";
+        }
+        
+        return baseNickname;
     }
 }

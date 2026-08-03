@@ -208,10 +208,10 @@ public class GroupChatController {
         // 메시지 타입에 따른 처리 (입장 메시지 등)
         if (ChatMessageDTO.MessageType.ENTER.equals(message.getType())) {
             message.setContent(message.getSenderName() + "님이 입장하셨습니다.");
-        } else {
-            // DB 저장
-            message = groupChatService.saveMessage(message);
         }
+        
+        // DB 저장
+        message = groupChatService.saveMessage(message);
         
         // /sub/chat/room/{groupId} 구독자들에게 메시지 뿌리기
         messagingTemplate.convertAndSend("/sub/chat/room/" + message.getGroupId(), message);

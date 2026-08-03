@@ -399,7 +399,19 @@ function renderMembers(){
     
     // 로컬 별칭(내 화면에서만 변경한 타인 별명) 불러오기
     const localAlias = localStorage.getItem(`alias_${group.id}_${m.id}`);
-    const displayNick = (!isMe && localAlias) ? localAlias : m.name;
+    let displayNick = m.name;
+    if (!isMe && localAlias) {
+        let origNick = m.name;
+        const match = m.name.match(/\(([^)]+)\)$/);
+        if (match) {
+            origNick = match[1];
+        }
+        if (localAlias !== origNick) {
+            displayNick = `${localAlias} (${origNick})`;
+        } else {
+            displayNick = localAlias;
+        }
+    }
 
     if (isMe) {
       row.style.borderBottom = 'none';

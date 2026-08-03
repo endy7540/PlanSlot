@@ -11,6 +11,15 @@
 
 <div th:replace="~{global/header :: headerFragment}"></div>
 
+<!-- 모바일 어드민 메뉴 버튼 -->
+<button type="button" class="admin-menu-toggle" id="adminMenuToggle" aria-label="관리자 메뉴 열기" aria-controls="adminSidebar" aria-expanded="false" style="display:none;">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+        <path d="M8 4v16"></path>
+    </svg>
+</button>
+<div class="admin-sidebar-overlay" id="adminSidebarOverlay" aria-hidden="true"></div>
+
 <div class="admin-layout">
     <div th:replace="~{admin/admin_sidebar :: adminSidebar('reports')}"></div>
 
@@ -41,7 +50,7 @@
                 총 접수 건 <strong style="color:#0ea5e9;" id="totalReportCountSpan" th:text="${reports.size()}">0</strong>건
             </div>
 
-            <div style="overflow-x: auto; width: 100%;">
+            <div class="table-responsive">
                 <table class="admin-table" id="reportTable">
                 <thead>
                     <tr>

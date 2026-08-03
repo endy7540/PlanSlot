@@ -381,6 +381,9 @@ const API_BASE = "http://localhost:8080";
         } catch (error) {
             showFieldMsg('loginPwMsg', '서버 통신에 실패했습니다.');
             document.getElementById('loginPw').value = '';
+        } finally {
+            btn.disabled = false;
+            btn.innerText = originalText;
         }
     }
 
@@ -530,11 +533,15 @@ const API_BASE = "http://localhost:8080";
         const email = document.getElementById('findIdEmail').value.trim();
         const authCode = document.getElementById('findIdAuthCode').value.trim();
         const msg = 'findIdAuthCodeMsg';
+        const btn = document.getElementById('findIdBtn');
+        const originalText = btn ? btn.innerText : '';
         
         if(!authCode) {
             showFieldMsg(msg, '인증번호를 입력해주세요.', false);
             return;
         }
+        
+        if(btn) { btn.disabled = true; btn.innerText = '처리중...'; }
         
         try {
             const res = await fetch('/auth/find-id', {
@@ -565,6 +572,8 @@ const API_BASE = "http://localhost:8080";
         const email = document.getElementById('findPwEmail').value.trim();
         const authCode = document.getElementById('findPwAuthCode').value.trim();
         const msg = 'findPwAuthCodeMsg';
+        const btn = document.getElementById('findPwBtn');
+        const originalText = btn ? btn.innerText : '';
         
         if(!loginId) {
             showFieldMsg(msg, '아이디를 입력해주세요.', false);
@@ -574,6 +583,8 @@ const API_BASE = "http://localhost:8080";
             showFieldMsg(msg, '인증번호를 입력해주세요.', false);
             return;
         }
+        
+        if(btn) { btn.disabled = true; btn.innerText = '처리중...'; }
         
         try {
             const res = await fetch('/auth/find-pw', {

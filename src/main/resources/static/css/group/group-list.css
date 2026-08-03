@@ -450,3 +450,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .cropper-face {
     border-radius: 28%; 
   }
+
+/* ===================================================================
+   모바일 반응형 (내 모임 목록)
+   =================================================================== */
+@media (max-width: 640px) {
+  .app { padding: 16px 14px 40px; }
+  .page-head { padding: 20px 18px; align-items: flex-start; }
+  .page-head h1 { font-size: 21px; }
+  .page-head p { font-size: 12.5px; }
+  .head-actions { width: 100%; }
+  .head-actions .btn { flex: 1; }
+
+  .list-grid { grid-template-columns: 1fr; gap: 12px; }
+
+  .modal-box { padding: 20px; }
+}

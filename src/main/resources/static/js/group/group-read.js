@@ -1547,12 +1547,12 @@ function showDayDetail(dateStr, forceOpen = false) {
 
     let displayTime = s.time || '';
     if (s.endDate) {
-      const endObj = new Date(s.endDate);
-      const eHours = String(endObj.getHours()).padStart(2, '0');
-      const eMins = String(endObj.getMinutes()).padStart(2, '0');
-      const eTimeStr = `${eHours}:${eMins}`;
-      if (eTimeStr !== '00:00' && eTimeStr !== displayTime) {
-        displayTime = `${displayTime} ~ ${eTimeStr}`;
+      let timePart = s.endDate.includes('T') ? s.endDate.split('T')[1] : s.endDate.split(' ')[1];
+      if (timePart) {
+        const eTimeStr = timePart.substring(0, 5);
+        if (eTimeStr !== '00:00' && eTimeStr !== displayTime) {
+          displayTime = `${displayTime} ~ ${eTimeStr}`;
+        }
       }
     }
 

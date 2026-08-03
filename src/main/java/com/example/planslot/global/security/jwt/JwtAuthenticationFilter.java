@@ -27,14 +27,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (token != null && jwtTokenProvider.validateToken(token)) {
             String email = jwtTokenProvider.getEmailFromToken(token);
-            String role = jwtTokenProvider.getRoleFromToken(token);
-            
-            java.util.List<org.springframework.security.core.GrantedAuthority> authorities = 
-                (role != null) ? java.util.Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + role))
-                               : java.util.Collections.emptyList();
 
             UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(email, null, authorities);
+                    new UsernamePasswordAuthenticationToken(email, null, java.util.Collections.emptyList());
             SecurityContextHolder.getContext().setAuthentication(authentication);
             
             // 토큰 수명이 절반 이하로 남았으면 자동 갱신 (Sliding Session)

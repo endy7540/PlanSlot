@@ -10,7 +10,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.nio.file.Paths;
 
 @Configuration
+@lombok.RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
+
+    private final com.example.planslot.admin.interceptor.AdminInterceptor adminInterceptor;
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
@@ -29,5 +32,8 @@ public class WebConfig implements WebMvcConfigurer {
                 return true;
             }
         }).addPathPatterns("/schedule", "/schedule/**");
+        
+        registry.addInterceptor(adminInterceptor)
+                .addPathPatterns("/admin", "/admin/**", "/api/admin/**");
     }
 }

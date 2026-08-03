@@ -84,7 +84,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/schedule", "/schedule/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/chatbot/message").permitAll()
                         .requestMatchers("/api/chatbot/**").authenticated()
-                        .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

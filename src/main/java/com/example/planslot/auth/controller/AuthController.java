@@ -78,4 +78,15 @@ public class AuthController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @org.springframework.web.bind.annotation.GetMapping("/debug-role")
+    public ResponseEntity<?> debugRole(org.springframework.security.core.Authentication authentication) {
+        if (authentication == null) {
+            return ResponseEntity.ok("인증 정보 없음 (비로그인)");
+        }
+        return ResponseEntity.ok(java.util.Map.of(
+                "principal", authentication.getName(),
+                "authorities", authentication.getAuthorities().toString()
+        ));
+    }
 }

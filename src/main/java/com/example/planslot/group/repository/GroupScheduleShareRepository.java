@@ -6,12 +6,14 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+import org.springframework.data.jpa.repository.EntityGraph;
+
 @Repository
 public interface GroupScheduleShareRepository extends JpaRepository<GroupScheduleShare, Long> {
-    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"schedule"})
+    @EntityGraph(attributePaths = {"schedule"})
     List<GroupScheduleShare> findByGroup_IdAndTargetMember_Id(Long groupId, Long targetMemberId);
     
-    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"schedule", "targetMember"})
+    @EntityGraph(attributePaths = {"schedule", "targetMember"})
     List<GroupScheduleShare> findByGroup_IdAndSharer_Id(Long groupId, Long sharerId);
     boolean existsByGroup_IdAndSchedule_ScheduleIdAndTargetMember_Id(Long groupId, Long scheduleId, Long targetMemberId);
     void deleteByGroup_IdAndSharer_Id(Long groupId, Long sharerId);

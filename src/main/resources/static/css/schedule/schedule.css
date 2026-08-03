@@ -75,6 +75,14 @@
             padding:24px;
             margin-bottom:18px;
         }
+        #selectedDateEventsPanel {
+            min-height: 140px;
+        }
+        #selectedDateEventsList {
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
 
         .primary,.ghost{
             border-radius:13px;
@@ -551,6 +559,12 @@
 .delete-confirm-panel .danger:hover {
     background: #DC2626;
 }
+.delete-confirm-panel button:focus,
+.delete-confirm-panel button:active,
+#deleteConfirmModal:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
 
 /* ===== 반응형 미디어 쿼리 (Responsive Web Design) ===== */
 @media (max-width: 1024px) {
@@ -674,6 +688,21 @@
         max-width: 90vw !important;
         border-radius: 20px !important;
         padding: 18px !important;
+    }
+    #selectedDateEventsPanel .panel-head {
+        flex-wrap: nowrap !important;
+        gap: 12px !important;
+    }
+    #selectedDateLabel {
+        font-size: 14px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    #selectedDateEventsPanel .btn-ghost {
+        font-size: 11px !important;
+        padding: 5px 10px !important;
+        flex-shrink: 0 !important;
     }
 }
 

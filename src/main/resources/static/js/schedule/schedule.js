@@ -631,6 +631,7 @@ const HOLIDAYS = {
         `;
         const modal = document.getElementById('deleteConfirmModal');
         modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
         modal.focus();
 
     }
@@ -776,6 +777,7 @@ const HOLIDAYS = {
 
     window.closeDeleteConfirmModal = function() {
         document.getElementById('deleteConfirmModal').style.display = 'none';
+        document.body.style.overflow = ''; // 부모창 스크롤바 복원
         
         // 삭제 모달이 닫힐 때 뒤의 조회/등록/수정 iframe 창이 띄워져 있다면 포커스를 복구하여 연속 ESC 작동 보장
         const iframeModal = document.getElementById('scheduleIframeContainer');
@@ -1842,6 +1844,7 @@ const HOLIDAYS = {
             container.style.height = '0px'; // 로드 전 숨기기
             iframe.src = url;
             modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // 부모창 스크롤바 숨기기
             
             modal.setAttribute('tabindex', '-1');
             modal.focus();
@@ -1888,6 +1891,7 @@ const HOLIDAYS = {
         if (modal && iframe) {
             iframe.src = '';
             modal.style.display = 'none';
+            document.body.style.overflow = ''; // 부모창 스크롤바 복원
             // 포커스를 즉시 부모 윈도우/바디로 가져와서 ESC 등 키 감지 상태 복원
             window.focus();
             document.body.focus();
@@ -1917,6 +1921,9 @@ const HOLIDAYS = {
     };
 
     window.deleteSingleSchedule = async function(scheduleId, title, targetDate) {
+        if (document.activeElement) {
+            document.activeElement.blur();
+        }
         try {
             const res = await fetch(`${API_BASE}/schedule/${scheduleId}`, { headers: authHeaders() });
             if (!res.ok) {
@@ -1986,6 +1993,7 @@ const HOLIDAYS = {
 
             const modal = document.getElementById('deleteConfirmModal');
             modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
             modal.focus();
             
             if (window.closeScheduleIframeModal) {
@@ -2100,8 +2108,19 @@ const HOLIDAYS = {
         }
     }
 
-    // ESC 키 입력 시 모든 활성 모달 닫기
-    function handleEscKey(event) {
+    // ESC 및 엔터 키 입력 제어 (삭제 확인 모달 등 오작동 차단)
+    function handleKeyEvent(event) {
+        // 엔터 키 (Enter) 오작동 방지
+        if (event.key === 'Enter' || event.keyCode === 13) {
+            const delModal = document.getElementById('deleteConfirmModal');
+            if (delModal && delModal.style.display === 'flex') {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+        }
+
+        // ESC 키 (Escape) 제어
         if (event.key === 'Escape' || event.key === 'Esc' || event.keyCode === 27) {
             // 1. 삭제 확인 모달 닫기 (최우선)
             const delModal = document.getElementById('deleteConfirmModal');
@@ -2130,8 +2149,8 @@ const HOLIDAYS = {
             }
         }
     }
-    window.addEventListener('keydown', handleEscKey, true);
-    window.addEventListener('keyup', handleEscKey, true);
+    window.addEventListener('keydown', handleKeyEvent, true);
+    window.addEventListener('keyup', handleKeyEvent, true);
 
     window.currentPersonalPaletteMode = null;
     function renderPersonalGuide() {

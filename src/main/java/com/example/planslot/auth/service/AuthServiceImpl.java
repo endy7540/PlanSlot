@@ -27,9 +27,13 @@ public class AuthServiceImpl implements AuthService{
     @Override
     @Transactional
     public String login(AuthRequestDTO.Login request) {
+        if (request.getLoginId() == null || request.getLoginId().trim().isEmpty()) {
+            throw new IllegalArgumentException("아이디를 입력해주세요.");
+        }
         Member member = memberRepository.findByLoginId(request.getLoginId())
                 .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호를 확인해주세요."));
-        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+        
+        if (member.getPassword() == null || !passwordEncoder.matches(request.getPassword(), member.getPassword())) {
             throw new IllegalArgumentException("아이디 또는 비밀번호를 확인해주세요.");
         }
 
@@ -52,15 +56,24 @@ public class AuthServiceImpl implements AuthService{
         emailService.verifyAuthCode(email, authCode);
         Member member = memberRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("가입된 이메일이 아닙니다."));
+        if (member.getLoginId() == null) {
+            throw new IllegalArgumentException("해당 이메일은 구글 소셜 로그인으로 가입된 계정입니다.");
+        }
         return member.getLoginId();
     }
 
     @Override
     @Transactional
     public void resetPassword(String loginId, String email, String authCode) {
+        if (loginId == null || loginId.trim().isEmpty()) {
+            throw new IllegalArgumentException("아이디를 입력해주세요.");
+        }
         emailService.verifyAuthCode(email, authCode);
         Member member = memberRepository.findByLoginId(loginId)
                 .orElseThrow(() -> new IllegalArgumentException("일치하는 회원 정보가 없습니다."));
+        if (member.getLoginId() == null || member.getPassword() == null) {
+            throw new IllegalArgumentException("소셜 로그인 계정은 비밀번호를 재설정할 수 없습니다.");
+        }
         if (!member.getEmail().equals(email)) {
             throw new IllegalArgumentException("일치하는 회원 정보가 없습니다.");
         }

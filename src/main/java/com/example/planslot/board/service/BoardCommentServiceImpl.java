@@ -184,7 +184,7 @@ public class BoardCommentServiceImpl implements BoardCommentService {
         BoardComment comment = findActiveComment(commentId);
         Member member = findMember(memberEmail);
 
-        validateWriter(comment, member);
+        validateDeletePermission(comment, member);
 
         comment.delete();
     }
@@ -311,10 +311,20 @@ public class BoardCommentServiceImpl implements BoardCommentService {
         }
     }
 
-    // 댓글 작성자 확인
+    // 댓글 수정 권한 확인
     private void validateWriter(BoardComment comment, Member member) {
         if (!Objects.equals(comment.getWriter().getId(), member.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 작성자만 수정하거나 삭제할 수 있습니다.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 작성자만 수정할 수 있습니다.");
+        }
+    }
+
+    // 댓글 및 대댓글 삭제 권한 확인
+    private void validateDeletePermission(BoardComment comment, Member member) {
+        boolean isWriter = Objects.equals(comment.getWriter().getId(), member.getId());
+        boolean isAdmin = member.getRole() == Member.Role.ADMIN;
+
+        if (!isWriter && !isAdmin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 작성자 또는 관리자만 삭제할 수 있습니다.");
         }
     }
 

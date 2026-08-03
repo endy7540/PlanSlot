@@ -147,7 +147,7 @@ window.addEventListener("DOMContentLoaded", function() {
                     sessionStorage.removeItem("planslotChatbotMessages");
                     document.cookie = "jwtToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                     alert("안전하게 로그아웃 되었습니다.");
-                    window.location.reload();
+                    window.location.href = "/planslot";
                 }
             });
         }

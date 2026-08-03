@@ -100,40 +100,40 @@
     </div>
 
     <!-- [공통 백그라운드 AI 분석 진행용 플로팅 위젯 (채팅 요약)] -->
-    <div id="chatAiFloatingWidget" style="display: none; position: relative; width: 340px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid rgba(226, 232, 240, 0.8); border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05); padding: 18px; font-family: inherit; transition: all 0.3s ease; pointer-events: auto;">
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-            <div id="chatAiWidgetIcon" style="font-size: 24px; animation: pulse 2s infinite;">✨</div>
-            <div style="flex: 1;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                    <span id="chatAiWidgetTitle" style="font-size: 14px; font-weight: 800; color: #1E293B;">AI 채팅 요약 분석 중</span>
-                    <button style="background: none; border: 0; font-size: 16px; color: #94A3B8; cursor: pointer; font-weight: bold; line-height: 1;" onclick="closeChatAiWidget()">×</button>
+    <div id="chatAiFloatingWidget" class="ai-floating-widget">
+        <div class="ai-floating-widget-inner">
+            <div id="chatAiWidgetIcon" class="ai-floating-widget-icon">✨</div>
+            <div class="ai-floating-widget-content">
+                <div class="ai-floating-widget-header">
+                    <span id="chatAiWidgetTitle" class="ai-floating-widget-title">AI 채팅 요약 분석 중</span>
+                    <button class="ai-floating-widget-close" onclick="closeChatAiWidget()">×</button>
                 </div>
-                <p id="chatAiWidgetDesc" style="color: #64748B; font-size: 12px; margin: 0 0 10px; line-height: 1.4;">대화 내용을 요약하고 일정을 찾는 중입니다...</p>
-                <div id="chatAiWidgetLoadingBar" style="width: 100%; height: 4px; background: #F1F5F9; border-radius: 2px; overflow: hidden; margin-bottom: 10px;">
-                    <div id="chatAiWidgetProgressBar" style="width: 15%; height: 100%; background: linear-gradient(90deg, #F59E0B, #EF4444); border-radius: 2px; transition: width 0.3s ease;"></div>
+                <p id="chatAiWidgetDesc" class="ai-floating-widget-desc">대화 내용을 요약하고 일정을 찾는 중입니다...</p>
+                <div id="chatAiWidgetLoadingBar" class="ai-floating-widget-loading-bar">
+                    <div id="chatAiWidgetProgressBar" class="ai-floating-widget-progress-bar ai-floating-widget-progress-chat"></div>
                 </div>
-                <div id="chatAiWidgetActionContainer" style="display: none; text-align: right;">
-                    <button id="chatAiWidgetActionBtn" style="box-sizing: border-box; padding: 6px 12px; font-size: 11px; border-radius: 6px; border: 0; background: linear-gradient(135deg, #F59E0B, #EF4444); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25); height: 28px; display: inline-flex; align-items: center; justify-content: center;" onclick="openChatAiWidgetResult()">📋 분석 결과 확인</button>
+                <div id="chatAiWidgetActionContainer" class="ai-floating-widget-action-container">
+                    <button id="chatAiWidgetActionBtn" class="ai-floating-widget-action-btn ai-floating-widget-action-chat" onclick="openChatAiWidgetResult()">📋 분석 결과 확인</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- [공통 백그라운드 AI 분석 진행용 플로팅 위젯 (모임 일정 추천)] -->
-    <div id="groupAiFloatingWidget" style="display: none; position: relative; width: 340px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border: 1px solid rgba(226, 232, 240, 0.8); border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05); padding: 18px; font-family: inherit; transition: all 0.3s ease; pointer-events: auto;">
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-            <div id="groupAiWidgetIcon" style="font-size: 24px; animation: pulse 2s infinite;">🗓️</div>
-            <div style="flex: 1;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                    <span id="groupAiWidgetTitle" style="font-size: 14px; font-weight: 800; color: #1E293B;">AI 시간 추천 분석 중</span>
-                    <button style="background: none; border: 0; font-size: 16px; color: #94A3B8; cursor: pointer; font-weight: bold; line-height: 1;" onclick="closeGroupAiWidget()">×</button>
+    <div id="groupAiFloatingWidget" class="ai-floating-widget">
+        <div class="ai-floating-widget-inner">
+            <div id="groupAiWidgetIcon" class="ai-floating-widget-icon">🗓️</div>
+            <div class="ai-floating-widget-content">
+                <div class="ai-floating-widget-header">
+                    <span id="groupAiWidgetTitle" class="ai-floating-widget-title">AI 시간 추천 분석 중</span>
+                    <button class="ai-floating-widget-close" onclick="closeGroupAiWidget()">×</button>
                 </div>
-                <p id="groupAiWidgetDesc" style="color: #64748B; font-size: 12px; margin: 0 0 10px; line-height: 1.4;">모임원들의 일정을 분석해서 추천 시간을 찾는 중입니다...</p>
-                <div id="groupAiWidgetLoadingBar" style="width: 100%; height: 4px; background: #F1F5F9; border-radius: 2px; overflow: hidden; margin-bottom: 10px;">
-                    <div id="groupAiWidgetProgressBar" style="width: 15%; height: 100%; background: linear-gradient(90deg, #0D9488, #38BDF8); border-radius: 2px; transition: width 0.3s ease;"></div>
+                <p id="groupAiWidgetDesc" class="ai-floating-widget-desc">모임원들의 일정을 분석해서 추천 시간을 찾는 중입니다...</p>
+                <div id="groupAiWidgetLoadingBar" class="ai-floating-widget-loading-bar">
+                    <div id="groupAiWidgetProgressBar" class="ai-floating-widget-progress-bar ai-floating-widget-progress-group"></div>
                 </div>
-                <div id="groupAiWidgetActionContainer" style="display: none; text-align: right;">
-                    <button id="groupAiWidgetActionBtn" style="box-sizing: border-box; padding: 6px 12px; font-size: 11px; border-radius: 6px; border: 0; background: linear-gradient(135deg, #0D9488, #38BDF8); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25); height: 28px; display: inline-flex; align-items: center; justify-content: center;" onclick="openGroupAiWidgetResult()">📋 분석 결과 확인</button>
+                <div id="groupAiWidgetActionContainer" class="ai-floating-widget-action-container">
+                    <button id="groupAiWidgetActionBtn" class="ai-floating-widget-action-btn ai-floating-widget-action-group" onclick="openGroupAiWidgetResult()">📋 분석 결과 확인</button>
                 </div>
             </div>
         </div>

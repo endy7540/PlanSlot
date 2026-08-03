@@ -909,8 +909,8 @@ const HOLIDAYS = {
             const borderColor = isPub ? baseColor : `color-mix(in srgb, ${baseColor} 50%, white)`;
 
             const visibilityBadge = isPub 
-                ? `<span style="font-size:10px; padding:3px 7px; background:${borderColor}; color:#1e293b; font-weight:800; border-radius:4px; margin-right:6px;">공개</span>`
-                : `<span style="font-size:10px; padding:3px 7px; background:${borderColor}; color:#1e293b; font-weight:800; border-radius:4px; margin-right:6px;">비공개</span>`;
+                ? `<span style="font-size:10px; display:inline-block; width:50px; text-align:center; padding:3px 0; background:${borderColor}; color:#1e293b; font-weight:800; border-radius:4px; margin-right:8px; flex-shrink:0;">공개</span>`
+                : `<span style="font-size:10px; display:inline-block; width:50px; text-align:center; padding:3px 0; background:${borderColor}; color:#1e293b; font-weight:800; border-radius:4px; margin-right:8px; flex-shrink:0;">비공개</span>`;
 
             return `
                 <div class="selected-event-item${searchClass}" style="cursor: pointer; border: 1px solid ${borderColor}; border-left: 5px solid ${borderColor}; background: #ffffff; border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;" onclick="openSchedule(${s.scheduleId}, '${dateKey}')">
@@ -1314,7 +1314,7 @@ const HOLIDAYS = {
 
     function setFile(file) {
         if (!file.type.startsWith('image/')) {
-            showToast('이미지 파일만 업로드할 수 있습니다.', true);
+            showToast('맞지 않는 형식입니다.', true);
             return;
         }
         aiSelectedFile = file;

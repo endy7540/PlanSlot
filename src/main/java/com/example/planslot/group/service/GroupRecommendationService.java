@@ -79,6 +79,8 @@ public class GroupRecommendationService {
         
         long daysBetween = ChronoUnit.DAYS.between(fromDate, toDate);
         
+        String groupName = groupMembers.isEmpty() ? "모임" : groupMembers.get(0).getGroup().getGroupName();
+        
         StringBuilder promptBuilder = new StringBuilder();
         promptBuilder.append("We need to find a common free time for our group meeting in the next ").append(daysBetween + 1).append(" days (").append(fromDate).append(" to ").append(toDate).append(").\n");
         promptBuilder.append("Here are the schedules of each member:\n");
@@ -154,7 +156,7 @@ public class GroupRecommendationService {
                     .append("    // For each member, \"row\" array length MUST match the number of days exactly (").append(daysBetween + 1).append(" elements)\n")
                     .append("  ],\n")
                     .append("  \"recs\": [\n");
-        promptBuilder.append("    { \"rank\": 1, \"label\": \"날짜 (요일) 시작시간-종료시간\", \"sub\": \"이유 및 겹치는 일정 안내\", \"tag\": \"전원 가능\", \"date\": \"YYYY-MM-DD (For multi-day, use YYYY-MM-DD~YYYY-MM-DD)\", \"time\": \"HH:mm\", \"title\": \"모임 일정: 오전 ?시 - 오후 ?시\" }\n");
+        promptBuilder.append("    { \"rank\": 1, \"label\": \"날짜 (요일) 시작시간-종료시간\", \"sub\": \"이유 및 겹치는 일정 안내\", \"tag\": \"전원 가능\", \"date\": \"YYYY-MM-DD (For multi-day, use YYYY-MM-DD~YYYY-MM-DD)\", \"time\": \"HH:mm\", \"title\": \"").append(groupName).append(" 일정: 오전 ?시 - 오후 ?시\" }\n");
         promptBuilder.append("  ]\n");
         promptBuilder.append("}\n");
         promptBuilder.append("The 'row' array in 'heat' should have exactly ").append(daysBetween + 1).append(" elements, representing ").append(fromDate).append(" to ").append(toDate).append(".\n");
@@ -170,7 +172,7 @@ public class GroupRecommendationService {
         promptBuilder.append(typeInstruction).append("\n");
 
         if (apiKey == null || apiKey.trim().isEmpty() || "your-api-key-here".equals(apiKey)) {
-            return generateMockResponse(memberNames);
+            return generateMockResponse(memberNames, groupName);
         }
 
         try {
@@ -239,7 +241,7 @@ public class GroupRecommendationService {
                         rNode.path("tag").asText(),
                         rNode.has("date") ? rNode.path("date").asText() : today.toString(),
                         rNode.has("time") ? rNode.path("time").asText() : "12:00",
-                        rNode.has("title") ? rNode.path("title").asText() : "모임 일정"
+                        rNode.has("title") ? rNode.path("title").asText() : (groupName + " 일정")
                 ));
             }
             
@@ -250,25 +252,25 @@ public class GroupRecommendationService {
                 }
             }
             if (recs.isEmpty() && memberNames.size() > 0) {
-                recs.add(new GroupDTO.RecInfo(1, "추천 시간이 없습니다", "모두 일정이 등록되지 않아 전체 일정이 비어있거나, 적당한 시간이 없습니다.", "전원 가능", today.toString(), "12:00", "모임 일정"));
+                recs.add(new GroupDTO.RecInfo(1, "추천 시간이 없습니다", "모두 일정이 등록되지 않아 전체 일정이 비어있거나, 적당한 시간이 없습니다.", "전원 가능", today.toString(), "12:00", groupName + " 일정"));
             }
             
             return new GroupDTO.AiResponse(heat, recs);
         } catch (Exception e) {
             System.err.println("[AI Recommendation] API 호출 실패: " + e.getMessage());
             // API 호출 실패 시 더미 데이터 반환
-            return generateMockResponse(memberNames);
+            return generateMockResponse(memberNames, groupName);
         }
     }
 
-    private GroupDTO.AiResponse generateMockResponse(List<String> memberNames) {
+    private GroupDTO.AiResponse generateMockResponse(List<String> memberNames, String groupName) {
         LocalDate today = LocalDate.now();
         List<GroupDTO.HeatInfo> heat = new ArrayList<>();
         for (String name : memberNames) {
             heat.add(new GroupDTO.HeatInfo(name, List.of("free", "free", "free", "free", "free", "free", "free")));
         }
         List<GroupDTO.RecInfo> recs = new ArrayList<>();
-        recs.add(new GroupDTO.RecInfo(1, "내일 오후 2시", "API 키가 올바르게 설정되지 않았거나 호출에 실패했습니다.", "임시 결과", today.plusDays(1).toString(), "14:00", "모임 일정: 오후 2시 - 오후 4시"));
+        recs.add(new GroupDTO.RecInfo(1, "내일 오후 2시", "API 키가 올바르게 설정되지 않았거나 호출에 실패했습니다.", "임시 결과", today.plusDays(1).toString(), "14:00", groupName + " 일정: 오후 2시 - 오후 4시"));
         return new GroupDTO.AiResponse(heat, recs);
     }
 

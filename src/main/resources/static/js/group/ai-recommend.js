@@ -171,13 +171,26 @@ const groupId = getQueryParam('id');
       exactFlatpickr.set("maxDate", maxD);
       exactFlatpickr.clear();
       
-      document.getElementById('exactRegStartTime').value = '';
-      document.getElementById('exactRegEndTime').value = '';
-      if (selectedRec.time) {
+      document.getElementById('exactRegStartTime').value = '09:00';
+      document.getElementById('exactRegEndTime').value = '10:00';
+      exactRegTimeState = { startH: '09', startM: '00', endH: '10', endM: '00' };
+      document.getElementById('exactRegTimeRange').value = '09:00 ~ 10:00';
+
+      if (selectedRec.time && selectedRec.time !== '종일') {
         const timeParts = selectedRec.time.split('-').map(s => s.trim());
         if (timeParts.length === 2) {
           document.getElementById('exactRegStartTime').value = timeParts[0];
           document.getElementById('exactRegEndTime').value = timeParts[1];
+          
+          const startSplit = timeParts[0].split(':');
+          const endSplit = timeParts[1].split(':');
+          if (startSplit.length === 2 && endSplit.length === 2) {
+              exactRegTimeState.startH = startSplit[0];
+              exactRegTimeState.startM = startSplit[1];
+              exactRegTimeState.endH = endSplit[0];
+              exactRegTimeState.endM = endSplit[1];
+              document.getElementById('exactRegTimeRange').value = `${exactRegTimeState.startH}:${exactRegTimeState.startM} ~ ${exactRegTimeState.endH}:${exactRegTimeState.endM}`;
+          }
         }
       }
 
@@ -245,19 +258,131 @@ const groupId = getQueryParam('id');
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: document.getElementById('exactRegTitle').value.trim(),
-            date: finalStartDate,
-            time: finalStartTime,
-            endDate: finalEndDate,
-            endTime: finalEndTime,
+            startDate: finalStartDate + 'T' + finalStartTime + ':00',
+            endDate: finalEndDate + 'T' + finalEndTime + ':00',
             scheduleType: document.getElementById('exactRegScheduleType').value,
             recurrenceEndDate: document.getElementById('exactRegRecurEndDate').value || null,
-            visibility: 'public'
+            isPublic: true
           })
         });
         if (!res.ok) throw new Error('Failed to register');
         document.getElementById('regModal').style.display = 'none';
+        
+        // 모달창에 달력 렌더링을 위해 스케줄을 가져온 뒤 그리기
+        const title = document.getElementById('exactRegTitle').value.trim();
+        const dateStr = finalStartDate;
+        const timeStr = isAllDay ? '하루종일' : `${finalStartTime} ~ ${finalEndTime}`;
+        const badge = `<span style="font-size:10px; padding:2px 6px; background:#bae6fd; color:#0369a1; border-radius:4px; margin-left:6px;">공개</span>`;
+            
+        const targetDate = new Date(finalStartDate);
+        const calYear = targetDate.getFullYear();
+        const calMonth = targetDate.getMonth();
+        const firstDay = new Date(calYear, calMonth, 1).getDay();
+        const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+        const prevMonthDays = new Date(calYear, calMonth, 0).getDate();
+
+        document.getElementById('previewScheduleDateTitle').textContent = `${calYear}년 ${calMonth+1}월`;
+        
+        let calHtml = `
+          <style>
+            @keyframes mini-blink { 0% {opacity:1; transform:scale(1);} 50% {opacity:0.4; transform:scale(0.95);} 100% {opacity:1; transform:scale(1);} }
+            .preview-cal { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:18px; box-shadow: 0 4px 12px rgba(7, 89, 133, 0.05); }
+            .preview-cal .weekday, .preview-cal .date { background:#fff; border-right:1px solid var(--border); border-bottom:1px solid var(--border); min-height:85px; padding:7px; }
+            .preview-cal .weekday { min-height:auto; text-align:center; font-weight:900; color:var(--muted); background:var(--surface); padding:8px 0; font-size:12px; }
+            .preview-cal .date b { display:inline-flex; width:22px; height:22px; align-items:center; justify-content:center; border-radius:50%; font-size:12.5px; }
+            .preview-cal .date.today b { background:var(--navy-deep); color:#fff; }
+            .preview-cal .date em { display:block; background:var(--surface-deep); color:var(--navy); border-left:3px solid var(--sky); padding:3px 6px; font-size:11px; font-style:normal; margin-top:5px; border-radius:4px; word-break:keep-all; line-height:1.3; white-space:normal; overflow: hidden; text-overflow: ellipsis; }
+            .preview-cal .date.other-month { background:#FAFAFA; opacity: 0.6; }
+            .preview-cal .date:nth-child(7n) { border-right: none; }
+            .preview-cal .blinking-event { animation: mini-blink 1.2s infinite ease-in-out !important; background: #0ea5e9 !important; color: #fff !important; border-left:3px solid #0284c7 !important; }
+          </style>
+          <div class="preview-cal">
+            <div class="weekday" style="color:var(--danger)">일</div><div class="weekday">월</div><div class="weekday">화</div>
+            <div class="weekday">수</div><div class="weekday">목</div><div class="weekday">금</div><div class="weekday" style="color:var(--sky)">토</div>
+        `;
+        
+        // Fetch group schedules for this month to display accurately
+        const startIso = new Date(calYear, calMonth, 1).toISOString();
+        const endIso = new Date(calYear, calMonth + 1, 0).toISOString();
+        
+        try {
+            const groupRes = await fetchApi(`/group/${groupId}/schedules?start=${startIso}&end=${endIso}`);
+            let groupSchedules = [];
+            if(groupRes.ok) {
+                groupSchedules = await groupRes.json();
+            }
+
+            const cells = [];
+            for(let i = 0; i < firstDay; i++) {
+                cells.push({ day: prevMonthDays - firstDay + i + 1, otherMonth: true, y: calMonth === 0 ? calYear - 1 : calYear, m: calMonth === 0 ? 11 : calMonth - 1 });
+            }
+            for(let d = 1; d <= daysInMonth; d++) {
+                cells.push({ day: d, otherMonth: false, y: calYear, m: calMonth });
+            }
+            const remainder = cells.length % 7;
+            if(remainder > 0) {
+                const targetM = calMonth === 11 ? 0 : calMonth + 1;
+                const targetY = calMonth === 11 ? calYear + 1 : calYear;
+                for(let i = 0; i < 7 - remainder; i++) {
+                cells.push({ day: i + 1, otherMonth: true, y: targetY, m: targetM });
+                }
+            }
+
+            const uniqueEventsMap = new Map();
+            groupSchedules.forEach(s => {
+                if (!s.startDate) return;
+                const startStr = s.startDate.slice(0, 10);
+                const key = `${s.title}|${s.time}|${startStr}`;
+                if (!uniqueEventsMap.has(key)) uniqueEventsMap.set(key, s);
+            });
+
+            cells.forEach(c => {
+                const isTarget = (!c.otherMonth && c.day === targetDate.getDate());
+                const isToday = (c.y === new Date().getFullYear() && c.m === new Date().getMonth() && c.day === new Date().getDate());
+                
+                let dateCls = "date";
+                if(c.otherMonth) dateCls += " other-month";
+                if(isToday) dateCls += " today";
+                if(isTarget) dateCls += " selected-day";
+                
+                let bgStyle = isTarget ? "background-color: #F0F9FF; border-color: #BAE6FD;" : "";
+                calHtml += `<div class="${dateCls}" style="${bgStyle}">`;
+                calHtml += `<b>${c.day}</b>`;
+                
+                const curDateStr = `${c.y}-${String(c.m+1).padStart(2,'0')}-${String(c.day).padStart(2,'0')}`;
+                
+                // Draw existing schedules
+                const dayEvents = Array.from(uniqueEventsMap.values()).filter(s => s.startDate && s.startDate.startsWith(curDateStr));
+                dayEvents.forEach(ev => {
+                    calHtml += `<em>${ev.title} (${ev.time || '종일'})</em>`;
+                });
+
+                // Draw the newly registered blinking schedule on target day
+                if(isTarget) {
+                    calHtml += `<em class="blinking-event">${title} (${isAllDay ? '종일' : finalStartTime})</em>`;
+                }
+
+                calHtml += `</div>`;
+            });
+            calHtml += `</div>`;
+
+            document.getElementById('previewScheduleList').innerHTML = calHtml + `
+            <div style="margin-top:12px; background:#fff; padding:12px 16px; border-radius:12px; border:1px solid #E2E8F0;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center;">
+                    <b style="font-size:14px; color:#1E293B;">${title}</b>
+                    ${badge}
+                </div>
+                <div style="font-size:13px; font-weight:600; color:#0284C7;">${timeStr}</div>
+                </div>
+            </div>
+            `;
+            document.getElementById('previewScheduleModal').style.display = 'flex';
+        } catch(e) {
+            console.error('Failed to fetch schedules for preview', e);
+            document.getElementById('previewScheduleModal').style.display = 'flex';
+        }
         showToast('추천 일정을 모임 일정에 등록했어요.');
-        setTimeout(() => location.href = linkToDetail(groupId), 1000);
       } catch(e) {
         console.error(e);
         alert('일정 등록에 실패했습니다.');
@@ -588,3 +713,86 @@ const groupId = getQueryParam('id');
       heatPagination.style.display = 'none';
     }
   }
+
+  // --- Time Range Dropdown Logic ---
+  let exactRegTimeState = { startH: '09', startM: '00', endH: '10', endM: '00' };
+
+  window.toggleExactTimeDropdown = function(show) {
+      const dropdown = document.getElementById('exactTimeRangeDropdown');
+      if (!dropdown) return;
+      if (show === undefined) {
+          dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+      } else {
+          dropdown.style.display = show ? 'block' : 'none';
+      }
+      if (dropdown.style.display === 'block') {
+          renderExactTimeOptions();
+      }
+  };
+
+  window.renderExactTimeOptions = function() {
+      const startList = document.getElementById('exactStartTimeList');
+      const endList = document.getElementById('exactEndTimeList');
+      if (!startList || !endList) return;
+
+      startList.innerHTML = '';
+      endList.innerHTML = '';
+
+      for (let h = 0; h < 24; h++) {
+          const hh = String(h).padStart(2, '0');
+          ["00", "15", "30", "45"].forEach(mm => {
+              const timeStr = hh + ':' + mm;
+
+              const startItem = document.createElement('div');
+              startItem.className = 'time-select-item' + (exactRegTimeState.startH === hh && exactRegTimeState.startM === mm ? ' active' : '');
+              startItem.textContent = timeStr;
+              startItem.onclick = () => selectExactTimeVal('start', hh, mm);
+              startList.appendChild(startItem);
+
+              const endItem = document.createElement('div');
+              endItem.className = 'time-select-item' + (exactRegTimeState.endH === hh && exactRegTimeState.endM === mm ? ' active' : '');
+              endItem.textContent = timeStr;
+              endItem.onclick = () => selectExactTimeVal('end', hh, mm);
+              endList.appendChild(endItem);
+          });
+      }
+  };
+
+  window.selectExactTimeVal = function(type, hh, mm) {
+      let nextStartH = exactRegTimeState.startH, nextStartM = exactRegTimeState.startM;
+      let nextEndH = exactRegTimeState.endH, nextEndM = exactRegTimeState.endM;
+
+      if (type === 'start') {
+          nextStartH = hh; nextStartM = mm;
+      } else {
+          nextEndH = hh; nextEndM = mm;
+      }
+
+      const startTotalMin = parseInt(nextStartH, 10) * 60 + parseInt(nextStartM, 10);
+      const endTotalMin = parseInt(nextEndH, 10) * 60 + parseInt(nextEndM, 10);
+
+      if (endTotalMin < startTotalMin) {
+          alert('종료 시간은 시작 시간보다 빠를 수 없습니다.');
+          return;
+      }
+
+      exactRegTimeState.startH = nextStartH; exactRegTimeState.startM = nextStartM;
+      exactRegTimeState.endH = nextEndH; exactRegTimeState.endM = nextEndM;
+
+      renderExactTimeOptions();
+      document.getElementById('exactRegTimeRange').value = nextStartH + ':' + nextStartM + ' ~ ' + nextEndH + ':' + nextEndM;
+      document.getElementById('exactRegStartTime').value = nextStartH + ':' + nextStartM;
+      document.getElementById('exactRegEndTime').value = nextEndH + ':' + nextEndM;
+  };
+
+  window.confirmExactTimeRange = function() {
+      toggleExactTimeDropdown(false);
+  };
+
+  document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('exactTimeRangeDropdown');
+      const input = document.getElementById('exactRegTimeRange');
+      if (dropdown && input && !dropdown.contains(e.target) && e.target !== input && !e.target.classList.contains('time-select-item')) {
+          dropdown.style.display = 'none';
+      }
+  });

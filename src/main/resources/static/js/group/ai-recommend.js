@@ -249,27 +249,24 @@ const groupId = getQueryParam('id');
       const finalEndDate = dates[1] ? flatpickr.formatDate(dates[1], "Y-m-d") : finalStartDate;
       const finalEndTime = endTimeVal;
 
+      window.pendingAiScheduleToRegister = {
+        title: document.getElementById('exactRegTitle').value.trim(),
+        startDate: finalStartDate + 'T' + finalStartTime + ':00',
+        endDate: finalEndDate + 'T' + finalEndTime + ':00',
+        scheduleType: document.getElementById('exactRegScheduleType').value,
+        recurrenceEndDate: document.getElementById('exactRegRecurEndDate').value || null,
+        isPublic: true
+      };
+
       try {
         const confirmBtn = document.getElementById('btnConfirmReg');
         confirmBtn.disabled = true;
-        confirmBtn.textContent = '등록 중...';
-        const res = await fetchApi(`/group/${groupId}/schedules`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: document.getElementById('exactRegTitle').value.trim(),
-            startDate: finalStartDate + 'T' + finalStartTime + ':00',
-            endDate: finalEndDate + 'T' + finalEndTime + ':00',
-            scheduleType: document.getElementById('exactRegScheduleType').value,
-            recurrenceEndDate: document.getElementById('exactRegRecurEndDate').value || null,
-            isPublic: true
-          })
-        });
-        if (!res.ok) throw new Error('Failed to register');
+        confirmBtn.textContent = '미리보기 생성 중...';
+        
         document.getElementById('regModal').style.display = 'none';
         
         // 모달창에 달력 렌더링을 위해 스케줄을 가져온 뒤 그리기
-        const title = document.getElementById('exactRegTitle').value.trim();
+        const title = window.pendingAiScheduleToRegister.title;
         const dateStr = finalStartDate;
         const timeStr = isAllDay ? '하루종일' : `${finalStartTime} ~ ${finalEndTime}`;
         const badge = `<span style="font-size:10px; padding:2px 6px; background:#bae6fd; color:#0369a1; border-radius:4px; margin-left:6px;">공개</span>`;
@@ -382,13 +379,42 @@ const groupId = getQueryParam('id');
             console.error('Failed to fetch schedules for preview', e);
             document.getElementById('previewScheduleModal').style.display = 'flex';
         }
-        showToast('추천 일정을 모임 일정에 등록했어요.');
       } catch(e) {
         console.error(e);
-        alert('일정 등록에 실패했습니다.');
+        alert('미리보기 생성에 실패했습니다.');
+      } finally {
         const confirmBtn = document.getElementById('btnConfirmReg');
         confirmBtn.disabled = false;
-        confirmBtn.textContent = '확인 및 등록';
+        confirmBtn.textContent = '미리보기';
+      }
+    });
+
+    document.getElementById('btnFinalRegister')?.addEventListener('click', async () => {
+      if (!window.pendingAiScheduleToRegister) return;
+      try {
+          const btnFinal = document.getElementById('btnFinalRegister');
+          btnFinal.disabled = true;
+          btnFinal.textContent = '등록 중...';
+          
+          const res = await fetchApi(`/group/${groupId}/schedules`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(window.pendingAiScheduleToRegister)
+          });
+          if (!res.ok) throw new Error('Failed to register');
+          
+          document.getElementById('previewScheduleModal').style.display = 'none';
+          showToast('추천 일정을 모임 일정에 등록했어요.');
+          
+          setTimeout(() => {
+              location.href = '/group/read?id=' + encodeURIComponent(new URLSearchParams(window.location.search).get('id'));
+          }, 1000);
+      } catch (e) {
+          console.error(e);
+          alert('일정 등록에 실패했습니다.');
+          const btnFinal = document.getElementById('btnFinalRegister');
+          btnFinal.disabled = false;
+          btnFinal.textContent = '일정 추가하기';
       }
     });
 

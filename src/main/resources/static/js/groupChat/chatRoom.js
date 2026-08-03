@@ -128,8 +128,8 @@ if (!localStorage.getItem('jwtToken')) {
           <div class="message mine msg-item" id="msg-${msg.id}" data-date="${dateStr}">
             <div class="message-inner">
               <div class="msg-actions" ${isDeleted ? 'style="display:none;"' : ''}>
-                <button class="msg-action-btn" onclick="startEditMessage(${msg.id})">수정</button>
-                <button class="msg-action-btn danger" onclick="deleteMessage(${msg.id})">삭제</button>
+                <button class="msg-action-btn" data-action="edit" data-id="${msg.id}">수정</button>
+                <button class="msg-action-btn danger" data-action="delete" data-id="${msg.id}">삭제</button>
               </div>
               <div class="${bubbleClass}" id="msgContent-${msg.id}">${contentSafe}</div>
               <div class="time" id="msgTime-${msg.id}">
@@ -157,7 +157,7 @@ if (!localStorage.getItem('jwtToken')) {
               <div class="msg-actions" ${isDeleted ? 'style="display:none;"' : ''}>
                 ${msg.id && !isDeleted ? (reportedMessageIds.has(msg.id)
                   ? `<button id="reportBtn-${msg.id}" class="msg-action-btn" style="cursor:not-allowed; color:#94a3b8;" disabled>신고됨</button>`
-                  : `<button id="reportBtn-${msg.id}" onclick="openReportModal(${msg.id})" class="msg-action-btn danger">신고</button>`) : ''}
+                  : `<button id="reportBtn-${msg.id}" data-action="report" data-id="${msg.id}" class="msg-action-btn danger">신고</button>`) : ''}
               </div>
             </div>
           </div>
@@ -169,6 +169,24 @@ if (!localStorage.getItem('jwtToken')) {
     applyAliases();
     scrollToBottom();
   }
+
+  // 메시지 액션 이벤트 위임
+  chatMessages.addEventListener('click', (e) => {
+    const btn = e.target.closest('.msg-action-btn');
+    if (!btn) return;
+    const action = btn.getAttribute('data-action');
+    const msgIdStr = btn.getAttribute('data-id');
+    if (!msgIdStr) return;
+    const msgId = parseInt(msgIdStr, 10);
+
+    if (action === 'edit') {
+      startEditMessage(msgId);
+    } else if (action === 'delete') {
+      deleteMessage(msgId);
+    } else if (action === 'report') {
+      openReportModal(msgId);
+    }
+  });
 
   function renderDateDividers() {
     const messages = document.querySelectorAll('.msg-item');
@@ -318,8 +336,8 @@ if (!localStorage.getItem('jwtToken')) {
     currentReportMessageId = msgId;
     document.getElementById('reportReason').value = '';
     document.getElementById('reportDetail').value = '';
-    document.getElementById('reportModal').style.display = 'flex';
-  }
+    document.getElementById('reportModal').classList.add('open');
+  };
 
   // 메시지 수정 및 삭제 로직
   function startEditMessage(msgId) {
@@ -851,8 +869,16 @@ if (!localStorage.getItem('jwtToken')) {
   };
 
   document.getElementById('reportCancel').addEventListener('click', function() {
-    document.getElementById('reportModal').style.display = 'none';
+    document.getElementById('reportModal').classList.remove('open');
     currentReportMessageId = null;
+  });
+
+  const reportModal = document.getElementById('reportModal');
+  reportModal.addEventListener('click', function(event) {
+    if (event.target === reportModal) {
+      reportModal.classList.remove('open');
+      currentReportMessageId = null;
+    }
   });
 
   document.getElementById('reportConfirm').addEventListener('click', function() {
@@ -884,7 +910,7 @@ if (!localStorage.getItem('jwtToken')) {
       }).then(async res => {
         if (res.ok) {
           alert("신고가 접수되었습니다.");
-          document.getElementById('reportModal').style.display = 'none';
+          document.getElementById('reportModal').classList.remove('open');
           reportedMessageIds.add(currentReportMessageId);
           const btn = document.getElementById('reportBtn-' + currentReportMessageId);
           if (btn) {

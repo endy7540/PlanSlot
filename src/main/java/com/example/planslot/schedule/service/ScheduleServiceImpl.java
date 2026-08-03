@@ -54,6 +54,10 @@ public class ScheduleServiceImpl implements ScheduleService {
             if (requestDTO.getEndDate().isBefore(requestDTO.getStartDate())) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "종료 날짜는 시작 날짜보다 빠를 수 없습니다.");
             }
+            List<Schedule> duplicates = scheduleRepository.findDuplicateSchedule(memberId, requestDTO.getTitle(), requestDTO.getStartDate(), requestDTO.getEndDate());
+            if (!duplicates.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 등록된 일정이 있습니다.");
+            }
         }
 
         Schedule schedule = Schedule.builder()
@@ -113,6 +117,11 @@ public class ScheduleServiceImpl implements ScheduleService {
         if (requestDTO.getStartDate() != null && requestDTO.getEndDate() != null) {
             if (requestDTO.getEndDate().isBefore(requestDTO.getStartDate())) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "종료 날짜는 시작 날짜보다 빠를 수 없습니다.");
+            }
+            List<Schedule> duplicates = scheduleRepository.findDuplicateSchedule(memberId, requestDTO.getTitle(), requestDTO.getStartDate(), requestDTO.getEndDate());
+            boolean hasDuplicate = duplicates.stream().anyMatch(s -> !s.getScheduleId().equals(scheduleId));
+            if (hasDuplicate) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 등록된 일정이 있습니다.");
             }
         }
 

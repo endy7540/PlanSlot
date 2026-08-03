@@ -420,13 +420,21 @@ const HOLIDAYS = {
             scheduledSlots[dk] = [null, null, null]; // 기본 3개 슬롯
         });
 
-        // 2. 현재 달력 영역에 나타나는 고유 일정들 수집
+        // 2. 현재 달력 영역에 나타나는 고유 일정들 수집 (동일 내용 중복 방지)
         const uniqueEventsMap = new Map();
         dateKeys.forEach(dk => {
             const evs = schedulesByDate[dk] || [];
             evs.forEach(e => {
                 const startStr = getDateOnly(e.startDate);
-                uniqueEventsMap.set(e.scheduleId + "_" + startStr, e);
+                const endStr = e.endDate ? getDateOnly(e.endDate) : startStr;
+                const timeStr = e.time || '';
+                const descStr = e.description || '';
+                const titleStr = e.title || '';
+                
+                const key = `${titleStr}|${timeStr}|${startStr}|${endStr}|${descStr}`;
+                if (!uniqueEventsMap.has(key)) {
+                    uniqueEventsMap.set(key, e);
+                }
             });
         });
         const allEvents = Array.from(uniqueEventsMap.values());
@@ -888,7 +896,22 @@ const HOLIDAYS = {
             return;
         }
 
-        list.innerHTML = dayEvents.map(s => {
+        const uniqueDayEventsMap = new Map();
+        dayEvents.forEach(e => {
+            const startStr = getDateOnly(e.startDate);
+            const endStr = e.endDate ? getDateOnly(e.endDate) : startStr;
+            const timeStr = e.time || '';
+            const descStr = e.description || '';
+            const titleStr = e.title || '';
+            
+            const key = `${titleStr}|${timeStr}|${startStr}|${endStr}|${descStr}`;
+            if (!uniqueDayEventsMap.has(key)) {
+                uniqueDayEventsMap.set(key, e);
+            }
+        });
+        const uniqueDayEvents = Array.from(uniqueDayEventsMap.values());
+
+        list.innerHTML = uniqueDayEvents.map(s => {
             const matches = currentSearchQuery && s.title.toLowerCase().includes(currentSearchQuery.toLowerCase());
             const searchClass = currentSearchQuery 
                 ? (matches ? ' search-match' : ' search-mismatch') 

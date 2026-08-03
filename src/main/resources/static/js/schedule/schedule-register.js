@@ -425,7 +425,14 @@ const API_BASE = window.location.origin;
                 body: JSON.stringify(body)
             });
             if (!res.ok) {
-                showToast('등록 실패: ' + res.status, true);
+                let errorMsg = '등록 실패: ' + res.status;
+                try {
+                    const errJson = await res.json();
+                    if (errJson && errJson.message) {
+                        errorMsg = errJson.message;
+                    }
+                } catch(err) {}
+                showToast(errorMsg, true);
                 resetBtnState();
                 return;
             }

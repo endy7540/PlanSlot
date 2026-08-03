@@ -8,15 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
     <link rel="stylesheet" th:href="@{/css/schedule/schedule-modify.css(v='1.1.1')}">
-
-    <!-- iframe 모달 내부 감지 시 헤더 숨김 및 레이아웃 최적화 -->
-    <script>
-        if (window.self !== window.top) {
-            document.documentElement.classList.add('in-iframe');
-        }
-    </script>
-
-
 </head>
 <body>
 <!-- iframe 내부 전용 최상단 토스트 알림창 -->
@@ -174,6 +165,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script th:src="@{/js/schedule/schedule-modify.js(v='1.2.3')}"></script>
+<script th:src="@{/js/schedule/schedule-modify.js(v='1.2.4')}"></script>
 </body>
 </html>

@@ -1,5 +1,7 @@
 
-    
+    if (window.self !== window.top) {
+    document.documentElement.classList.add('in-iframe');
+}
 
     // iframe 내부 로드 시 공통 헤더 숨기기 및 레이아웃 최적화
     (function optimizeForIframe() {

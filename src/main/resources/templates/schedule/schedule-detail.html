@@ -7,15 +7,6 @@
     <link rel="stylesheet" th:href="@{/css/notification/notification.css}"
           href="/css/notification/notification.css">
     <link rel="stylesheet" th:href="@{/css/schedule/schedule-detail.css(v='1.0.1')}">
-
-    <!-- iframe 모달 내부 감지 시 헤더 숨김 및 레이아웃 최적화 -->
-    <script>
-        if (window.self !== window.top) {
-            document.documentElement.classList.add('in-iframe');
-        }
-    </script>
-
-
 </head>
 <body>
 
@@ -90,6 +81,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script th:src="@{/js/schedule/schedule-detail.js(v='1.1.8')}"></script>
+<script th:src="@{/js/schedule/schedule-detail.js(v='1.1.9')}"></script>
 </body>
 </html>

@@ -130,3 +130,17 @@
         .field-msg:not(:empty) {
             display: block;
         }
+
+        .caps-msg {
+            color: #d97706;
+            font-weight: 600;
+            font-size: 12px;
+            text-align: left;
+            margin-top: 4px;
+            margin-bottom: 8px;
+            margin-left: 4px;
+            display: none;
+        }
+        .caps-msg.is-visible {
+            display: block;
+        }

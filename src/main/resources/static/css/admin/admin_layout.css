@@ -90,7 +90,12 @@ button {
 }
 
 .admin-page-title {
-    text-align: left;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center;
+    gap: 12px;
     margin-bottom: 32px;
     border-bottom: 2px solid #f1f5f9;
     padding-bottom: 20px;
@@ -106,4 +111,156 @@ button {
     color: #64748b;
     font-size: 15px;
     margin: 0;
+}
+
+@media (max-width: 768px) {
+    body.admin-drawer-open {
+        overflow: hidden;
+    }
+
+    .admin-menu-toggle {
+        display: inline-flex !important;
+        position: fixed;
+        top: 82px;
+        left: 14px;
+        z-index: 1200;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid #dbeafe;
+        border-radius: 12px;
+        background: #ffffff;
+        color: #075985;
+        box-shadow: 0 8px 22px rgba(8, 32, 51, 0.14);
+        cursor: pointer;
+    }
+
+    .admin-menu-toggle svg {
+        width: 24px;
+        height: 24px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .admin-menu-toggle[aria-expanded="true"] {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .admin-sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 10020;
+        display: block;
+        visibility: hidden;
+        background: rgba(15, 23, 42, 0.42);
+        opacity: 0;
+        transition: opacity 0.22s ease, visibility 0.22s ease;
+    }
+
+    .admin-sidebar-overlay.is-open {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .admin-layout {
+        display: block;
+        min-height: calc(100vh - 68px);
+        margin: 0;
+        padding: 0;
+    }
+
+    .admin-sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 10021;
+        width: min(82vw, 300px);
+        max-width: none;
+        padding: 26px 0;
+        border-radius: 0 20px 20px 0;
+        overflow-y: auto;
+        transform: translateX(-105%);
+        transition: transform 0.24s ease;
+        box-shadow: 14px 0 36px rgba(8, 32, 51, 0.18);
+        background: #ffffff;
+    }
+
+    .admin-sidebar.is-open {
+        transform: translateX(0);
+    }
+
+    .sidebar-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 20px 18px 24px;
+    }
+
+    .sidebar-title {
+        padding: 0;
+        margin: 0;
+    }
+
+    .admin-menu-close {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: none;
+        border: none;
+        color: #64748b;
+        font-size: 26px;
+        font-weight: 300;
+        cursor: pointer;
+        border-radius: 6px;
+    }
+
+    .admin-menu-close:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+
+    .sidebar-menu {
+        padding: 0 12px;
+    }
+    
+    .sidebar-menu li a {
+        padding: 14px 20px;
+        margin-bottom: 4px;
+        border-radius: 8px;
+        border-left: none;
+    }
+
+    .sidebar-menu li.active a {
+        border-left: none;
+    }
+
+    .admin-container {
+        padding: 56px 18px 32px 18px; /* 햄버거 버튼 공간 확보를 위해 패딩 더 늘림 */
+        border-radius: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    .admin-page-title {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center;
+        gap: 16px;
+        border-bottom-width: 1px;
+        padding-bottom: 16px;
+        margin-bottom: 24px;
+    }
+
+    .admin-page-title h1 {
+        font-size: 24px;
+    }
 }

@@ -207,3 +207,10 @@
 }
 .clickable-title:hover { color: #0369a1; }
 .suspension-info { font-size: 12px; color: #854d0e; background: #fef08a; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: block; width: fit-content; white-space: nowrap; }
+
+/* 반응형 테이블 */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}

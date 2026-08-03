@@ -49,15 +49,94 @@ const API_BASE = "http://localhost:8080";
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-        // 아이디 변경 시 중복확인 초기화
-        document.getElementById('signupId').addEventListener('input', () => {
+        // 아이디 변경 시 중복확인 초기화 및 영어/숫자 외 문자 즉시 차단
+        document.getElementById('signupId').addEventListener('input', function(e) {
             isIdVerified = false;
-            showFieldMsg('signupIdMsg', '');
+            const originalValue = this.value;
+            const newValue = originalValue.replace(/[^a-zA-Z0-9]/g, '');
+            if (originalValue !== newValue) {
+                this.value = newValue;
+                showFieldMsg('signupIdMsg', '아이디는 영문과 숫자만 입력 가능합니다.');
+            } else {
+                showFieldMsg('signupIdMsg', '');
+            }
         });
 
         // 비밀번호 실시간 검증 이벤트 리스너 등록
-        document.getElementById('signupPw').addEventListener('input', checkPasswordMatch);
-        document.getElementById('signupPwConfirm').addEventListener('input', checkPasswordMatch);
+        document.getElementById('signupPw').addEventListener('input', function(e) {
+            const originalValue = this.value;
+            const newValue = originalValue.replace(/[^a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/g, '');
+            if (originalValue !== newValue) {
+                this.value = newValue;
+            }
+            
+            if (this.value.length === 0) {
+                showFieldMsg('signupPwMsg', '');
+            } else {
+                const pwRegex = /^(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?])[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]{8,20}$/;
+                if (!pwRegex.test(this.value)) {
+                    showFieldMsg('signupPwMsg', '비밀번호는 영문, 숫자, 특수문자를 각각 1개 이상 포함한 8~20자여야 합니다.');
+                } else {
+                    showFieldMsg('signupPwMsg', '사용 가능한 비밀번호입니다.', true);
+                }
+            }
+            checkPasswordMatch();
+        });
+        document.getElementById('signupPwConfirm').addEventListener('input', function(e) {
+            const originalValue = this.value;
+            const newValue = originalValue.replace(/[^a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/g, '');
+            if (originalValue !== newValue) {
+                this.value = newValue;
+            }
+            checkPasswordMatch();
+        });
+
+        // 닉네임 실시간 검증
+        document.getElementById('signupNickname').addEventListener('input', function(e) {
+            const val = this.value;
+            if (val.length === 0) {
+                showFieldMsg('signupNicknameMsg', '');
+            } else if (val.trim().length < 2 || val.trim().length > 20) {
+                showFieldMsg('signupNicknameMsg', '닉네임은 2자 이상 20자 이하로 입력해주세요.');
+            } else {
+                showFieldMsg('signupNicknameMsg', '사용 가능한 닉네임입니다.', true);
+            }
+        });
+        
+        // CapsLock 감지 및 UI 업데이트 로직
+        let isCapsOn = false;
+        
+        const updateCapsUI = () => {
+            const activeId = document.activeElement ? document.activeElement.id : null;
+            ['loginPw', 'signupPw', 'signupPwConfirm'].forEach(id => {
+                const capsMsgEl = document.getElementById(id + 'CapsMsg');
+                if (capsMsgEl) {
+                    if (id === activeId && isCapsOn) {
+                        capsMsgEl.classList.add('is-visible');
+                    } else {
+                        capsMsgEl.classList.remove('is-visible');
+                    }
+                }
+            });
+        };
+
+        const handleModifierEvent = (e) => {
+            if (typeof e.getModifierState === 'function') {
+                isCapsOn = e.getModifierState('CapsLock');
+                updateCapsUI();
+            }
+        };
+
+        // 키보드나 마우스 이벤트 시 CapsLock 상태 갱신
+        document.addEventListener('keydown', handleModifierEvent);
+        document.addEventListener('keyup', handleModifierEvent);
+        document.addEventListener('mousedown', handleModifierEvent);
+        document.addEventListener('mouseup', handleModifierEvent);
+        document.addEventListener('click', handleModifierEvent);
+        
+        // 포커스 이동 시에도 현재 필드에 맞춰 표시/숨김 처리
+        document.addEventListener('focusin', updateCapsUI);
+        document.addEventListener('focusout', updateCapsUI);
         
         if (window.location.pathname.includes('/auth/signup')) {
             togglePage('signup', false);
@@ -77,6 +156,17 @@ const API_BASE = "http://localhost:8080";
             return;
         }
 
+        const idRegex = /^[a-zA-Z0-9]{4,20}$/;
+        if (!idRegex.test(id)) {
+            showFieldMsg('signupIdMsg', '아이디는 4~20자의 영문과 숫자로만 입력해주세요.');
+            return;
+        }
+
+        const btn = document.getElementById('checkDuplicateBtn');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = '처리중...';
+
         try {
             clearAllFieldMsgs();
             const response = await fetch(`${API_BASE}/members/checkDuplicate?loginId=${encodeURIComponent(id)}`);
@@ -94,6 +184,9 @@ const API_BASE = "http://localhost:8080";
             }
         } catch (error) {
             showFieldMsg('signupIdMsg', '서버 통신에 실패했습니다.');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = originalText;
         }
     }
 
@@ -151,6 +244,11 @@ const API_BASE = "http://localhost:8080";
             return;
         }
 
+        const btn = document.getElementById('sendEmailBtn');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = '처리중...';
+
         try {
             showFieldMsg('signupEmailMsg', '인증번호 발송 중... (최대 10초 소요)', true);
             const response = await fetch(`${API_BASE}/auth/email/send`, {
@@ -162,14 +260,18 @@ const API_BASE = "http://localhost:8080";
             if (response.ok) {
                 showFieldMsg('signupEmailMsg', '이메일로 인증번호가 발송되었습니다. 5분 안에 입력해주세요.', true);
                 document.getElementById('authCodeContainer').style.display = 'flex';
-                document.getElementById('sendEmailBtn').innerText = '재발송';
+                btn.innerText = '재발송';
                 startEmailTimer();
             } else {
                 const errorMsg = await response.text();
                 showFieldMsg('signupEmailMsg', errorMsg || '이메일 발송에 실패했습니다. 올바른 주소인지 확인해주세요.');
+                btn.innerText = originalText;
             }
         } catch (error) {
             showFieldMsg('signupEmailMsg', '서버 통신에 실패했습니다.');
+            btn.innerText = originalText;
+        } finally {
+            btn.disabled = false;
         }
     }
 
@@ -182,6 +284,11 @@ const API_BASE = "http://localhost:8080";
             showFieldMsg('signupAuthCodeMsg', '인증번호를 입력해주세요.');
             return;
         }
+
+        const btn = document.getElementById('verifyEmailBtn');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = '처리중...';
 
         try {
             const response = await fetch(`${API_BASE}/auth/email/verify`, {
@@ -201,6 +308,9 @@ const API_BASE = "http://localhost:8080";
             }
         } catch (error) {
             showFieldMsg('signupAuthCodeMsg', '서버 통신에 실패했습니다.');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = originalText;
         }
     }
 
@@ -239,6 +349,11 @@ const API_BASE = "http://localhost:8080";
             showFieldMsg('loginPwMsg', '비밀번호를 입력해주세요.');
             return;
         }
+
+        const btn = document.getElementById('loginBtn');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = '처리중...';
 
         try {
             clearAllFieldMsgs();
@@ -298,8 +413,17 @@ const API_BASE = "http://localhost:8080";
             return;
         }
 
+        const idRegex = /^[a-zA-Z0-9]{4,20}$/;
+        if (!idRegex.test(id)) {
+            showFieldMsg('signupIdMsg', '아이디는 4~20자의 영문과 숫자로만 입력해주세요.');
+            return;
+        }
 
-
+        const pwRegex = /^(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?])[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]{8,20}$/;
+        if (!pwRegex.test(pw)) {
+            showFieldMsg('signupPwMsg', '비밀번호는 영문, 숫자, 특수문자를 각각 1개 이상 포함한 8~20자여야 합니다.');
+            return;
+        }
 
         if(!isIdVerified) {
             showFieldMsg('signupIdMsg', '아이디 중복 확인을 먼저 진행해주세요.');
@@ -315,6 +439,11 @@ const API_BASE = "http://localhost:8080";
             showFieldMsg('signupPwConfirmMsg', '비밀번호가 서로 일치하지 않습니다.');
             return;
         }
+
+        const btn = document.getElementById('signupBtn');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = '처리중...';
 
         // 기존에는 API를 호출했으나, 약관 동의 페이지로 이동시킴
         const signupData = {
@@ -423,6 +552,11 @@ const API_BASE = "http://localhost:8080";
             }
         } catch(e) {
             showFieldMsg(msg, '서버 통신 오류가 발생했습니다.', false);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
         }
     }
     
@@ -457,6 +591,11 @@ const API_BASE = "http://localhost:8080";
             }
         } catch(e) {
             showFieldMsg(msg, '서버 통신 오류가 발생했습니다.', false);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
         }
     }
 

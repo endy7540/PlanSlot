@@ -144,3 +144,67 @@
         .caps-msg.is-visible {
             display: block;
         }
+/* Extracted inline CSS */
+.auth-style-1 { cursor:pointer; }
+.auth-style-2 { position:relative; display:flex; }
+.auth-style-3 { width:100%; padding-right:45px; }
+.auth-style-4 { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; padding:0; cursor:pointer; color:#64748B; }
+.auth-style-5 { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:#182B3A; margin-bottom:16px; }
+.auth-style-6 { display:flex; gap:8px; }
+.auth-style-7 { color:#64748b; text-decoration:none; font-weight:500; }
+.auth-style-8 { color:#cbd5e1; }
+.auth-style-9 { color:#64748b; text-decoration:none; font-weight:500; }
+.auth-style-10 { display:flex; align-items:center; gap:6px; }
+.auth-style-11 { width:16px; height:16px; margin:0; padding:0; }
+.auth-style-12 { cursor:pointer; user-select:none; margin:0; }
+.auth-style-13 { display:flex; align-items:center; justify-content:center; gap:8px; }
+.auth-style-14 { display:flex; align-items:center; justify-content:center; gap:8px; background:#FEE500!important; border-color:#FEE500!important; color:#000000; }
+.auth-style-15 { font-size:28px; }
+.auth-style-16 { margin-bottom:20px; }
+.auth-style-17 { display:flex; align-items:center; justify-content:center; gap:8px; }
+.auth-style-18 { display:flex; align-items:center; justify-content:center; gap:8px; background:#FEE500!important; border-color:#FEE500!important; color:#000000; }
+.auth-style-19 { display:flex; gap:8px; }
+.auth-style-20 { flex:1; min-width:0; margin:0; }
+.auth-style-21 { padding:0 16px; margin:0; white-space:nowrap; flex-shrink:0; }
+.auth-style-22 { position:relative; display:flex; }
+.auth-style-23 { width:100%; padding-right:45px; }
+.auth-style-24 { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; padding:0; cursor:pointer; color:#64748B; }
+.auth-style-25 { position:relative; display:flex; }
+.auth-style-26 { width:100%; padding-right:45px; }
+.auth-style-27 { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; padding:0; cursor:pointer; color:#64748B; }
+.auth-style-28 { display:flex; gap:8px; }
+.auth-style-29 { flex:1; min-width:0; margin:0; }
+.auth-style-30 { padding:0 16px; margin:0; white-space:nowrap; flex-shrink:0; }
+.auth-style-31 { display:none; gap:8px; }
+.auth-style-32 { flex:1; display:flex; align-items:center; position:relative; min-width:0; }
+.auth-style-33 { width:100%; min-width:0; margin:0; padding-right:50px; }
+.auth-style-34 { position:absolute; right:12px; color:#B91C1C; font-weight:bold; font-size:13px; display:none; }
+.auth-style-35 { padding:0 16px; margin:0; white-space:nowrap; flex-shrink:0; }
+.auth-style-36 { display:flex; gap:8px; }
+.auth-style-37 { flex:1; border:2px solid #DCEFFC!important; border-radius:10px; padding:14px; outline:none; font-size:14px; color:#182B3A; }
+.auth-style-38 { flex:1; border:2px solid #DCEFFC!important; border-radius:10px; padding:14px; outline:none; font-size:14px; color:#182B3A; }
+.auth-style-39 { margin-top:10px; }
+.auth-style-40 { margin-top:20px; }
+.auth-style-41 { font-size:28px; }
+.auth-style-42 { margin-bottom:20px; }
+.auth-style-43 { display:flex; gap:8px; }
+.auth-style-44 { flex:1; min-width:0; margin:0; }
+.auth-style-45 { padding:0 16px; margin:0; white-space:nowrap; }
+.auth-style-46 { display:none; gap:8px; margin-top:8px; }
+.auth-style-47 { flex:1; display:flex; align-items:center; position:relative; min-width:0; }
+.auth-style-48 { width:100%; min-width:0; margin:0; padding-right:50px; }
+.auth-style-49 { position:absolute; right:12px; color:#B91C1C; font-weight:bold; font-size:13px; display:none; }
+.auth-style-50 { padding:0 16px; margin:0; white-space:nowrap; }
+.auth-style-51 { margin-top:20px; width:100%; }
+.auth-style-52 { font-size:28px; }
+.auth-style-53 { margin-bottom:20px; }
+.auth-style-54 { margin-bottom:8px; }
+.auth-style-55 { display:flex; gap:8px; }
+.auth-style-56 { flex:1; min-width:0; margin:0; }
+.auth-style-57 { padding:0 16px; margin:0; white-space:nowrap; }
+.auth-style-58 { display:none; gap:8px; margin-top:8px; }
+.auth-style-59 { flex:1; display:flex; align-items:center; position:relative; min-width:0; }
+.auth-style-60 { width:100%; min-width:0; margin:0; padding-right:50px; }
+.auth-style-61 { position:absolute; right:12px; color:#B91C1C; font-weight:bold; font-size:13px; display:none; }
+.auth-style-62 { padding:0 16px; margin:0; white-space:nowrap; }
+.auth-style-63 { margin-top:20px; width:100%; }

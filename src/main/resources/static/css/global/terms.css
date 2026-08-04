@@ -69,3 +69,7 @@ body {
             margin-bottom: 12px;
             min-height: 18px;
         }
+/* Extracted inline CSS */
+.terms-style-1 { font-weight: 700; color: #0077FF; margin-bottom: 8px; }
+.terms-style-2 { border:0; border-top:2px solid #e2e8f0; margin:0 0 8px 0; }
+.terms-style-3 { border:0; border-top:1px solid #e2e8f0; margin:4px 0; }

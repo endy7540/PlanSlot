@@ -38,6 +38,58 @@ if (!localStorage.getItem('jwtToken')) {
   const msgInput = document.getElementById('msgInput');
   const chatMessages = document.getElementById('chatMessages');
 
+  // 모바일 환경에서 입력창 placeholder 변경
+  function updatePlaceholder() {
+    if (window.innerWidth <= 768) {
+      msgInput.placeholder = "메시지를 입력하세요";
+    } else {
+      msgInput.placeholder = "메시지를 입력하세요 (Shift+Enter로 줄바꿈)";
+    }
+  }
+  window.addEventListener('resize', updatePlaceholder);
+  updatePlaceholder();
+
+  // 말풍선 길게 누르기(1초)로 액션 버튼 표시
+  let pressTimer = null;
+  chatMessages.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.msg-action-btn')) return; // 버튼 클릭은 무시
+    const msgItem = e.target.closest('.msg-item');
+    if (!msgItem) return;
+
+    if (pressTimer) clearTimeout(pressTimer);
+
+    pressTimer = setTimeout(() => {
+      const actions = msgItem.querySelector('.msg-actions');
+      if (actions) {
+        // 이전에 띄워둔 액션 숨기기
+        document.querySelectorAll('.msg-actions.show-actions').forEach(el => {
+          if (el !== actions) el.classList.remove('show-actions');
+        });
+        actions.classList.add('show-actions');
+      }
+    }, 1000);
+  });
+
+  const clearTimer = () => {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  };
+
+  chatMessages.addEventListener('pointerup', clearTimer);
+  chatMessages.addEventListener('pointercancel', clearTimer);
+  chatMessages.addEventListener('pointerleave', clearTimer);
+  chatMessages.addEventListener('scroll', clearTimer);
+
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.target.closest('.msg-actions') && !e.target.closest('.msg-item')) {
+       document.querySelectorAll('.msg-actions.show-actions').forEach(el => {
+         el.classList.remove('show-actions');
+       });
+    }
+  });
+
   // 스크롤 맨 아래로 이동
   function scrollToBottom() {
     chatMessages.scrollTop = chatMessages.scrollHeight;

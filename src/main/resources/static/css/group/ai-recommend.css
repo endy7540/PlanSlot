@@ -494,3 +494,95 @@ h1{ font-size:30px; margin:2px 0 6px; letter-spacing:-0.02em; color:var(--navy-d
 
   #regModal > div { padding: 18px; }
 }
+
+/* Extracted inline styles */
+.ai-recommend-style-1 { display:flex; align-items:center; gap:8px; }
+.ai-recommend-style-2 { text-decoration:none; }
+.ai-recommend-style-3 { margin-bottom:0; }
+.ai-recommend-style-4 { display:flex; flex-direction:column; gap:14px; margin-bottom: 24px; background: #fff; padding: 18px; border-radius: 14px; border: 1px solid var(--line); }
+.ai-recommend-style-5 { display:flex; gap:10px; font-size:14px; align-items:center; flex-wrap:wrap; }
+.ai-recommend-style-6 { font-size:13px; color:var(--ink-soft); width: 60px; }
+.ai-recommend-style-7 { width: 250px; text-align:center; font-size: 14px; }
+.ai-recommend-style-8 { display:flex; gap:10px; font-size:14px; align-items:center; flex-wrap:wrap; }
+.ai-recommend-style-9 { font-size:13px; color:var(--ink-soft); width: 60px; }
+.ai-recommend-style-10 { cursor:pointer; }
+.ai-recommend-style-11 { display:none; }
+.ai-recommend-style-12 { cursor:pointer; }
+.ai-recommend-style-13 { display:none; }
+.ai-recommend-style-14 { cursor:pointer; }
+.ai-recommend-style-15 { display:none; }
+.ai-recommend-style-16 { cursor:pointer; }
+.ai-recommend-style-17 { display:none; }
+.ai-recommend-style-18 { cursor:pointer; }
+.ai-recommend-style-19 { display:none; }
+.ai-recommend-style-20 { cursor:pointer; }
+.ai-recommend-style-21 { display:none; }
+.ai-recommend-style-22 { cursor:pointer; }
+.ai-recommend-style-23 { display:none; }
+.ai-recommend-style-24 { cursor:pointer; }
+.ai-recommend-style-25 { display:none; }
+.ai-recommend-style-26 { display:flex; gap:10px; font-size:14px; align-items:center; flex-wrap:wrap; }
+.ai-recommend-style-27 { font-size:13px; color:var(--ink-soft); width: 60px; }
+.ai-recommend-style-28 { cursor:pointer; }
+.ai-recommend-style-29 { display:none; }
+.ai-recommend-style-30 { cursor:pointer; }
+.ai-recommend-style-31 { display:none; }
+.ai-recommend-style-32 { cursor:pointer; }
+.ai-recommend-style-33 { display:none; }
+.ai-recommend-style-34 { cursor:pointer; }
+.ai-recommend-style-35 { display:none; }
+.ai-recommend-style-36 { align-self: flex-end; margin-top:8px; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.2); }
+.ai-recommend-style-37 { text-align:center; padding:20px; color:var(--ink-soft); font-size:14px; }
+.ai-recommend-style-38 { display:none; gap:10px; margin-top:6px; }
+.ai-recommend-style-39 { flex:1; margin-top:0; }
+.ai-recommend-style-40 { display:none; }
+.ai-recommend-style-41 { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:12px; }
+.ai-recommend-style-42 { margin-bottom:0; }
+.ai-recommend-style-43 { display:none; gap:8px; }
+.ai-recommend-style-44 { padding:4px 10px; }
+.ai-recommend-style-45 { font-size:12px; color:var(--ink-soft); align-self:center; }
+.ai-recommend-style-46 { padding:4px 10px; }
+.ai-recommend-style-47 { display:none; }
+.ai-recommend-style-48 { text-align:center; padding:20px; color:var(--ink-soft); font-size:14px; }
+.ai-recommend-style-49 { display:none; }
+.ai-recommend-style-50 { background:#E2E8F0; }
+.ai-recommend-style-51 { background:#BAE6FD; }
+.ai-recommend-style-52 { background:#3B82F6; }
+.ai-recommend-style-53 { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; }
+.ai-recommend-style-54 { background:#fff; padding:24px; border-radius:16px; width:90%; max-width:400px; box-shadow:0 10px 25px rgba(0,0,0,0.1); max-height:90vh; overflow-y:auto; }
+.ai-recommend-style-55 { margin-top:0; margin-bottom:8px; }
+.ai-recommend-style-56 { font-size:13px; color:var(--ink-soft); margin-bottom:16px; }
+.ai-recommend-style-57 { font-size:13px; font-weight:700; margin-bottom:4px; display:block; }
+.ai-recommend-style-58 { width:100%; border:1px solid var(--border); font-size:14px; margin-bottom:12px; }
+.ai-recommend-style-59 { font-size:13px; font-weight:700; margin-bottom:4px; display:block; }
+.ai-recommend-style-60 { width:100%; text-align:left; font-size:14px; margin-bottom:12px; border:1px solid var(--border); }
+.ai-recommend-style-61 { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.ai-recommend-style-62 { width:16px; height:16px; cursor:pointer; }
+.ai-recommend-style-63 { font-size:13px; font-weight:700; cursor:pointer; margin:0; }
+.ai-recommend-style-64 { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; position:relative; transition: opacity 0.2s; }
+.ai-recommend-style-65 { font-size:13px; font-weight:700; margin-bottom:0px; display:block; }
+.ai-recommend-style-66 { width:100%; border:1px solid var(--border); font-size:14px; cursor:pointer; }
+.ai-recommend-style-67 { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 2px solid #DCEFFC; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 100; padding: 16px; margin-top: 6px; }
+.ai-recommend-style-68 { display: flex; gap: 12px; }
+.ai-recommend-style-69 { flex: 1; }
+.ai-recommend-style-70 { font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 6px; text-align: center; }
+.ai-recommend-style-71 { max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 6px; background:#fff; }
+.ai-recommend-style-72 { flex: 1; }
+.ai-recommend-style-73 { font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 6px; text-align: center; }
+.ai-recommend-style-74 { max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 6px; background:#fff; }
+.ai-recommend-style-75 { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; border-top: 1px solid #F1F5F9; padding-top: 10px; }
+.ai-recommend-style-76 { padding: 6px 12px; font-size: 12px; border-radius:6px; background:transparent; color:#64748b; border:2px solid transparent; font-weight:900; cursor:pointer; }
+.ai-recommend-style-77 { padding: 6px 12px; font-size: 12px; border-radius:6px; background:#0ea5e9; color:white; border:2px solid transparent; font-weight:900; cursor:pointer; }
+.ai-recommend-style-78 { margin-bottom:20px; }
+.ai-recommend-style-79 { font-size:13px; font-weight:700; margin-bottom:4px; display:block; }
+.ai-recommend-style-80 { width:100%; border:1px solid var(--border); font-size:14px; }
+.ai-recommend-style-81 { margin-bottom:20px; display:none; }
+.ai-recommend-style-82 { font-size:13px; font-weight:700; margin-bottom:4px; display:block; }
+.ai-recommend-style-83 { width:100%; border:1px solid var(--border); font-size:14px; }
+.ai-recommend-style-84 { display:flex; gap:10px; }
+.ai-recommend-style-85 { flex:1; padding:10px; background:#f1f5f9; color:var(--ink); }
+.ai-recommend-style-86 { flex:1; margin-top:0; padding:10px; background:#0ea5e9; color:white; }
+.ai-recommend-style-87 { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; }
+.ai-recommend-style-88 { background:#fff; padding:24px; border-radius:16px; width:95%; max-width:900px; box-shadow:0 10px 25px rgba(0,0,0,0.1); max-height:95vh; overflow-y:auto; }
+.ai-recommend-style-89 { font-size:12px; color:var(--muted); margin-bottom:12px; }
+.ai-recommend-style-90 { margin-top:16px; display:flex; justify-content:center; gap:10px; }

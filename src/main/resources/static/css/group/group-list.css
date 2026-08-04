@@ -466,3 +466,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
   .modal-box { padding: 20px; }
 }
+
+/* Extracted inline styles */
+.group-list-style-1 { margin-bottom: 24px; }
+.group-list-style-2 { margin-bottom: 12px; display: flex; gap: 8px; }
+.group-list-style-3 { display:none; }
+.group-list-style-4 { font-size: 14px; color: var(--ink-soft); margin-bottom: 16px; }
+.group-list-style-5 { margin-bottom: 16px; }
+.group-list-style-6 { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; margin-bottom: 8px; }
+.group-list-style-7 { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; }
+.group-list-style-8 { display: flex; gap: 8px; }
+.group-list-style-9 { display: none; z-index: 100; }
+.group-list-style-10 { max-width: 500px; }
+.group-list-style-11 { width: 100%; height: 300px; margin-bottom: 16px; background: #f1f5f9; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+.group-list-style-12 { max-width: 100%; max-height: 100%; }

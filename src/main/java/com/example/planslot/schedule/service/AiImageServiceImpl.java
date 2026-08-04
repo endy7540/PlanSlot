@@ -217,15 +217,23 @@ public class AiImageServiceImpl implements AiImageService {
             }
             log.info("[AI IMAGE] Claude Raw Response text: {}", responseText);
 
-            // JSON Array 블록만 정규식으로 쏙 발췌 (혹시 모를 마크다운 꼬리방지)
+            // 1. 마크다운 코드 블록 (```json ... ```) 등 백틱으로 감싸인 경우 제거
+            String cleanedResponse = responseText.trim();
+            if (cleanedResponse.startsWith("```")) {
+                cleanedResponse = cleanedResponse.replaceAll("^```(json)?\\s*", "");
+                cleanedResponse = cleanedResponse.replaceAll("```\\s*$", "");
+            }
+            cleanedResponse = cleanedResponse.trim();
+
+            // 2. JSON Array 블록만 정규식으로 쏙 발췌 (혹시 모를 마크다운 꼬리방지)
             Pattern jsonPattern = Pattern.compile("\\[.*\\]", Pattern.DOTALL);
-            Matcher jsonMatcher = jsonPattern.matcher(responseText);
+            Matcher jsonMatcher = jsonPattern.matcher(cleanedResponse);
             if (jsonMatcher.find()) {
-                responseText = jsonMatcher.group(0);
+                cleanedResponse = jsonMatcher.group(0);
             }
 
             List<AiImageDTO.ExtractedSchedule> list = new ArrayList<>();
-            JsonNode arrayNode = objectMapper.readTree(responseText);
+            JsonNode arrayNode = objectMapper.readTree(cleanedResponse);
             if (arrayNode.isArray()) {
                 for (JsonNode node : arrayNode) {
                     String t = node.path("title").asText("AI 분석 일정").trim();

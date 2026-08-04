@@ -249,6 +249,13 @@
             0%{background:#FEF9C3;}
             100%{background:#fff;}
         }
+#scheduleSummaryContainer > div, #scheduleSummaryContainer .ai-analysis-btn {
+    height: 52px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
 
         .event-chip {
             font-size: 10px;
@@ -429,7 +436,6 @@
     margin-right: -10px !important;
     width: calc(100% + 10px) !important;
     position: relative;
-    z-index: 2;
     box-shadow: 2px 0 4px rgba(0,0,0,0.04);
 }
 .event-chip.event-middle {
@@ -438,7 +444,6 @@
     margin-right: -10px !important;
     width: calc(100% + 20px) !important;
     position: relative;
-    z-index: 1;
 }
 .event-chip.event-end {
     border-top-left-radius: 0 !important;
@@ -446,7 +451,6 @@
     margin-left: -10px !important;
     width: calc(100% + 10px) !important;
     position: relative;
-    z-index: 2;
     box-shadow: -2px 0 4px rgba(0,0,0,0.04);
 }
 
@@ -596,9 +600,27 @@
         width: 100% !important;
     }
     #scheduleSummaryContainer {
-        width: 100%;
-        justify-content: flex-start;
-        gap: 8px;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+        justify-content: space-between !important;
+        gap: 6px !important;
+    }
+    #scheduleSummaryContainer > div, #scheduleSummaryContainer .ai-analysis-btn {
+        width: auto !important;
+        flex: 1 1 0% !important;
+        padding: 8px 4px !important;
+        height: 48px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 11px !important;
+        box-sizing: border-box !important;
+        white-space: nowrap !important;
+        border-radius: 8px !important;
+        border-width: 1.5px !important;
+        box-shadow: none !important;
     }
     
     /* 날짜 및 네비게이션 영역 깔끔한 카드 구조화 */
@@ -708,22 +730,15 @@
 
 @media (max-width: 480px) {
     .page-head {
-        padding: 16px;
+        padding: 10px 14px;
+        gap: 6px;
     }
     .page-head h1 {
-        font-size: 20px;
+        font-size: 18px;
+        margin: 2px 0;
     }
     .page-head .brand {
-        font-size: 11px;
-    }
-    #scheduleSummaryContainer {
-        flex-direction: column;
-        gap: 8px;
-    }
-    #scheduleSummaryContainer > div {
-        width: 100%;
-        padding: 8px 14px;
-        font-size: 13px;
+        font-size: 10px;
     }
     .cal-nav-left {
         flex-wrap: wrap;
@@ -746,5 +761,11 @@
         border-left: 0 !important;
         border-radius: 2px;
         margin-top: 1px;
-    }
+     }
+}
+
+.ai-analysis-btn:hover {
+    background: #CCFBF1 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px rgba(14, 116, 144, 0.15) !important;
 }

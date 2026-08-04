@@ -72,7 +72,7 @@ public class AiImageServiceImpl implements AiImageService {
     @Value("${ai.model:claude-3-haiku-20240307}")
     private String claudeModel;
 
-    @Value("${ai.max-tokens:1024}")
+    @Value("${ai.max-tokens:4096}")
     private Integer claudeMaxTokens;
 
     @Override

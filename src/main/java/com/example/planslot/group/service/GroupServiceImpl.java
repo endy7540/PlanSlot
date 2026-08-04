@@ -345,7 +345,9 @@ public class GroupServiceImpl implements GroupService {
     @Transactional
     public void inviteMember(Long groupId, String nickname, Long memberId) {
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new IllegalArgumentException("모임을 찾을 수 없습니다."));
-        if (!group.getOwner().getId().equals(memberId)) throw new IllegalArgumentException("권한이 없습니다.");
+        groupMemberRepository.findByGroup_IdAndMember_Id(groupId, memberId)
+                .filter(m -> m.getMemberStatus() == GroupMemberStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("모임의 활성 멤버만 초대할 수 있습니다."));
         Member targetMember = memberRepository.findByNickname(nickname).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
         groupMemberRepository.findByGroup_IdAndMember_Id(groupId, targetMember.getId()).ifPresent(gm -> {
             if (gm.getMemberStatus() == GroupMemberStatus.WAITING) {

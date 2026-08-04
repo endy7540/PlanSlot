@@ -1,6 +1,6 @@
-const API_BASE = "http://localhost:8080";
+const API_BASE = window.location.origin;
 
-    // 메시지 출력 헬퍼 함수
+    // 메시지 출력 헬퍼 함수1q
     function showFieldMsg(id, text, isSuccess = false) {
         const el = document.getElementById(id);
         if(el) {

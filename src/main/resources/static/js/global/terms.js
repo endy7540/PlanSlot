@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8080";
+const API_BASE = window.location.origin;
 
     const agreeAllCheckbox = document.getElementById('agreeAll');
     const termCheckboxes = document.querySelectorAll('.term-checkbox');

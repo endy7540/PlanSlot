@@ -206,8 +206,19 @@
     text-decoration: underline;
 }
 .clickable-title:hover { color: #0369a1; }
-.suspension-info { font-size: 12px; color: #854d0e; background: #fef08a; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: block; width: fit-content; white-space: nowrap; }
-
+.suspension-info {
+    font-size: 12px;
+    color: #854d0e;
+    background: #fef08a;
+    padding: 0 10px;
+    border-radius: 6px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    font-weight: 600;
+}
 /* 반응형 테이블 */
 .table-responsive {
     width: 100%;
@@ -220,29 +231,30 @@
 .admin-member-count-number, .admin-report-count-number { color: #0ea5e9; }
 .table-responsive { overflow-x: auto; width: 100%; }
 .admin-table th.col-id { width: 50px; }
+.admin-table th.col-email { width: 200px; }
 .admin-table th.col-nickname { width: 120px; }
 .admin-table th.col-report-count { width: 80px; }
 .admin-table th.col-date { width: 120px; }
-.admin-table th.col-action { width: 250px; }
+.admin-table th.col-action { width: 170px; }
+.admin-table th.col-suspend-date { width: 170px; }
 .admin-table th.col-type { width: 60px; }
-.admin-table th.col-target { width: 200px; }
+.admin-table th.col-target { width: 180px; }
 .admin-table th.col-reason { width: 150px; }
 .admin-table th.col-reporter { width: 80px; }
 .admin-table th.col-reported { width: 80px; }
 .admin-table th.col-regdate { width: 90px; }
 .admin-table th.col-status { width: 90px; }
-.admin-table th.col-manage { width: 80px; }
+.admin-table th.col-manage { width: 140px; }
 .admin-table-empty { text-align: center; padding: 40px; color: #94a3b8; }
 .member-email, .member-nickname { word-break: break-all; }
 .report-count-positive { color: #ef4444; font-weight: bold; }
 .report-count-zero { color: #94a3b8; }
 .member-action-wrapper { display: flex; align-items: center; gap: 8px; }
-.suspension-info { white-space: nowrap; }
 
 /* Report Action Buttons */
-.report-action-wrapper { display: flex; flex-direction: column; gap: 6px; align-items: center; justify-content: center; width: 100%; }
+.report-action-wrapper { display: flex; flex-direction: row; gap: 6px; align-items: center; justify-content: center; width: 100%; }
 .btn-approve, .btn-reject { padding: 6px 0; width: 60px; font-size: 11px; box-sizing: border-box; text-align: center; display: block; margin: 0; line-height: 1; }
-.report-status-text { color: #94a3b8; font-size: 13px; }
+.report-status-text { display: inline-flex; align-items: center; justify-content: center; padding: 4px 12px; background-color: #f1f5f9; color: #64748b; font-size: 12px; font-weight: 600; border-radius: 6px; border: 1px solid #e2e8f0; }
 
 /* Modal Helpers */
 .modal-header-actions { display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px; }
@@ -260,4 +272,45 @@
 .modal-target-text { font-size: 13px; color: #475569; line-height: 1.5; }
 .modal-target-body-container { display: none; border-top: 1px dashed #cbd5e1; padding-top: 12px; margin-top: 10px; }
 .modal-label-text { color: #94a3b8; font-size: 12px; margin-right: 4px; }
+
+/* Modal Generic Utilities */
+.modal-content.text-center { text-align: center; }
+.modal-body.padded { padding: 10px 0; }
+.modal-message { margin-bottom: 25px; color: #334155; font-size: 15px; font-weight: 500; line-height: 1.5; }
+.modal-actions { display: flex; justify-content: center; gap: 10px; }
+.modal-btn-cancel { background: #e2e8f0; color: #475569; width: 100px; }
+.modal-btn-confirm { width: 100px; }
+
+/* Suspend Modal Utilities */
+.suspend-modal-desc { margin-bottom: 15px; color: #475569; }
+.suspend-btn-group { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; margin-bottom: 20px; }
+.suspend-custom-label-wrapper { text-align: left; margin-bottom: 6px; padding-left: 2px; }
+.suspend-custom-label { font-size: 13px; font-weight: 600; color: #475569; }
+.suspend-custom-input-wrapper { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+.suspend-custom-input { flex: 1; min-width: 0; height: 36px; padding: 0 12px; font-size: 14px; }
+.suspend-custom-btn { width: 80px; height: 36px; font-size: 14px; }
+
+/* Modal Suspend Quick Buttons */
+.suspend-btn {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    flex: 1;
+    min-width: 45px;
+    text-align: center;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.suspend-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+.suspend-btn:active {
+    background: #f1f5f9;
+}
 

@@ -97,7 +97,9 @@
                                 <button type="button" class="btn-approve" th:attr="onclick=|processReport('${report.reportId}', 'approve')|">삭제조치</button>
                                 <button type="button" class="btn-reject" th:attr="onclick=|processReport('${report.reportId}', 'reject')|">기각</button>
                             </div>
-                            <span th:if="${report.status != 'WAITING'}" class="report-status-text">처리됨</span>
+                            <div th:if="${report.status != 'WAITING'}" class="report-action-wrapper">
+                                <span class="report-status-text">처리됨</span>
+                            </div>
                         </td>
                         <td></td>
                     </tr>
@@ -153,6 +155,31 @@
                         <div id="modalTargetBody" class="modal-target-text"></div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generic Confirm Modal -->
+<div class="modal-overlay" id="confirmModal" onclick="closeConfirmModal(event)">
+    <div class="modal-content text-center" onclick="event.stopPropagation()">
+        <div class="modal-body padded">
+            <p id="confirmModalMessage" class="modal-message"></p>
+            <div class="modal-actions">
+                <button type="button" class="board-btn modal-btn-cancel" onclick="closeConfirmModal(event, false)">취소</button>
+                <button type="button" class="board-btn board-btn-sky modal-btn-confirm" onclick="closeConfirmModal(event, true)">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generic Alert Modal -->
+<div class="modal-overlay" id="alertModal" onclick="closeAlertModal(event)">
+    <div class="modal-content text-center" onclick="event.stopPropagation()">
+        <div class="modal-body padded">
+            <p id="alertModalMessage" class="modal-message"></p>
+            <div class="modal-actions">
+                <button type="button" class="board-btn board-btn-sky modal-btn-confirm" onclick="closeAlertModal(event, true)">확인</button>
             </div>
         </div>
     </div>

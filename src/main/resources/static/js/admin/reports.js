@@ -100,24 +100,87 @@ let allRows = [];
         document.getElementById('reportModal').style.display = 'none';
     }
 
-    async function processReport(reportId, action) {
-        if(!confirm(action === 'approve' ? '해당 대상을 정말로 [삭제 조치] 하시겠습니까?' : '이 신고를 [기각] 처리하시겠습니까? (대상은 유지됩니다)')) {
-            return;
-        }
-
-        try {
-            const response = await fetch(`/api/admin/reports/${reportId}/${action}`, {
-                method: 'POST'
-            });
-
-            const result = await response.text();
-            if (response.ok) {
-                alert(result);
-                window.location.reload();
-            } else {
-                alert('처리 실패: ' + result);
+    // ESC 키로 모달 닫기
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const alertModal = document.getElementById('alertModal');
+            if (alertModal && alertModal.style.display === 'flex') {
+                closeAlertModal({ type: 'click', target: alertModal, currentTarget: alertModal }, false);
+                return;
             }
-        } catch (error) {
-            alert('서버 통신에 실패했습니다.');
+            const confirmModal = document.getElementById('confirmModal');
+            if (confirmModal && confirmModal.style.display === 'flex') {
+                closeConfirmModal({ type: 'click', target: confirmModal, currentTarget: confirmModal }, false);
+                return;
+            }
+            const modal = document.getElementById('reportModal');
+            if (modal && modal.style.display === 'flex') {
+                closeModal();
+            }
         }
+    });
+
+    let pendingConfirmAction = null;
+    let pendingConfirmCancel = null;
+    let pendingAlertAction = null;
+
+    function showAlertModal(message, onConfirm) {
+        document.getElementById('alertModalMessage').innerHTML = message.replace(/\n/g, '<br>');
+        document.getElementById('alertModal').style.display = 'flex';
+        pendingAlertAction = onConfirm;
+    }
+
+    function closeAlertModal(event, isConfirmed = false) {
+        if (event && event.type === 'click' && event.target !== event.currentTarget) return;
+        document.getElementById('alertModal').style.display = 'none';
+        
+        if (pendingAlertAction) {
+            pendingAlertAction();
+        }
+        pendingAlertAction = null;
+    }
+
+    function showConfirmModal(message, onConfirm, onCancel) {
+        document.getElementById('confirmModalMessage').innerHTML = message.replace(/\n/g, '<br>');
+        document.getElementById('confirmModal').style.display = 'flex';
+        pendingConfirmAction = onConfirm;
+        pendingConfirmCancel = onCancel;
+    }
+
+    function closeConfirmModal(event, isConfirmed = false) {
+        if (event && event.type === 'click' && event.target !== event.currentTarget) return;
+        document.getElementById('confirmModal').style.display = 'none';
+        
+        if (isConfirmed && pendingConfirmAction) {
+            pendingConfirmAction();
+        } else if (!isConfirmed && pendingConfirmCancel) {
+            pendingConfirmCancel();
+        }
+        
+        pendingConfirmAction = null;
+        pendingConfirmCancel = null;
+    }
+
+    function processReport(reportId, action) {
+        const msg = action === 'approve' 
+            ? '해당 대상을 정말로 [삭제 조치] 하시겠습니까?' 
+            : '이 신고를 [기각] 처리하시겠습니까?\n(대상은 유지됩니다)';
+            
+        showConfirmModal(msg, async () => {
+            try {
+                const response = await fetch(`/api/admin/reports/${reportId}/${action}`, {
+                    method: 'POST'
+                });
+
+                const result = await response.text();
+                if (response.ok) {
+                    showAlertModal(result, () => { window.location.reload(); });
+                } else {
+                    showAlertModal('처리 실패: ' + result);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlertModal('네트워크 오류가 발생했습니다.');
+            }
+        });
     }

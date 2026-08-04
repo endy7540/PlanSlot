@@ -72,28 +72,70 @@ let allRows = [];
         }
     }
 
+    let pendingSuspendTarget = null;
+    let pendingSuspendSelect = null;
+    let pendingConfirmAction = null;
+    let pendingConfirmCancel = null;
+    let pendingAlertAction = null;
+
+    function showAlertModal(message, onConfirm) {
+        document.getElementById('alertModalMessage').innerHTML = message.replace(/\n/g, '<br>');
+        document.getElementById('alertModal').style.display = 'flex';
+        pendingAlertAction = onConfirm;
+    }
+
+    function closeAlertModal(event, isConfirmed = false) {
+        if (event && event.type === 'click' && event.target !== event.currentTarget) return;
+        document.getElementById('alertModal').style.display = 'none';
+        
+        if (pendingAlertAction) {
+            pendingAlertAction();
+        }
+        pendingAlertAction = null;
+    }
+
+    function showConfirmModal(message, onConfirm, onCancel) {
+        document.getElementById('confirmModalMessage').innerHTML = message.replace(/\n/g, '<br>');
+        document.getElementById('confirmModal').style.display = 'flex';
+        pendingConfirmAction = onConfirm;
+        pendingConfirmCancel = onCancel;
+    }
+
+    function closeConfirmModal(event, isConfirmed = false) {
+        if (event && event.type === 'click' && event.target !== event.currentTarget) return;
+        document.getElementById('confirmModal').style.display = 'none';
+        
+        if (isConfirmed && pendingConfirmAction) {
+            pendingConfirmAction();
+        } else if (!isConfirmed && pendingConfirmCancel) {
+            pendingConfirmCancel();
+        }
+        
+        pendingConfirmAction = null;
+        pendingConfirmCancel = null;
+    }
+
     async function updateStatus(memberId, status, selectElement) {
         let msg = '해당 회원의 상태를 정상으로 변경하시겠습니까?';
         let suspendDays = null;
         
         if (status === 'SUSPENDED') {
-            const daysInput = prompt('일시 정지할 기간(일)을 숫자로 입력하세요.\n(예: 1=하루, 7=일주일, 30=한달)');
-            if (!daysInput || isNaN(daysInput) || parseInt(daysInput) <= 0) {
-                alert('올바른 기간을 입력하지 않아 취소되었습니다.');
-                selectElement.value = selectElement.getAttribute('data-original');
-                return;
-            }
-            suspendDays = parseInt(daysInput);
-            msg = `해당 회원을 ${suspendDays}일 동안 일시 정지 처리하시겠습니까?`;
+            pendingSuspendTarget = memberId;
+            pendingSuspendSelect = selectElement;
+            document.getElementById('customSuspendDays').value = '';
+            document.getElementById('suspendModal').style.display = 'flex';
+            return; // Wait for modal interaction
         } else if (status === 'BANNED') {
-            msg = '해당 회원을 영구 정지(BANNED) 처리하시겠습니까? (사이트 이용 영구 제한)';
+            msg = '해당 회원을 영구 정지(BANNED) 처리하시겠습니까?\n(사이트 이용 영구 제한)';
         }
         
-        if(!confirm(msg)) {
-            selectElement.value = selectElement.getAttribute('data-original');
-            return;
-        }
+        showConfirmModal(msg, 
+            () => processStatusUpdate(memberId, status, null, selectElement),
+            () => { selectElement.value = selectElement.getAttribute('data-original'); }
+        );
+    }
 
+    async function processStatusUpdate(memberId, status, suspendDays, selectElement) {
         try {
             const payload = { status: status };
             if (suspendDays !== null) {
@@ -109,19 +151,71 @@ let allRows = [];
             });
 
             if (response.ok) {
-                alert('상태가 변경되었습니다.');
-                window.location.reload();
+                showAlertModal('상태가 변경되었습니다.', () => { window.location.reload(); });
             } else {
-                alert('오류가 발생했습니다.');
-                selectElement.value = selectElement.getAttribute('data-original');
+                showAlertModal('오류가 발생했습니다.', () => { selectElement.value = selectElement.getAttribute('data-original'); });
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('네트워크 오류가 발생했습니다.');
-            selectElement.value = selectElement.getAttribute('data-original');
+            showAlertModal('네트워크 오류가 발생했습니다.', () => { selectElement.value = selectElement.getAttribute('data-original'); });
         }
     }
-function changeMemberStatus(memberId, selectId) {
-    const select = document.getElementById(selectId);
-    updateStatus(memberId, select.value, select);
-}
+    
+    function changeMemberStatus(memberId, selectId) {
+        const select = document.getElementById(selectId);
+        updateStatus(memberId, select.value, select);
+    }
+
+    function closeSuspendModal(event) {
+        if (event && event.target !== event.currentTarget) return;
+        document.getElementById('suspendModal').style.display = 'none';
+        if (pendingSuspendSelect) {
+            pendingSuspendSelect.value = pendingSuspendSelect.getAttribute('data-original');
+        }
+        pendingSuspendTarget = null;
+        pendingSuspendSelect = null;
+    }
+
+    // ESC 키로 모달 닫기
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const alertModal = document.getElementById('alertModal');
+            if (alertModal && alertModal.style.display === 'flex') {
+                closeAlertModal({ type: 'click', target: alertModal, currentTarget: alertModal }, false);
+                return;
+            }
+            const suspendModal = document.getElementById('suspendModal');
+            if (suspendModal && suspendModal.style.display === 'flex') {
+                closeSuspendModal({ target: suspendModal, currentTarget: suspendModal });
+                return;
+            }
+            const confirmModal = document.getElementById('confirmModal');
+            if (confirmModal && confirmModal.style.display === 'flex') {
+                closeConfirmModal({ type: 'click', target: confirmModal, currentTarget: confirmModal }, false);
+            }
+        }
+    });
+
+    function setSuspendDays(days) {
+        document.getElementById('customSuspendDays').value = days;
+    }
+
+    function confirmSuspend() {
+        const days = parseInt(document.getElementById('customSuspendDays').value);
+        if (!days || isNaN(days) || days <= 0) {
+            showAlertModal('올바른 정지 기간(일)을 입력해주세요.');
+            return;
+        }
+        
+        document.getElementById('suspendModal').style.display = 'none';
+        showConfirmModal(`해당 회원을 ${days}일 동안\n일시 정지 처리하시겠습니까?`, 
+            () => processStatusUpdate(pendingSuspendTarget, 'SUSPENDED', days, pendingSuspendSelect),
+            () => { 
+                if (pendingSuspendSelect) {
+                    pendingSuspendSelect.value = pendingSuspendSelect.getAttribute('data-original');
+                }
+                pendingSuspendTarget = null;
+                pendingSuspendSelect = null;
+            }
+        );
+    }

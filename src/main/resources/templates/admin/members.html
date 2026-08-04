@@ -52,16 +52,17 @@
                 <thead>
                     <tr>
                         <th class="no-wrap col-id">ID</th>
-                        <th>이메일</th>
+                        <th class="col-email">이메일</th>
                         <th class="col-nickname">닉네임</th>
                         <th class="no-wrap col-report-count">제재 횟수</th>
                         <th class="no-wrap col-date">가입일</th>
                         <th class="no-wrap col-action">상태 관리</th>
+                        <th class="no-wrap col-suspend-date">제재 기간</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:if="${#lists.isEmpty(members)}">
-                        <td colspan="6" class="admin-table-empty">
+                        <td colspan="7" class="admin-table-empty">
                             회원이 없습니다.
                         </td>
                     </tr>
@@ -86,10 +87,13 @@
                                     <option value="BANNED" th:selected="${member.status == 'BANNED'}">영구정지</option>
                                 </select>
                                 <button type="button" class="btn-process" th:attr="onclick=|changeMemberStatus('${member.id}', 'status_${member.id}')|">변경</button>
-                                <div th:if="${member.status == 'SUSPENDED' && member.suspendedUntil != null}" class="suspension-info">
-                                    ~ <span th:text="${#temporals.format(member.suspendedUntil, 'yyyy-MM-dd HH:mm')}"></span> 까지
-                                </div>
                             </div>
+                        </td>
+                        <td>
+                            <div th:if="${member.status == 'SUSPENDED' && member.suspendedUntil != null}" class="suspension-info">
+                                <span th:text="${#temporals.format(member.suspendedUntil, 'yyyy-MM-dd HH:mm')}"></span> 까지
+                            </div>
+                            <span th:unless="${member.status == 'SUSPENDED' && member.suspendedUntil != null}" style="color: #94a3b8;">-</span>
                         </td>
                     </tr>
                 </tbody>
@@ -100,6 +104,58 @@
             <div class="board-pagination" id="paginationContainer"></div>
         </div>
     </main>
+</div>
+
+<!-- Suspension Modal -->
+<div class="modal-overlay" id="suspendModal" onclick="closeSuspendModal(event)">
+    <div class="modal-content text-center" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-title">일시 정지 기간 설정</div>
+            <button class="modal-close" onclick="closeSuspendModal(event)">&times;</button>
+        </div>
+        <div class="modal-body padded">
+            <p class="suspend-modal-desc">해당 회원을 일시 정지할 기간을 선택하세요.</p>
+            <div class="suspend-btn-group">
+                <button type="button" class="suspend-btn" onclick="setSuspendDays(1)">1일</button>
+                <button type="button" class="suspend-btn" onclick="setSuspendDays(3)">3일</button>
+                <button type="button" class="suspend-btn" onclick="setSuspendDays(7)">7일</button>
+                <button type="button" class="suspend-btn" onclick="setSuspendDays(15)">15일</button>
+                <button type="button" class="suspend-btn" onclick="setSuspendDays(30)">30일</button>
+            </div>
+            <div class="suspend-custom-label-wrapper">
+                <span class="suspend-custom-label">제재 기간 직접 입력</span>
+            </div>
+            <div class="suspend-custom-input-wrapper">
+                <input type="number" id="customSuspendDays" placeholder="예: 5" class="board-search-select suspend-custom-input" min="1">
+                <button type="button" class="btn-process suspend-custom-btn" onclick="confirmSuspend()">변경</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generic Confirm Modal -->
+<div class="modal-overlay" id="confirmModal" onclick="closeConfirmModal(event)">
+    <div class="modal-content text-center" onclick="event.stopPropagation()">
+        <div class="modal-body padded">
+            <p id="confirmModalMessage" class="modal-message"></p>
+            <div class="modal-actions">
+                <button type="button" class="board-btn modal-btn-cancel" onclick="closeConfirmModal(event, false)">취소</button>
+                <button type="button" class="board-btn board-btn-sky modal-btn-confirm" onclick="closeConfirmModal(event, true)">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generic Alert Modal -->
+<div class="modal-overlay" id="alertModal" onclick="closeAlertModal(event)">
+    <div class="modal-content text-center" onclick="event.stopPropagation()">
+        <div class="modal-body padded">
+            <p id="alertModalMessage" class="modal-message"></p>
+            <div class="modal-actions">
+                <button type="button" class="board-btn board-btn-sky modal-btn-confirm" onclick="closeAlertModal(event, true)">확인</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="/js/admin/members.js"></script>

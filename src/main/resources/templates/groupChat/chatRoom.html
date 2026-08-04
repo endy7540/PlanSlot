@@ -51,14 +51,14 @@
             <div class="avatar" style="background: #e2e8f0; display:flex; justify-content:center; align-items:center;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             </div>
-            <div th:class="${msg.content.equals('삭제된 메시지입니다.') ? 'bubble deleted' : 'bubble'}" th:utext="${#strings.replace(#strings.escapeXml(msg.content), '&#10;', '<br>')}">메시지</div>
+            <div th:class="${msg.content.equals('삭제된 메시지입니다.') || msg.content.equals('관리자에 의해 삭제된 메시지입니다.') ? 'bubble deleted' : 'bubble'}" th:utext="${#strings.replace(#strings.escapeXml(msg.content), '&#10;', '<br>')}">메시지</div>
             <div style="display:flex; flex-direction:column; align-items:flex-start; gap:2px;">
               <div class="time" th:id="'msgTime-' + ${msg.id}">
                 <span th:text="${#temporals.format(msg.createdAt, 'HH:mm')}">시간</span>
                 <span th:if="${msg.isEdited}" class="edited-mark" style="font-size:10px; color:#94a3b8; margin-left:2px;">(수정됨)</span>
               </div>
             </div>
-            <div class="msg-actions" th:style="${msg.content == '삭제된 메시지입니다.' ? 'display:none;' : ''}">
+            <div class="msg-actions" th:style="${msg.content == '삭제된 메시지입니다.' || msg.content == '관리자에 의해 삭제된 메시지입니다.' ? 'display:none;' : ''}">
               <button th:if="${!#lists.contains(reportedMessageIds, msg.id)}" th:id="'reportBtn-' + ${msg.id}" data-action="report" th:attr="data-id=${msg.id}" class="msg-action-btn danger">신고</button>
               <button th:if="${#lists.contains(reportedMessageIds, msg.id)}" th:id="'reportBtn-' + ${msg.id}" class="msg-action-btn" style="cursor:not-allowed; color:#94a3b8;" disabled>신고됨</button>
             </div>
@@ -67,11 +67,11 @@
 
         <div th:if="${msg.type.name() == 'TALK' and msg.senderId == myMemberId}" class="message mine msg-item" th:id="'msg-' + ${msg.id}" th:data-date="${#temporals.format(msg.createdAt, 'yyyy-MM-dd')}">
           <div class="message-inner">
-            <div class="msg-actions" th:style="${msg.content == '삭제된 메시지입니다.' ? 'display:none;' : ''}">
+            <div class="msg-actions" th:style="${msg.content == '삭제된 메시지입니다.' || msg.content == '관리자에 의해 삭제된 메시지입니다.' ? 'display:none;' : ''}">
               <button class="msg-action-btn" data-action="edit" th:attr="data-id=${msg.id}">수정</button>
               <button class="msg-action-btn danger" data-action="delete" th:attr="data-id=${msg.id}">삭제</button>
             </div>
-            <div th:class="${msg.content.equals('삭제된 메시지입니다.') ? 'bubble deleted' : 'bubble'}" th:id="'msgContent-' + ${msg.id}" th:utext="${#strings.replace(#strings.escapeXml(msg.content), '&#10;', '<br>')}">메시지</div>
+            <div th:class="${msg.content.equals('삭제된 메시지입니다.') || msg.content.equals('관리자에 의해 삭제된 메시지입니다.') ? 'bubble deleted' : 'bubble'}" th:id="'msgContent-' + ${msg.id}" th:utext="${#strings.replace(#strings.escapeXml(msg.content), '&#10;', '<br>')}">메시지</div>
             <div class="time" th:id="'msgTime-' + ${msg.id}">
               <span th:text="${#temporals.format(msg.createdAt, 'HH:mm')}">시간</span>
               <span th:if="${msg.isEdited}" class="edited-mark" style="font-size:10px; color:#94a3b8; margin-left:2px;">(수정됨)</span>

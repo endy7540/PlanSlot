@@ -69,6 +69,7 @@ public class ChatMessage {
 
     public void delete() {
         this.isDeleted = true;
-        this.content = "(관리자에 의해 삭제된 메시지입니다.)";
+        this.isEdited = false;
+        this.content = "관리자에 의해 삭제된 메시지입니다.";
     }
 }

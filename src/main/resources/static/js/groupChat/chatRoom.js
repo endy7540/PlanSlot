@@ -172,7 +172,7 @@ if (!localStorage.getItem('jwtToken')) {
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;');
       const contentSafe = escapedContent.replace(/\n/g, '<br>');
-      const isDeleted = msg.content === '삭제된 메시지입니다.';
+      const isDeleted = msg.content === '삭제된 메시지입니다.' || msg.content === '관리자에 의해 삭제된 메시지입니다.';
       const bubbleClass = isDeleted ? 'bubble deleted' : 'bubble';
       
       if (msg.senderId === myMemberId) {

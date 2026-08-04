@@ -57,8 +57,8 @@ async function submitBoardReport() {
     showBoardToast('신고 사유를 선택해 주세요.', true);
     return;
   }
-  if (reasonCode === 'OTHER' && !reasonDetail) {
-    showBoardToast('기타 신고 사유의 세부내용을 입력해 주세요.', true);
+  if (!reasonDetail) {
+    showBoardToast('신고 내용을 입력해 주세요.', true);
     return;
   }
   if (reasonDetail.length > 200) {

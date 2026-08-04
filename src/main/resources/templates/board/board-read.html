@@ -76,11 +76,12 @@
 
 
 <div class="board-modal-overlay" id="boardReportModal">
-  <div class="board-modal board-report-modal">
+  <div class="board-modal">
     <h3 id="boardReportTitle">신고</h3>
-    <p>신고 사유를 선택해 주세요. 세부내용은 기타 선택 시 필수입니다.</p>
-    <div class="board-report-fields">
-      <select class="board-report-select" id="boardReportReason" aria-label="신고 사유">
+    <p>신고 내용은 관리자 확인을 위해 저장되며, 같은 대상을 중복 신고할 수 없습니다.</p>
+    <div class="board-field">
+      <label for="boardReportReason">신고 사유 <span class="board-required">*</span></label>
+      <select class="board-select" id="boardReportReason">
         <option value="">신고 사유 선택</option>
         <option value="SPAM">스팸/도배</option>
         <option value="ABUSE">욕설/비하</option>
@@ -88,11 +89,14 @@
         <option value="PERSONAL_INFORMATION">개인정보 노출</option>
         <option value="OTHER">기타</option>
       </select>
-      <textarea class="board-report-detail" id="boardReportDetail" aria-label="신고 세부내용" placeholder="신고 내용을 입력해 주세요. (200자 이하)"></textarea>
     </div>
-    <div class="board-report-actions">
-      <button class="board-report-button board-report-cancel" id="boardReportCancel" type="button">취소</button>
-      <button class="board-report-button board-report-submit" id="boardReportSubmit" type="button">신고 접수</button>
+    <div class="board-field">
+      <label for="boardReportDetail">세부내용 <span class="board-required">*</span></label>
+      <textarea class="board-textarea" id="boardReportDetail" maxlength="200" style="min-height:130px" placeholder="신고 내용을 입력해 주세요. (200자 이하)"></textarea>
+    </div>
+    <div class="board-modal-actions">
+      <button class="board-btn board-btn-ghost" id="boardReportCancel" type="button">취소</button>
+      <button class="board-btn board-btn-danger" id="boardReportSubmit" type="button">신고 접수</button>
     </div>
   </div>
 </div>

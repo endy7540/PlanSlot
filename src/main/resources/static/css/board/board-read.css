@@ -77,38 +77,6 @@
 .board-comment-content{margin:9px 0 0 37px;white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.7}
 .board-inline-form{display:flex;align-items:flex-end;gap:7px;margin:11px 0 0 37px;padding:10px;background:#F8FCFF;border-radius:10px}
 
-#boardReportModal{background:rgba(11,37,64,.45)}
-.board-report-modal{
-  width:min(100%,380px);
-  padding:22px;
-  border:0;
-  border-radius:16px;
-  box-shadow:0 20px 50px rgba(0,0,0,.25);
-}
-.board-report-modal h3{margin:0;font-size:18px}
-.board-report-modal p{margin:8px 0 16px;color:var(--board-muted);font-size:14px;line-height:1.5}
-.board-report-fields{margin-bottom:16px}
-.board-report-select,.board-report-detail{
-  width:100%;
-  box-sizing:border-box;
-  padding:10px;
-  border:1px solid var(--board-border);
-  border-radius:6px;
-  background:#fff;
-  color:var(--board-ink);
-  font:inherit;
-  font-size:13px;
-}
-.board-report-select{height:42px;margin-bottom:8px}
-.board-report-detail{height:80px;min-height:80px;resize:none;line-height:1.5}
-.board-report-select:focus,.board-report-detail:focus{border-color:var(--board-sky);outline:0;box-shadow:0 0 0 3px rgba(56,189,248,.12)}
-.board-report-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:0}
-.board-report-button{padding:8px 16px;border:0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
-.board-report-button:disabled{opacity:.45;cursor:not-allowed}
-.board-report-cancel{background:#E2E8F0;color:var(--board-ink)}
-.board-report-cancel:hover{background:#CBD5E1}
-.board-report-submit{background:#EF4444;color:#fff}
-.board-report-submit:hover{background:#DC2626}
 
 .board-group-modal{
   width:min(100%,560px);
@@ -349,11 +317,6 @@
   .board-inline-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0 0 37px;padding:9px}
   .board-inline-form textarea{grid-column:1/-1;width:100%;min-height:80px;font-size:16px}
   .board-inline-form .board-btn{width:100%}
-  .board-report-modal{width:100%;padding:20px 16px calc(18px + env(safe-area-inset-bottom));border-radius:18px 18px 0 0}
-  .board-report-modal p{font-size:12.5px}
-  .board-report-select,.board-report-detail{font-size:16px}
-  .board-report-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
-  .board-report-button{min-height:40px;padding:8px 12px;font-size:12px}
   .board-group-modal{width:100%;max-height:calc(100dvh - 12px);padding:20px 16px calc(18px + env(safe-area-inset-bottom));border-radius:18px 18px 0 0}
   .board-group-step h3{font-size:18px}
   .board-group-step h3::before{flex-basis:30px;width:30px;height:30px;border-radius:9px;font-size:12px}

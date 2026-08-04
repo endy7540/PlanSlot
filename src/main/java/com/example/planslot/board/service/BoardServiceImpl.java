@@ -19,7 +19,6 @@ import com.example.planslot.group.entity.GroupMemberStatus;
 import com.example.planslot.group.repository.GroupMemberRepository;
 import com.example.planslot.group.repository.GroupRepository;
 import com.example.planslot.boardreport.entity.BoardReport;
-import com.example.planslot.boardreport.entity.BoardReportReasonCode;
 import com.example.planslot.boardreport.entity.BoardReportTargetType;
 import com.example.planslot.boardreport.repository.BoardReportRepository;
 import com.example.planslot.member.entity.Member;
@@ -540,9 +539,8 @@ public class BoardServiceImpl implements BoardService {
         }
 
         String reasonDetail = normalizeReportDetail(reportRequestDTO.getReasonDetail());
-        if (reportRequestDTO.getReasonCode() == BoardReportReasonCode.OTHER
-                && reasonDetail == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "기타 신고 사유의 세부내용을 입력해 주세요.");
+        if (reasonDetail == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 내용을 입력해 주세요.");
         }
         if (reasonDetail != null && reasonDetail.length() > 200) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용은 200자 이하로 입력해 주세요.");

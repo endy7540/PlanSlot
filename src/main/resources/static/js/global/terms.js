@@ -104,3 +104,10 @@ const API_BASE = "http://localhost:8080";
         ));
         return matches ? decodeURIComponent(matches[1]) : undefined;
     }
+/* Extracted inline JS */
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('terms-extracted-js-1');
+  if(el) el.addEventListener('click', function(event) {
+    submitTerms()
+  });
+});

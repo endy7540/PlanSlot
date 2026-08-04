@@ -626,3 +626,142 @@ const API_BASE = "http://localhost:8080";
             btn.innerHTML = '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>';
         }
     }
+/* Extracted inline JS */
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-1');
+  if(el) el.addEventListener('click', function(event) {
+    location.href='/planslot'
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-2');
+  if(el) el.addEventListener('click', function(event) {
+    togglePw('loginPw', this)
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-3');
+  if(el) el.addEventListener('click', function(event) {
+    togglePage('find-id', false)
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-4');
+  if(el) el.addEventListener('click', function(event) {
+    togglePage('find-pw', false)
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('loginBtn');
+  if(el) el.addEventListener('click', function(event) {
+    doLogin()
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-5');
+  if(el) el.addEventListener('click', function(event) {
+    window.location.href='/oauth2/authorization/google'
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-6');
+  if(el) el.addEventListener('click', function(event) {
+    window.location.href='/oauth2/authorization/kakao'
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-7');
+  if(el) el.addEventListener('click', function(event) {
+    togglePage('signup')
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-8');
+  if(el) el.addEventListener('click', function(event) {
+    window.location.href='/oauth2/authorization/google'
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-9');
+  if(el) el.addEventListener('click', function(event) {
+    window.location.href='/oauth2/authorization/kakao'
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('checkDuplicateBtn');
+  if(el) el.addEventListener('click', function(event) {
+    checkDuplicateIdBtn()
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-10');
+  if(el) el.addEventListener('click', function(event) {
+    togglePw('signupPw', this)
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-11');
+  if(el) el.addEventListener('click', function(event) {
+    togglePw('signupPwConfirm', this)
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('sendEmailBtn');
+  if(el) el.addEventListener('click', function(event) {
+    sendEmailCodeBtn()
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('verifyEmailBtn');
+  if(el) el.addEventListener('click', function(event) {
+    verifyEmailCodeBtn()
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('signupBtn');
+  if(el) el.addEventListener('click', function(event) {
+    doSignUp()
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-12');
+  if(el) el.addEventListener('click', function(event) {
+    togglePage('login')
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('findIdSendBtn');
+  if(el) el.addEventListener('click', function(event) {
+    sendFindAuthCodeBtn('find-id')
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-13');
+  if(el) el.addEventListener('click', function(event) {
+    doFindId()
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-14');
+  if(el) el.addEventListener('click', function(event) {
+    togglePage('login')
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('findPwSendBtn');
+  if(el) el.addEventListener('click', function(event) {
+    sendFindAuthCodeBtn('find-pw')
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-15');
+  if(el) el.addEventListener('click', function(event) {
+    doFindPw()
+  });
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-extracted-js-16');
+  if(el) el.addEventListener('click', function(event) {
+    togglePage('login')
+  });
+});

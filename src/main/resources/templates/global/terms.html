@@ -14,17 +14,17 @@
     <h2 class="title">약관 동의 및 알림 설정</h2>
     
     <div class="terms-box">
-        <label class="terms-item" style="font-weight: 700; color: #0077FF; margin-bottom: 8px;">
+        <label class="terms-item terms-style-1" >
             <input type="checkbox" id="agreeAll">
             전체 동의하기
         </label>
-        <hr style="border:0; border-top:2px solid #e2e8f0; margin:0 0 8px 0;">
+        <hr  class="terms-style-2">
 
         <label class="terms-item required">
             <input type="checkbox" id="agreeSystemNoti" class="term-checkbox">
             [필수] 시스템 및 보안 중요 알림 수신 동의
         </label>
-        <hr style="border:0; border-top:1px solid #e2e8f0; margin:4px 0;">
+        <hr  class="terms-style-3">
         <label class="terms-item">
             <input type="checkbox" id="allowActivityNoti" class="term-checkbox">
             [선택] 모임 및 일정 활동 알림 수신 동의
@@ -37,7 +37,7 @@
 
     <div id="errorMsg" class="error-msg"></div>
 
-    <button class="btn-submit" onclick="submitTerms()">가입 완료하기</button>
+    <button class="btn-submit" id="terms-extracted-js-1">가입 완료하기</button>
 </div>
 
 <script src="/js/global/terms.js"></script>

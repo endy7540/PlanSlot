@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>신고 접수함 - PlanSlot Admin</title>
+    <link rel="stylesheet" th:href="@{/css/admin/admin_layout.css}">
+    <link rel="stylesheet" th:href="@{/css/admin/admin_tables.css}">
+</head>
+<body>
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<!-- 모바일 어드민 메뉴 버튼 -->
+<button type="button" class="admin-menu-toggle" id="adminMenuToggle" aria-label="관리자 메뉴 열기" aria-controls="adminSidebar" aria-expanded="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+        <path d="M8 4v16"></path>
+    </svg>
+</button>
+<div class="admin-sidebar-overlay" id="adminSidebarOverlay" aria-hidden="true"></div>
+
+<div class="admin-layout">
+    <div th:replace="~{admin/admin_sidebar :: adminSidebar('reports')}"></div>
+
+
+    <main class="admin-content">
+        <div class="admin-container">
+            <div class="admin-page-title">
+                <div>
+                    <h1>신고 접수함</h1>
+                </div>
+            </div>
+
+            <div class="board-toolbar">
+                <div class="board-search">
+                    <select id="reportSearchType" class="board-search-select">
+                        <option value="ALL">전체</option>
+                        <option value="TITLE">제목</option>
+                        <option value="REASON">사유</option>
+                        <option value="REPORTER">신고자</option>
+                        <option value="REPORTED">피신고자</option>
+                    </select>
+                    <input type="text" id="reportSearchInput" placeholder="검색어를 입력하세요" onkeyup="if(event.key==='Enter') searchReports()">
+                    <button class="board-btn board-btn-sky" onclick="searchReports()">검색</button>
+                </div>
+            </div>
+
+            <div class="admin-report-count-wrapper">
+                총 접수 건 <strong class="admin-report-count-number" id="totalReportCountSpan" th:text="${reports.size()}">0</strong>건
+            </div>
+
+            <div class="table-responsive">
+                <table class="admin-table" id="reportTable">
+                <thead>
+                    <tr>
+                        <th class="no-wrap col-id">ID</th>
+                        <th class="no-wrap col-type">유형</th>
+                        <th class="col-target">신고 대상 (제목)</th>
+                        <th class="col-reason">신고 사유</th>
+                        <th class="no-wrap col-reporter">신고자</th>
+                        <th class="no-wrap col-reported">피신고자</th>
+                        <th class="no-wrap col-regdate">접수일</th>
+                        <th class="no-wrap col-status">상태</th>
+                        <th class="no-wrap col-manage">관리</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(reports)}">
+                        <td colspan="10" class="admin-table-empty">
+                            접수된 신고 내역이 없습니다.
+                        </td>
+                    </tr>
+                    <tr th:each="report : ${reports}" class="report-row">
+                        <td class="no-wrap" th:text="${report.reportId}">1</td>
+                        <td class="no-wrap" th:text="${report.targetType == 'POST' ? '게시글' : (report.targetType == 'COMMENT' ? '댓글' : '채팅')}">게시글</td>
+                        <td>
+                            <div class="truncate truncate-target clickable-title report-target" 
+                                 th:attr="onclick=|openModal('${report.targetType}', '${#strings.escapeJavaScript(report.targetContent)}', '${#strings.escapeJavaScript(report.targetBody != null ? report.targetBody : '')}', '${report.reasonCode}', '${#strings.escapeJavaScript(report.reasonDetail != null ? report.reasonDetail : '없음')}', '${report.reporterNickname}', '${report.reportedNickname}')|" 
+                                 th:text="${report.targetContent}">글 제목이 표시됩니다...</div>
+                        </td>
+                        <td class="report-reason" th:text="${report.reasonCode}">스팸·광고</td>
+                        <td class="no-wrap">
+                            <div class="truncate truncate-reporter report-reporter" th:text="${report.reporterNickname}">홍길동</div>
+                        </td>
+                        <td class="no-wrap">
+                            <div class="truncate truncate-reporter report-reported modal-reported" th:text="${report.reportedNickname}">작성자</div>
+                        </td>
+                        <td class="no-wrap" th:text="${#temporals.format(report.createdAt, 'yyyy-MM-dd')}">2026-07-17</td>
+                        <td class="no-wrap">
+                            <span th:class="'badge-status ' + (${report.status == 'WAITING'} ? 'badge-waiting' : (${report.status == 'APPROVED'} ? 'badge-processed' : 'badge-rejected'))"
+                                  th:text="${report.status == 'WAITING' ? '대기중' : (report.status == 'APPROVED' ? '삭제 조치' : '기각됨')}">대기중</span>
+                        </td>
+                        <td class="no-wrap">
+                            <div th:if="${report.status == 'WAITING'}" class="report-action-wrapper">
+                                <button type="button" class="btn-approve" th:attr="onclick=|processReport('${report.reportId}', 'approve')|">삭제조치</button>
+                                <button type="button" class="btn-reject" th:attr="onclick=|processReport('${report.reportId}', 'reject')|">기각</button>
+                            </div>
+                            <div th:if="${report.status != 'WAITING'}" class="report-action-wrapper">
+                                <span class="report-status-text">처리됨</span>
+                            </div>
+                        </td>
+                        <td></td>
+                    </tr>
+                </tbody>
+                </table>
+            </div>
+            
+            <!-- 페이지네이션 컨트롤 -->
+            <div class="board-pagination" id="paginationContainer"></div>
+        </div>
+    </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="reportModal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-title">신고 상세 내용</div>
+            <button class="modal-close" onclick="closeModal(event)">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-header-actions">
+                <div class="modal-header-left">
+                    <span id="modalReportType" class="badge-status badge-waiting">BOARD</span>
+                    <div id="modalReasonCode" class="modal-reason-code"></div>
+                </div>
+                <div class="modal-header-right">
+                    <div class="modal-header-left">
+                        <span class="modal-label-text">피신고자</span>
+                        <div id="modalReported" class="modal-reported"></div>
+                    </div>
+                    <div class="modal-header-left">
+                        <span class="modal-label-text">신고자</span>
+                        <div id="modalReporter" class="modal-reporter"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-body-item">
+                <div class="modal-body-label">상세 내용 (신고자 작성)</div>
+                <div class="modal-body-content modal-reason-detail" id="modalReasonDetail"></div>
+            </div>
+            <div class="modal-body-item">
+                <div class="modal-body-label" id="modalTargetLabel">신고 대상</div>
+                <div class="modal-body-content modal-target-content">
+                    <div class="modal-target-header">
+                        <span id="modalTitleBadge" class="modal-badge-title">제목</span>
+                        <div id="modalTargetContent" class="modal-target-text"></div>
+                    </div>
+                    
+                    <div id="modalTargetBodyContainer" class="modal-target-body-container">
+                        <span id="modalContentBadge" class="modal-badge-content">내용</span>
+                        <div id="modalTargetBody" class="modal-target-text"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generic Confirm Modal -->
+<div class="modal-overlay" id="confirmModal" onclick="closeConfirmModal(event)">
+    <div class="modal-content text-center" onclick="event.stopPropagation()">
+        <div class="modal-body padded">
+            <p id="confirmModalMessage" class="modal-message"></p>
+            <div class="modal-actions">
+                <button type="button" class="board-btn modal-btn-cancel" onclick="closeConfirmModal(event, false)">취소</button>
+                <button type="button" class="board-btn board-btn-sky modal-btn-confirm" onclick="closeConfirmModal(event, true)">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generic Alert Modal -->
+<div class="modal-overlay" id="alertModal" onclick="closeAlertModal(event)">
+    <div class="modal-content text-center" onclick="event.stopPropagation()">
+        <div class="modal-body padded">
+            <p id="alertModalMessage" class="modal-message"></p>
+            <div class="modal-actions">
+                <button type="button" class="board-btn board-btn-sky modal-btn-confirm" onclick="closeAlertModal(event, true)">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/js/admin/reports.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlanSlot - 게시글 작성</title>
+  <link rel="stylesheet" th:href="@{/css/notification/notification.css}" href="/css/notification/notification.css">
+  <link rel="stylesheet" th:href="@{/css/board/board-common.css}" href="/css/board/board-common.css">
+  <link rel="stylesheet" th:href="@{/css/board/board-register.css}" href="/css/board/board-register.css">
+</head>
+<body data-board-page="register" data-board-type="" th:attr="data-board-type=${boardType}">
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<nav class="board-subnav" aria-label="게시판 메뉴">
+  <div class="board-subnav-inner">
+    <a data-board-nav="NOTICE" th:href="@{/board/notice}" href="/board/notice">공지사항</a>
+    <a data-board-nav="STUDY" th:href="@{/board/study}" href="/board/study">스터디</a>
+    <a data-board-nav="GROUP" th:href="@{/board/group}" href="/board/group">소모임</a>
+    <a data-board-nav="FREE" th:href="@{/board/free}" href="/board/free">자유게시판</a>
+  </div>
+</nav>
+
+<main class="board-main">
+  <section class="board-card board-auth-panel" id="boardLoginPanel" hidden>
+    <h2>로그인이 필요합니다</h2>
+    <p>게시글을 작성하거나 수정하려면 먼저 로그인해 주세요.</p>
+    <a class="board-btn board-btn-primary" th:href="@{/auth/login}" href="/auth/login">로그인 페이지로 이동</a>
+  </section>
+
+  <div data-board-auth-content>
+    <div class="board-breadcrumb">
+      <a th:href="@{/planslot}" href="/planslot">홈</a><span>›</span>
+      <a id="boardRegisterListLink" href="/board/free">게시판</a><span>›</span>
+      <span id="boardRegisterCategory">게시판</span>
+    </div>
+
+    <div class="board-card board-auth-panel" id="boardRegisterLoading">작성 화면을 준비하는 중...</div>
+
+    <section class="board-card board-form-card" id="boardRegisterPanel" hidden>
+      <form id="boardRegisterForm">
+        <div class="board-field">
+          <label for="boardRegisterTitle">제목 <span class="board-required">*</span></label>
+          <input class="board-input" id="boardRegisterTitle" type="text" maxlength="100" placeholder="제목을 입력해 주세요.">
+          <div class="board-field-info"><span>게시판 이용자가 내용을 쉽게 알 수 있도록 작성해 주세요.</span><span id="boardRegisterTitleCount">0 / 100</span></div>
+        </div>
+
+        <div class="board-field">
+          <label for="boardRegisterContent">내용 <span class="board-required">*</span></label>
+          <textarea class="board-textarea" id="boardRegisterContent" maxlength="1000" placeholder="내용을 입력해 주세요."></textarea>
+          <div class="board-field-info"><span>개인정보가 포함되지 않도록 주의해 주세요.</span><span id="boardRegisterContentCount">0 / 1000</span></div>
+        </div>
+
+        <div class="board-field">
+          <label for="boardRegisterImage">이미지</label>
+          <div class="board-image-upload">
+            <input class="board-image-file-input" id="boardRegisterImage" type="file" accept="image/jpeg,image/png,image/webp">
+            <button class="board-image-dropzone" id="boardRegisterImageSelect" type="button">
+              <span class="board-image-upload-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 16.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2.5M8 9l4-4 4 4M12 5v11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="board-image-upload-copy">
+                <strong>이미지를 선택하거나 끌어다 놓으세요</strong>
+                <span id="boardRegisterImageFileName">선택된 파일 없음</span>
+              </span>
+              <span class="board-image-select-badge">파일 선택</span>
+            </button>
+            <div class="board-image-upload-hint">JPG, PNG, WEBP 형식의 이미지 한 장을 첨부할 수 있습니다.</div>
+            <div class="board-image-preview-wrap" id="boardRegisterImagePreviewWrap">
+              <img class="board-image-preview" id="boardRegisterImagePreview" alt="첨부 이미지 미리보기">
+              <div class="board-image-preview-actions">
+                <button class="board-btn board-btn-danger board-btn-small" id="boardRegisterImageRemove" type="button">이미지 제거</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="board-form-actions">
+          <button class="board-btn board-btn-ghost" id="boardRegisterCancel" type="button">취소</button>
+          <button class="board-btn board-btn-primary" id="boardRegisterSubmit" type="submit">등록하기</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</main>
+
+
+<div class="board-toast" id="boardToast"></div>
+<script th:src="@{/js/board/board-common.js}" src="/js/board/board-common.js"></script>
+<script th:src="@{/js/board/board-register.js}" src="/js/board/board-register.js"></script>
+</body>
+</html>

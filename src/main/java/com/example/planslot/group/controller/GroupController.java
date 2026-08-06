@@ -1,0 +1,466 @@
+package com.example.planslot.group.controller;
+
+import com.example.planslot.group.dto.GroupDTO;
+import com.example.planslot.group.service.GroupService;
+import com.example.planslot.member.repository.MemberRepository;
+import com.example.planslot.schedule.dto.ScheduleDTO;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
+import org.springframework.web.multipart.MultipartFile;
+import com.example.planslot.group.service.GroupRecommendationService;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.Files;
+
+@Controller
+@RequestMapping("/group")
+@RequiredArgsConstructor
+public class GroupController {
+
+    private final GroupService groupService;
+    private final GroupRecommendationService groupRecommendationService;
+    private final MemberRepository memberRepository;
+    private final com.example.planslot.group.repository.GroupMemberRepository groupMemberRepository;
+
+    private Long getAuthenticatedMemberId(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalStateException("인증되지 않은 사용자입니다.");
+        }
+        return memberRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."))
+                .getId();
+    }
+
+    // 목록 조회 화면 반환
+    @GetMapping(value = {"", "/list"})
+    public String groupList() {
+        return "group/group-list";
+    }
+
+    // 모임 상세 화면 반환
+    @GetMapping("/read")
+    public String groupDetail(@RequestParam(value = "id", required = false) Long id, Authentication authentication) {
+        if (id == null) return "redirect:/group/list";
+        try {
+            Long memberId = getAuthenticatedMemberId(authentication);
+            if (!groupMemberRepository.existsByGroup_IdAndMember_Id(id, memberId)) {
+                return "redirect:/group/list";
+            }
+        } catch (Exception e) {
+            return "redirect:/auth/login";
+        }
+        return "group/group-read";
+    }
+
+    // AI 추천 화면 반환
+    @GetMapping("/recommend")
+    public String groupRecommend(@RequestParam(value = "id", required = false) Long id, Authentication authentication) {
+        if (id == null) return "redirect:/group/list";
+        try {
+            Long memberId = getAuthenticatedMemberId(authentication);
+            if (!groupMemberRepository.existsByGroup_IdAndMember_Id(id, memberId)) {
+                return "redirect:/group/list";
+            }
+        } catch (Exception e) {
+            return "redirect:/auth/login";
+        }
+        return "group/ai-recommend";
+    }
+
+
+    // AI 추천 데이터 동기 API (기존 유지)
+    @GetMapping("/{groupId}/ai-recommendations")
+    @ResponseBody
+    public ResponseEntity<GroupDTO.AiResponse> getAiRecommendations(
+            @PathVariable Long groupId,
+            @RequestParam(defaultValue = "SHORT_MEETING") String type,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        return ResponseEntity.ok(groupRecommendationService.getRecommendations(groupId, memberId, type, startDate, endDate));
+    }
+
+    // -----------------------------------------------------
+    // Async Job Management for AI Recommendation
+    // -----------------------------------------------------
+    private static final ConcurrentHashMap<String, CompletableFuture<GroupDTO.AiResponse>> aiJobs = new ConcurrentHashMap<>();
+
+    @PostMapping("/{groupId}/ai-recommendations/start")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> startAiRecommendations(
+            @PathVariable Long groupId,
+            @RequestParam(defaultValue = "SHORT_MEETING") String type,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        String jobId = UUID.randomUUID().toString();
+        
+        CompletableFuture<GroupDTO.AiResponse> future = CompletableFuture.supplyAsync(() -> 
+            groupRecommendationService.getRecommendations(groupId, memberId, type, startDate, endDate)
+        );
+        aiJobs.put(jobId, future);
+        
+        Map<String, String> res = new HashMap<>();
+        res.put("jobId", jobId);
+        return ResponseEntity.ok(res);
+    }
+
+    @GetMapping("/ai-recommendations/status/{jobId}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getAiRecommendationStatus(@PathVariable String jobId) {
+        CompletableFuture<GroupDTO.AiResponse> future = aiJobs.get(jobId);
+        Map<String, Object> res = new HashMap<>();
+        
+        if (future == null) {
+            res.put("status", "FAILED");
+            Map<String, String> data = new HashMap<>();
+            data.put("error", "작업을 찾을 수 없습니다.");
+            res.put("data", data);
+            return ResponseEntity.ok(res);
+        }
+        
+        if (future.isDone()) {
+            try {
+                GroupDTO.AiResponse aiData = future.get();
+                res.put("status", "COMPLETED");
+                res.put("data", aiData);
+            } catch (Exception e) {
+                res.put("status", "FAILED");
+                Map<String, String> data = new HashMap<>();
+                data.put("error", "분석 중 오류가 발생했습니다.");
+                res.put("data", data);
+            } finally {
+                aiJobs.remove(jobId);
+            }
+        } else {
+            res.put("status", "PROCESSING");
+        }
+        
+        return ResponseEntity.ok(res);
+    }
+
+    // 모임 생성 요청 처리
+    @PostMapping(value = "/register", consumes = "multipart/form-data")
+    public ResponseEntity<GroupDTO.Response> registerGroup(
+            @RequestParam("groupName") String groupName,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            Authentication authentication
+    ) {
+        if (groupName == null || groupName.trim().isEmpty() || groupName.length() > 30) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Long memberId = getAuthenticatedMemberId(authentication);
+        GroupDTO.CreateRequest request = new GroupDTO.CreateRequest(groupName.trim());
+        GroupDTO.Response response = groupService.createGroup(memberId, request);
+
+        if (file != null && !file.isEmpty()) {
+            try {
+                String originalFilename = file.getOriginalFilename();
+                String extension = ".jpg";
+                if (originalFilename != null && originalFilename.contains(".")) {
+                    extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+                }
+                String newFilename = UUID.randomUUID().toString() + extension;
+                
+                java.nio.file.Path uploadPath = java.nio.file.Paths.get(System.getProperty("user.dir"), "uploads", "group");
+                if (!java.nio.file.Files.exists(uploadPath)) {
+                    java.nio.file.Files.createDirectories(uploadPath);
+                }
+                
+                java.nio.file.Path filePath = uploadPath.resolve(newFilename);
+                file.transferTo(filePath.toFile());
+                String imageUrl = "/uploads/group/" + newFilename;
+                
+                groupService.updateGroupProfileImage(response.groupId(), imageUrl, memberId);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
+    }
+
+    // 내 모임 목록 조회
+    @GetMapping("/mygroup")
+    @ResponseBody
+    public ResponseEntity<List<GroupDTO.ListResponse>> getMyGroups(Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        List<GroupDTO.ListResponse> responses = groupService.getMyGroups(memberId);
+        return ResponseEntity.ok(responses);
+    }
+
+    // 모임 상세 정보 조회
+    @GetMapping("/read/{groupId}")
+    @ResponseBody
+    public ResponseEntity<GroupDTO.DetailResponse> getGroupDetail(@PathVariable("groupId") Long groupId, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        GroupDTO.DetailResponse response = groupService.getGroupRead(groupId, memberId);
+        return ResponseEntity.ok(response);
+    }
+    
+    // 모임 즐겨찾기 토글 API
+    @PostMapping("/{groupId}/favorite")
+    @ResponseBody
+    public ResponseEntity<Void> toggleFavorite(@PathVariable Long groupId, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.toggleFavorite(groupId, memberId);
+        return ResponseEntity.ok().build();
+    }
+
+    // 모임 이름 수정
+    @PutMapping("/{groupId}")
+    @ResponseBody
+    public ResponseEntity<Void> updateGroupName(@PathVariable("groupId") Long groupId, @RequestBody Map<String, String> body, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.updateGroupName(groupId, body.get("name"), memberId);
+        return ResponseEntity.ok().build();
+    }
+
+    // 모임방 프로필 사진 수정
+    @PostMapping("/{groupId}/image")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> updateGroupImage(
+            @PathVariable("groupId") Long groupId,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            String originalFilename = file.getOriginalFilename();
+            String extension = ".png";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+            }
+            String newFilename = UUID.randomUUID().toString() + extension;
+            
+            Path uploadPath = Paths.get(System.getProperty("user.dir"), "uploads", "group");
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+            
+            Path filePath = uploadPath.resolve(newFilename);
+            file.transferTo(filePath.toFile());
+            String imageUrl = "/uploads/group/" + newFilename;
+            
+            groupService.updateGroupProfileImage(groupId, imageUrl, memberId);
+            
+            return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // 모임 삭제
+    @DeleteMapping("/{groupId}")
+    @ResponseBody
+    public ResponseEntity<Void> deleteGroup(@PathVariable("groupId") Long groupId, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.deleteGroup(groupId, memberId);
+        return ResponseEntity.ok().build();
+    }
+
+    // 모임 탈퇴
+    @DeleteMapping("/{groupId}/leave")
+    @ResponseBody
+    public ResponseEntity<Void> leaveGroup(
+            @PathVariable("groupId") Long groupId, 
+            @RequestParam(value = "newOwnerId", required = false) Long newOwnerId,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.leaveGroup(groupId, memberId, newOwnerId);
+        return ResponseEntity.ok().build();
+    }
+
+    // 모임원 추방
+    @DeleteMapping("/{groupId}/member/{targetMemberId}")
+    @ResponseBody
+    public ResponseEntity<Void> kickMember(
+            @PathVariable("groupId") Long groupId, 
+            @PathVariable("targetMemberId") Long targetMemberId,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.kickMember(groupId, targetMemberId, memberId);
+        return ResponseEntity.ok().build();
+    }
+
+    // 모임 초대
+    @PostMapping("/{groupId}/invitation")
+    @ResponseBody
+    public ResponseEntity<?> inviteMember(@PathVariable("groupId") Long groupId, @RequestBody Map<String, String> body, Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        try {
+            groupService.inviteMember(groupId, body.get("nickname"), memberId);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // 초대 수락/거절
+    @PatchMapping("/{groupId}/invitation/{invitationId}")
+    @ResponseBody
+    public ResponseEntity<Void> handleInvitation(
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("invitationId") Long invitationId,
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        String action = body.get("action"); // "ACCEPT" 또는 "REJECT" 로 전송
+        String color = body.get("color");
+        if ("ACCEPT".equalsIgnoreCase(action)) {
+            groupService.acceptInvite(groupId, memberId, color); // TODO: 추후 invitationId 검증 로직 추가 필요
+        } else if ("REJECT".equalsIgnoreCase(action)) {
+            groupService.rejectInvite(groupId, memberId);
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    // 자신 닉네임 수정
+    @PatchMapping("/{groupId}/nickname")
+    @ResponseBody
+    public ResponseEntity<Void> updateMyNickname(
+            @PathVariable("groupId") Long groupId, 
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.updateMyNickname(groupId, memberId, body.get("nickname"));
+        return ResponseEntity.ok().build();
+    }
+
+    // 타인 닉네임 수정
+    @PatchMapping("/{groupId}/member/{targetMemberId}/displayName")
+    @ResponseBody
+    public ResponseEntity<Void> updateMemberDisplayName(
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("targetMemberId") Long targetMemberId,
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.updateMemberDisplayName(groupId, targetMemberId, body.get("displayName"), memberId);
+        return ResponseEntity.ok().build();
+    }
+
+    // 닉네임 검색 (초대 시 자동완성 용도)
+    @GetMapping("/search-nickname")
+    @ResponseBody
+    public ResponseEntity<List<String>> searchNickname(@RequestParam("prefix") String prefix) {
+        List<String> nicknames = memberRepository.findAll().stream()
+                .map(member -> member.getNickname())
+                .filter(nickname -> nickname != null && nickname.toLowerCase().startsWith(prefix.toLowerCase()))
+                .limit(5)
+                .toList();
+        return ResponseEntity.ok(nicknames);
+    }
+
+    // 모임 캘린더에 일정 추가 및 공유
+    @PostMapping("/{groupId}/schedules")
+    @ResponseBody
+    public ResponseEntity<Void> addGroupSchedule(
+            @PathVariable("groupId") Long groupId,
+            @RequestBody ScheduleDTO requestDTO,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.addGroupSchedule(groupId, memberId, requestDTO);
+        return ResponseEntity.ok().build();
+    }
+
+    // 모임 캘린더용 일정 전체 조회
+    @GetMapping("/{groupId}/schedules")
+    @ResponseBody
+    public ResponseEntity<List<GroupDTO.CalendarScheduleInfo>> getGroupSchedules(
+            @PathVariable("groupId") Long groupId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        List<GroupDTO.CalendarScheduleInfo> schedules = groupService.getGroupSchedules(groupId, memberId, start, end);
+        return ResponseEntity.ok(schedules);
+    }
+    // 타인에게 내 일정 공유하기
+    @PostMapping("/{groupId}/peer-schedules")
+    @ResponseBody
+    public ResponseEntity<Void> shareSchedulesWithPeers(
+            @PathVariable("groupId") Long groupId,
+            @RequestBody Map<String, Object> body,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        List<Integer> scheduleIdsInt = (List<Integer>) body.get("scheduleIds");
+        List<Integer> targetMemberIdsInt = (List<Integer>) body.get("targetMemberIds");
+        
+        List<Long> scheduleIds = scheduleIdsInt.stream().map(Integer::longValue).toList();
+        List<Long> targetMemberIds = targetMemberIdsInt.stream().map(Integer::longValue).toList();
+        
+        groupService.shareSchedulesWithPeers(groupId, memberId, scheduleIds, targetMemberIds);
+        return ResponseEntity.ok().build();
+    }
+
+    // 나에게 공유된 타인의 일정 조회
+    @GetMapping("/{groupId}/peer-schedules")
+    @ResponseBody
+    public ResponseEntity<List<GroupDTO.SharedPeerSchedule>> getSharedPeerSchedules(
+            @PathVariable("groupId") Long groupId,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        List<GroupDTO.SharedPeerSchedule> schedules = groupService.getSharedPeerSchedules(groupId, memberId);
+        return ResponseEntity.ok(schedules);
+    }
+
+    // 내가 타인에게 공유한 일정 조회
+    @GetMapping("/{groupId}/my-shared-schedules")
+    @ResponseBody
+    public ResponseEntity<List<GroupDTO.SharedPeerSchedule>> getSchedulesSharedByMe(
+            @PathVariable("groupId") Long groupId,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        List<GroupDTO.SharedPeerSchedule> schedules = groupService.getSchedulesSharedByMe(groupId, memberId);
+        return ResponseEntity.ok(schedules);
+    }
+
+    // 내가 공유한 일정 공유 중지(삭제)
+    @DeleteMapping("/{groupId}/peer-schedules/{shareId}")
+    @ResponseBody
+    public ResponseEntity<Void> deleteSharedPeerSchedule(
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("shareId") Long shareId,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        groupService.deleteSharedPeerSchedule(shareId, memberId);
+        return ResponseEntity.ok().build();
+    }
+
+    // 공유된 타인의 일정 내 캘린더로 가져오기
+    @PostMapping("/{groupId}/peer-schedules/{shareId}/import")
+    @ResponseBody
+    public ResponseEntity<GroupDTO.ImportResult> importSharedPeerSchedule(
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("shareId") Long shareId,
+            @RequestParam(value = "overwrite", defaultValue = "false") boolean overwrite,
+            @RequestParam(value = "isPublic", defaultValue = "N") String isPublic,
+            Authentication authentication) {
+        Long memberId = getAuthenticatedMemberId(authentication);
+        GroupDTO.ImportResult result = groupService.importSharedPeerSchedule(shareId, memberId, overwrite, isPublic);
+        return ResponseEntity.ok(result);
+    }
+}

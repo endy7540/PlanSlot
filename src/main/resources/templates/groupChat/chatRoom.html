@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlanSlot - 모임 채팅방</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Pretendard/1.3.9/static/pretendard.css">
+  <link rel="stylesheet" th:href="@{/css/board/board-common.css}" href="/css/board/board-common.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
+<!-- SockJS & STOMP CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+<link rel="stylesheet" href="/css/groupChat/chatRoom.css">
+</head>
+<body>
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<div class="chat-layout">
+  <div class="chat-header">
+    <button style="border:none; background:none; cursor:pointer; color:rgba(255,255,255,0.9); font-size:20px; margin-right:12px; display:flex; align-items:center; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.9'" title="모임 캘린더로 돌아가기" th:onclick="|location.href='/group/read?id=${groupId}'|">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+    </button>
+    
+    <h2 style="flex:1;" th:text="${group.name}">모임 방 이름</h2>
+    
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button id="btnAiSummary" class="chat-sidebar-btn ai-summary-btn" title="AI 요약" style="font-weight: 700; display:flex; align-items:center; gap:4px;">
+        ✨ AI 요약
+      </button>
+      <button id="btnToggleLeftSidebar" class="chat-sidebar-btn" title="모임방 목록">모임방 목록</button>
+      <button id="btnToggleRightSidebar" class="chat-sidebar-btn active" title="채팅방 인원">채팅방 인원</button>
+    </div>
+  </div>
+
+  <div class="chat-body">
+    <!-- 중앙 메인 대화창 -->
+    <div class="chat-main">
+      <div class="chat-messages" id="chatMessages">
+      <!-- 과거 채팅 내역 렌더링 -->
+      <th:block th:each="msg : ${chatHistory}">
+        <div th:if="${msg.type.name() == 'ENTER'}" class="message system msg-item" th:data-date="${#temporals.format(msg.createdAt, 'yyyy-MM-dd')}" th:text="${msg.content}"></div>
+        
+        <div th:if="${msg.type.name() == 'TALK' and msg.senderId != myMemberId}" class="message other msg-item" th:id="'msg-' + ${msg.id}" th:data-date="${#temporals.format(msg.createdAt, 'yyyy-MM-dd')}">
+          <div class="sender alias-target" th:data-sender-id="${msg.senderId}" th:text="${msg.senderName}">이름</div>
+          <div class="message-inner">
+            <div class="avatar" style="background: #e2e8f0; display:flex; justify-content:center; align-items:center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </div>
+            <div th:class="${msg.content.equals('삭제된 메시지입니다.') || msg.content.equals('관리자에 의해 삭제된 메시지입니다.') ? 'bubble deleted' : 'bubble'}" th:utext="${#strings.replace(#strings.escapeXml(msg.content), '&#10;', '<br>')}">메시지</div>
+            <div style="display:flex; flex-direction:column; align-items:flex-start; gap:2px;">
+              <div class="time" th:id="'msgTime-' + ${msg.id}">
+                <span th:text="${#temporals.format(msg.createdAt, 'HH:mm')}">시간</span>
+                <span th:if="${msg.isEdited}" class="edited-mark" style="font-size:10px; color:#94a3b8; margin-left:2px;">(수정됨)</span>
+              </div>
+            </div>
+            <div class="msg-actions" th:style="${msg.content == '삭제된 메시지입니다.' || msg.content == '관리자에 의해 삭제된 메시지입니다.' ? 'display:none;' : ''}">
+              <button th:if="${!#lists.contains(reportedMessageIds, msg.id)}" th:id="'reportBtn-' + ${msg.id}" data-action="report" th:attr="data-id=${msg.id}" class="msg-action-btn danger">신고</button>
+              <button th:if="${#lists.contains(reportedMessageIds, msg.id)}" th:id="'reportBtn-' + ${msg.id}" class="msg-action-btn" style="cursor:not-allowed; color:#94a3b8;" disabled>신고됨</button>
+            </div>
+          </div>
+        </div>
+
+        <div th:if="${msg.type.name() == 'TALK' and msg.senderId == myMemberId}" class="message mine msg-item" th:id="'msg-' + ${msg.id}" th:data-date="${#temporals.format(msg.createdAt, 'yyyy-MM-dd')}">
+          <div class="message-inner">
+            <div class="msg-actions" th:style="${msg.content == '삭제된 메시지입니다.' || msg.content == '관리자에 의해 삭제된 메시지입니다.' ? 'display:none;' : ''}">
+              <button class="msg-action-btn" data-action="edit" th:attr="data-id=${msg.id}">수정</button>
+              <button class="msg-action-btn danger" data-action="delete" th:attr="data-id=${msg.id}">삭제</button>
+            </div>
+            <div th:class="${msg.content.equals('삭제된 메시지입니다.') || msg.content.equals('관리자에 의해 삭제된 메시지입니다.') ? 'bubble deleted' : 'bubble'}" th:id="'msgContent-' + ${msg.id}" th:utext="${#strings.replace(#strings.escapeXml(msg.content), '&#10;', '<br>')}">메시지</div>
+            <div class="time" th:id="'msgTime-' + ${msg.id}">
+              <span th:text="${#temporals.format(msg.createdAt, 'HH:mm')}">시간</span>
+              <span th:if="${msg.isEdited}" class="edited-mark" style="font-size:10px; color:#94a3b8; margin-left:2px;">(수정됨)</span>
+            </div>
+          </div>
+        </div>
+      </th:block>
+    </div>
+
+    <div class="chat-input-area">
+      <textarea id="msgInput" placeholder="메시지를 입력하세요 (Shift+Enter로 줄바꿈)"></textarea>
+      <button class="send-btn" id="btnSend">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 우측 참여자 사이드바 -->
+  <div class="chat-sidebar">
+    <div class="sidebar-header" style="justify-content: space-between;">
+      <span>채팅방 인원</span>
+      <button type="button" class="sidebar-close-btn" onclick="closeMobileSidebar()" title="닫기" aria-label="닫기">✕</button>
+    </div>
+    <div class="member-list">
+      
+      <!-- 나 자신 -->
+      <div class="member-item" th:each="m : ${group.members}" th:if="${m.id == myMemberId.toString()}">
+        <!-- 프로필 이미지가 있는 경우 -->
+        <div class="member-avatar" th:if="${m.profileImageUrl != null and m.profileImageUrl != 'null' and m.profileImageUrl != ''}" style="background:none; border:none; padding:0; overflow:hidden;">
+          <img th:src="${m.profileImageUrl}" th:alt="${m.name}" style="width:100%; height:100%; object-fit:cover;" onerror="this.outerHTML=decodeURIComponent('%3Cdiv%20style%3D%22background%3A%20%23e2e8f0%3B%20width%3A%20100%25%3B%20height%3A%20100%25%3B%20display%3Aflex%3B%20justify-content%3Acenter%3B%20align-items%3Acenter%3B%22%3E%3Csvg%20width%3D%2218%22%20height%3D%2218%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2021v-2a4%204%200%200%200-4-4H8a4%204%200%200%200-4%204v2%22%3E%3C/path%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%227%22%20r%3D%224%22%3E%3C/circle%3E%3C/svg%3E%3C/div%3E')">
+        </div>
+
+        <!-- 프로필 이미지가 없는 경우 (기본 아이콘) -->
+        <div class="member-avatar" th:unless="${m.profileImageUrl != null and m.profileImageUrl != 'null' and m.profileImageUrl != ''}" style="background: #e2e8f0; display:flex; justify-content:center; align-items:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+
+        <div class="member-name">
+          <span th:text="${m.name} + ' (나)'">이름 (나)</span>
+          <span class="member-role" th:if="${m.role == '모임장'}">모임장</span>
+        </div>
+      </div>
+
+      <!-- 다른 참여자들 -->
+      <div class="member-item" th:each="m : ${group.members}" th:unless="${m.id == myMemberId.toString()}">
+        <!-- 프로필 이미지가 있는 경우 -->
+        <div class="member-avatar" th:if="${m.profileImageUrl != null and m.profileImageUrl != 'null' and m.profileImageUrl != ''}" style="background:none; border:none; padding:0; overflow:hidden;">
+          <img th:src="${m.profileImageUrl}" th:alt="${m.name}" style="width:100%; height:100%; object-fit:cover;" onerror="this.outerHTML=decodeURIComponent('%3Cdiv%20style%3D%22background%3A%20%23e2e8f0%3B%20width%3A%20100%25%3B%20height%3A%20100%25%3B%20display%3Aflex%3B%20justify-content%3Acenter%3B%20align-items%3Acenter%3B%22%3E%3Csvg%20width%3D%2218%22%20height%3D%2218%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2021v-2a4%204%200%200%200-4-4H8a4%204%200%200%200-4%204v2%22%3E%3C/path%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%227%22%20r%3D%224%22%3E%3C/circle%3E%3C/svg%3E%3C/div%3E')">
+        </div>
+        
+        <!-- 프로필 이미지가 없는 경우 (기본 아이콘) -->
+        <div class="member-avatar" th:unless="${m.profileImageUrl != null and m.profileImageUrl != 'null' and m.profileImageUrl != ''}" style="background: #e2e8f0; display:flex; justify-content:center; align-items:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+        
+        <div class="member-name">
+          <span class="alias-target" th:data-sender-id="${m.id}" th:text="${m.name}">이름</span>
+          <span class="member-role" th:if="${m.role == '모임장'}">모임장</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 좌측에 있던 그룹방 사이드바를 우측으로 이동 -->
+  <div class="chat-left-sidebar hidden" style="width: 320px; border-left: 1px solid var(--line); background: #fff; display: flex; flex-direction: column;">
+    <div class="sidebar-header" style="justify-content: space-between;">
+      <span>모임방 목록</span>
+      <button type="button" class="sidebar-close-btn" onclick="closeMobileSidebar()" title="닫기" aria-label="닫기">✕</button>
+    </div>
+    <div style="flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+      <a th:href="@{/groupChat/{id}(id=${g.id}, sidebar='left')}" th:each="g : ${myGroups}"
+         style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; text-decoration: none; color: inherit; cursor: pointer; transition: background 0.2s;"
+         onmouseover="if(this.style.background!=='rgb(224, 242, 254)' && this.style.background!=='#e0f2fe') this.style.background='#f1f5f9'"
+         onmouseout="if(this.style.background!=='rgb(224, 242, 254)' && this.style.background!=='#e0f2fe') this.style.background='transparent'"
+         th:styleappend="${g.id == groupId.toString() ? 'background: #e0f2fe; color: #0284c7; font-weight: bold;' : ''}">
+        
+        <div th:if="${g.profileImageUrl != null and g.profileImageUrl != 'null' and g.profileImageUrl != ''}" style="width: 36px; height: 36px; border-radius: 12px; overflow: hidden; flex-shrink: 0; border: 1px solid var(--line);">
+          <img th:src="${g.profileImageUrl}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.outerHTML=decodeURIComponent('%3Cdiv%20style%3D%22background%3A%20%23e2e8f0%3B%20width%3A%20100%25%3B%20height%3A%20100%25%3B%20display%3Aflex%3B%20justify-content%3Acenter%3B%20align-items%3Acenter%3B%22%3E%3Csvg%20width%3D%2218%22%20height%3D%2218%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M17%2021v-2a4%204%200%200%200-4-4H5a4%204%200%200%200-4%204v2%22%3E%3C/path%3E%3Ccircle%20cx%3D%229%22%20cy%3D%227%22%20r%3D%224%22%3E%3C/circle%3E%3Cpath%20d%3D%22M23%2021v-2a4%204%200%200%200-3-3.87%22%3E%3C/path%3E%3Cpath%20d%3D%22M16%203.13a4%204%200%200%201%200%207.75%22%3E%3C/path%3E%3C/svg%3E%3C/div%3E')">
+        </div>
+        <div th:unless="${g.profileImageUrl != null and g.profileImageUrl != 'null' and g.profileImageUrl != ''}" style="width: 36px; height: 36px; border-radius: 12px; background: #e2e8f0; display: flex; justify-content: center; align-items: center; flex-shrink: 0; border: 1px solid var(--line);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </div>
+        
+        <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13.5px;" th:text="${g.name}">그룹명</div>
+        <div th:if="${g.unreadChatCount > 0}" style="background-color:#EF4444; color:white; border-radius:9999px; padding:2px 6px; font-size:10px; font-weight:bold; margin-right:6px;" th:text="${g.unreadChatCount > 99 ? '99+' : g.unreadChatCount}"></div>
+        <div th:data-id="${g.id}" onclick="event.preventDefault(); event.stopPropagation(); toggleFavorite(this.getAttribute('data-id'))" style="padding:4px; z-index:10; display:flex; align-items:center;">
+          <svg th:if="${g.isFavorite()}" width="16" height="16" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          <svg th:unless="${g.isFavorite()}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        </div>
+      </a>
+    </div>
+  </div>
+  </div> <!-- end of chat-body -->
+
+</div>
+
+
+
+<!-- AI Summary Modal -->
+<div class="modal-overlay" id="aiSummaryModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(11,37,64,.45); z-index:100; justify-content:center; align-items:center;">
+  <div class="modal-box" style="background:#fff; border-radius:16px; padding:22px; max-width:500px; width:100%; max-height:80vh; display:flex; flex-direction:column; box-shadow:0 20px 50px rgba(0,0,0,.25);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="margin:0; font-size:18px; display:flex; align-items:center; gap:8px;">✨ AI 채팅 요약</h3>
+      <button id="aiSummaryClose" style="border:none; background:none; cursor:pointer; font-size:20px; color:var(--ink-soft);">×</button>
+    </div>
+    <div id="aiSummaryContent" style="flex:1; overflow-y:auto; font-size:14px; line-height:1.5; color:var(--ink-dark); margin-bottom:16px;">
+      <div style="display:flex; justify-content:center; padding:40px 0;">
+        <div style="color:var(--primary);">AI가 대화 내용을 요약하고 있습니다...</div>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+      <button id="aiSummaryCloseBtn" style="padding:10px 16px; border-radius:8px; border:none; background:var(--bg); color:var(--ink-dark); font-weight:500; cursor:pointer;">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 신고 모달 -->
+<div class="board-modal-overlay" id="reportModal">
+  <div class="board-modal">
+    <h3>채팅 신고</h3>
+    <p>신고 내용은 관리자 확인을 위해 저장되며, 같은 대상을 중복 신고할 수 없습니다.</p>
+    <div class="board-field">
+      <label for="reportReason">신고 사유 <span class="board-required">*</span></label>
+      <select class="board-select" id="reportReason">
+        <option value="">신고 사유 선택</option>
+        <option value="SPAM">스팸/도배</option>
+        <option value="ABUSE">욕설/비하</option>
+        <option value="INAPPROPRIATE">음란물/부적절</option>
+        <option value="PERSONAL_INFORMATION">개인정보 노출</option>
+        <option value="OTHER">기타</option>
+      </select>
+    </div>
+    <div class="board-field">
+      <label for="reportDetail">세부내용 <span class="board-required">*</span></label>
+      <textarea class="board-textarea" id="reportDetail" style="min-height:130px" placeholder="신고 내용을 입력해 주세요. (200자 이하)"></textarea>
+    </div>
+    <div class="board-modal-actions">
+      <button class="board-btn board-btn-ghost" id="reportCancel" type="button">취소</button>
+      <button class="board-btn board-btn-danger" id="reportConfirm" type="button">신고 접수</button>
+    </div>
+  </div>
+</div>
+
+<script th:inline="javascript">
+  const groupId = [[${groupId}]];
+  const myMemberId = [[${myMemberId}]];
+  const reportedMessageIds = new Set([[${reportedMessageIds}]]);
+</script>
+
+<script src="/js/groupChat/chatRoom.js"></script>
+</body>
+</html>
+
+

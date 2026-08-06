@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlanSlot - 일정 상세 정보</title>
+    <link rel="stylesheet" th:href="@{/css/notification/notification.css}"
+          href="/css/notification/notification.css">
+    <link rel="stylesheet" th:href="@{/css/schedule/schedule-detail.css(v='1.0.1')}">
+</head>
+<body>
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<div class="wrap">
+
+    <!-- 로그인 상태 안내 -->
+    <div class="panel" id="authNotice" style="display:none">
+        <div class="panel-head">
+            <h2>로그인이 필요합니다</h2>
+        </div>
+        <p style="color:#748898;font-size:13px;line-height:1.6;margin:0 0 12px">
+            일정 상세 정보를 확인하려면 로그인이 필요합니다. 로그인 후 이용해주세요.
+        </p>
+        <div class="btn-row">
+            <a class="primary" style="text-decoration:none;display:inline-block" href="/auth/login">로그인 페이지로 이동</a>
+            <button class="ghost" onclick="location.reload()">토큰 다시 확인</button>
+        </div>
+    </div>
+
+    <!-- 일정 상세 정보 -->
+    <div class="panel" id="scheduleDetailPanel" style="display:none">
+        <div class="panel-head">
+            <h2 id="detail-title">일정 상세 조회</h2>
+        </div>
+        <div class="detail-info">
+            <div class="badge-row">
+                <span id="detail-type" class="badge">MONTHLY</span>
+                <span id="detail-public" class="badge public">공개</span>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">제목</div>
+                <div id="detail-title-val" class="info-value" style="font-size:20px; font-weight:800; color:#075985;">-</div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">일시</div>
+                <div id="detail-time-val" class="info-value">-</div>
+            </div>
+
+            <div class="info-row" id="location-row" style="display:none">
+                <div class="info-label">장소</div>
+                <div id="detail-location-val" class="info-value">-</div>
+            </div>
+
+            <div class="info-row" id="description-row" style="display:none">
+                <div class="info-label">설명</div>
+                <div id="detail-description-val" class="info-value description-box">-</div>
+            </div>
+
+            <div class="info-row" id="deadline-row" style="display:none">
+                <div class="info-label">데드라인</div>
+                <div id="detail-deadline-val" class="info-value">-</div>
+            </div>
+
+            <div class="info-row" id="notify-row" style="display:none">
+                <div class="info-label">알림 설정</div>
+                <div id="detail-notify-val" class="info-value">-</div>
+            </div>
+
+            <div class="btn-row">
+                <button class="primary" onclick="goToEdit()">수정</button>
+                <button class="danger" onclick="deleteCurrentSchedule()">삭제</button>
+                <button class="ghost" type="button" onclick="goToList()">캘린더로</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script th:src="@{/js/schedule/schedule-detail.js(v='1.1.9')}"></script>
+</body>
+</html>

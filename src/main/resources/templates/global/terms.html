@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>약관 동의 - 널모아</title>
+    <link rel="stylesheet" href="/css/global/reset.css">
+    <link rel="stylesheet" href="/css/global/common.css">
+    <link rel="stylesheet" href="/css/global/terms.css">
+</head>
+<body>
+
+<div class="terms-container">
+    <h2 class="title">약관 동의 및 알림 설정</h2>
+    
+    <div class="terms-box">
+        <label class="terms-item terms-style-1" >
+            <input type="checkbox" id="agreeAll">
+            전체 동의하기
+        </label>
+        <hr  class="terms-style-2">
+
+        <label class="terms-item required">
+            <input type="checkbox" id="agreeSystemNoti" class="term-checkbox">
+            [필수] 시스템 및 보안 중요 알림 수신 동의
+        </label>
+        <hr  class="terms-style-3">
+        <label class="terms-item">
+            <input type="checkbox" id="allowActivityNoti" class="term-checkbox">
+            [선택] 모임 및 일정 활동 알림 수신 동의
+        </label>
+        <label class="terms-item">
+            <input type="checkbox" id="allowMarketingNoti" class="term-checkbox">
+            [선택] 혜택 및 이벤트 알림 수신 동의
+        </label>
+    </div>
+
+    <div id="errorMsg" class="error-msg"></div>
+
+    <button class="btn-submit" id="terms-extracted-js-1">가입 완료하기</button>
+</div>
+
+<script src="/js/global/terms.js"></script>
+
+</body>
+</html>

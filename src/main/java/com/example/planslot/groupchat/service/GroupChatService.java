@@ -1,0 +1,29 @@
+package com.example.planslot.groupchat.service;
+
+import com.example.planslot.groupchat.dto.ChatMessageDTO;
+import java.util.List;
+
+import com.example.planslot.groupchat.dto.GroupReportDTO;
+
+public interface GroupChatService {
+    // 채팅 메시지 저장
+    ChatMessageDTO saveMessage(ChatMessageDTO messageDTO);
+    
+    // 특정 방의 과거 채팅 내역 조회
+    List<ChatMessageDTO> getChatHistory(Long groupId);
+    
+    // 채팅 메시지 신고
+    void reportMessage(Long memberId, GroupReportDTO.Request request);
+
+    // 안 읽은 채팅 개수 초기화
+    void clearUnreadChatCount(Long groupId, Long memberId);
+
+    // 중복 신고 확인
+    boolean checkDuplicateReport(Long memberId, Long messageId);
+
+    // 메시지 수정
+    void updateMessage(Long memberId, Long messageId, String content);
+
+    // 메시지 삭제
+    void deleteMessage(Long memberId, Long messageId);
+}

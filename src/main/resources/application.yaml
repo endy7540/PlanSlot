@@ -1,3 +1,40 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: PlanSlot
+  profiles:
+    include: secret
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
+
+
+chatbot:
+  max-tokens: 1000
+  timeout-seconds: 15
+  max-question-length: 100
+  history-rounds: 5
+  cooldown-seconds: 3
+  guest-request-limit: 5
+  member-request-limit: 10
+  request-limit-minutes: 10
+  cleanup-interval-millis: 600000

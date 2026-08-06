@@ -1,0 +1,883 @@
+package com.example.planslot.board.service;
+
+import com.example.planslot.board.dto.BoardDTO;
+import com.example.planslot.board.dto.BoardImageDTO;
+import com.example.planslot.board.dto.BoardMemberDTO;
+import com.example.planslot.board.entity.Board;
+import com.example.planslot.board.entity.BoardApplicationStatus;
+import com.example.planslot.board.entity.BoardCommentStatus;
+import com.example.planslot.board.entity.BoardImage;
+import com.example.planslot.board.entity.BoardRecruitmentStatus;
+import com.example.planslot.board.entity.BoardStatus;
+import com.example.planslot.board.entity.BoardType;
+import com.example.planslot.board.repository.BoardApplicationRepository;
+import com.example.planslot.board.repository.BoardCommentRepository;
+import com.example.planslot.board.repository.BoardImageRepository;
+import com.example.planslot.board.repository.BoardRepository;
+import com.example.planslot.boardreport.dto.BoardReportRequestDTO;
+import com.example.planslot.group.entity.GroupMemberStatus;
+import com.example.planslot.group.repository.GroupMemberRepository;
+import com.example.planslot.group.repository.GroupRepository;
+import com.example.planslot.boardreport.entity.BoardReport;
+import com.example.planslot.boardreport.entity.BoardReportTargetType;
+import com.example.planslot.boardreport.repository.BoardReportRepository;
+import com.example.planslot.member.entity.Member;
+import com.example.planslot.member.repository.MemberRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class BoardServiceImpl implements BoardService {
+    private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
+    private static final Set<String> IMAGE_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+    private static final Set<String> SEARCH_TYPES = Set.of("titleContent", "title", "content", "writer");
+    private static final Set<String> SORT_TYPES = Set.of("latest", "oldest", "views", "comments");
+
+    private final BoardRepository boardRepository;
+    private final BoardImageRepository boardImageRepository;
+    private final MemberRepository memberRepository;
+    private final BoardCommentRepository boardCommentRepository;
+    private final BoardReportRepository boardReportRepository;
+    private final BoardApplicationRepository boardApplicationRepository;
+    private final GroupMemberRepository groupMemberRepository;
+    private final GroupRepository groupRepository;
+
+    @Value("${file.upload.board-path:./uploads/board}")
+    private String boardUploadPath;
+
+    // 게시글 등록
+    @Override
+    @Transactional
+    public Long createBoard(BoardType boardType, BoardDTO boardDTO, String memberEmail) {
+        Member writer = findMember(memberEmail);
+        validateCommunityAccess(writer);
+
+        validateBoardDTO(boardDTO);
+        validateNoticeWriter(boardType, writer);
+
+        Board board = Board.builder()
+                .writer(writer)
+                .title(boardDTO.getTitle().trim())
+                .content(boardDTO.getContent().trim())
+                .boardType(boardType)
+                .build();
+
+        return boardRepository.save(board).getBoardId();
+    }
+
+    // 게시판 종류별 목록, 검색, 정렬 및 내 글 조회
+    @Override
+    public Page<BoardDTO> getBoardList(BoardType boardType, String searchType, String keyword, String sort,
+                                       boolean mine, boolean recruitingOnly, int page, int size, String memberEmail) {
+        String searchKeyword = normalizeKeyword(keyword);
+        String normalizedSearchType = normalizeSearchType(searchType);
+        String normalizedSort = normalizeSortType(sort);
+        Pageable pageable = createBoardPageable(page, size, normalizedSort);
+        if (recruitingOnly && boardType != BoardType.STUDY && boardType != BoardType.GROUP) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "모집 중 필터는 스터디와 소모임 게시판에서만 사용할 수 있습니다.");
+        }
+
+        Long writerId = mine ? findMember(memberEmail).getId() : null;
+        Page<Board> boardPage;
+
+        if ("comments".equals(normalizedSort)) {
+            boardPage = boardRepository.findBoardListOrderByCommentCount(
+                    boardType.name(), BoardStatus.ACTIVE.name(), normalizedSearchType,
+                    searchKeyword, writerId, recruitingOnly, pageable
+            );
+        } else if (writerId != null && recruitingOnly) {
+            boardPage = getMyRecruitingBoardPage(boardType, normalizedSearchType, searchKeyword, writerId, pageable);
+        } else if (writerId != null) {
+            boardPage = getMyBoardPage(boardType, normalizedSearchType, searchKeyword, writerId, pageable);
+        } else if (recruitingOnly) {
+            boardPage = getRecruitingBoardPage(boardType, normalizedSearchType, searchKeyword, pageable);
+        } else {
+            boardPage = getBoardPage(boardType, normalizedSearchType, searchKeyword, pageable);
+        }
+
+        Map<Long, Long> commentCountMap = getCommentCountMap(boardPage.getContent());
+        Map<Long, Long> groupIdMap = getGroupIdMap(boardPage.getContent());
+
+        return boardPage.map(board -> toListDTO(
+                board,
+                commentCountMap.getOrDefault(board.getBoardId(), 0L),
+                groupIdMap.get(board.getBoardId())
+        ));
+    }
+
+    private Page<Board> getBoardPage(BoardType boardType, String searchType, String keyword, Pageable pageable) {
+        if (keyword == null) {
+            return boardRepository.findByBoardTypeAndBoardStatus(boardType, BoardStatus.ACTIVE, pageable);
+        }
+
+        return switch (searchType) {
+            case "title" -> boardRepository.findByBoardTypeAndBoardStatusAndTitleContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, keyword, pageable);
+            case "content" -> boardRepository.findByBoardTypeAndBoardStatusAndContentContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, keyword, pageable);
+            case "writer" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_NicknameContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, keyword, pageable);
+            case "titleContent" -> boardRepository
+                    .findByBoardTypeAndBoardStatusAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndContentContainingIgnoreCase(
+                            boardType, BoardStatus.ACTIVE, keyword,
+                            boardType, BoardStatus.ACTIVE, keyword, pageable);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 검색 조건입니다.");
+        };
+    }
+
+    private Page<Board> getMyBoardPage(BoardType boardType, String searchType, String keyword,
+                                       Long writerId, Pageable pageable) {
+        if (keyword == null) {
+            return boardRepository.findByBoardTypeAndBoardStatusAndWriter_Id(
+                    boardType, BoardStatus.ACTIVE, writerId, pageable);
+        }
+
+        return switch (searchType) {
+            case "title" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndTitleContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, writerId, keyword, pageable);
+            case "content" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndContentContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, writerId, keyword, pageable);
+            case "writer" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndWriter_NicknameContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, writerId, keyword, pageable);
+            case "titleContent" -> boardRepository
+                    .findByBoardTypeAndBoardStatusAndWriter_IdAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndWriter_IdAndContentContainingIgnoreCase(
+                            boardType, BoardStatus.ACTIVE, writerId, keyword,
+                            boardType, BoardStatus.ACTIVE, writerId, keyword, pageable);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 검색 조건입니다.");
+        };
+    }
+
+
+    private Page<Board> getRecruitingBoardPage(BoardType boardType, String searchType, String keyword, Pageable pageable) {
+        if (keyword == null) {
+            return boardRepository.findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNull(
+                    boardType, BoardStatus.ACTIVE, BoardRecruitmentStatus.OPEN, pageable);
+        }
+
+        return switch (searchType) {
+            case "title" -> boardRepository.findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndTitleContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            case "content" -> boardRepository.findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndContentContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            case "writer" -> boardRepository.findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndWriter_NicknameContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            case "titleContent" -> boardRepository
+                    .findByBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndRecruitmentStatusAndGroupIdIsNullAndContentContainingIgnoreCase(
+                            boardType, BoardStatus.ACTIVE, BoardRecruitmentStatus.OPEN, keyword,
+                            boardType, BoardStatus.ACTIVE, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 검색 조건입니다.");
+        };
+    }
+
+    private Page<Board> getMyRecruitingBoardPage(BoardType boardType, String searchType, String keyword,
+                                                  Long writerId, Pageable pageable) {
+        if (keyword == null) {
+            return boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNull(
+                    boardType, BoardStatus.ACTIVE, writerId, BoardRecruitmentStatus.OPEN, pageable);
+        }
+
+        return switch (searchType) {
+            case "title" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndTitleContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, writerId, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            case "content" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndContentContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, writerId, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            case "writer" -> boardRepository.findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndWriter_NicknameContainingIgnoreCase(
+                    boardType, BoardStatus.ACTIVE, writerId, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            case "titleContent" -> boardRepository
+                    .findByBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndTitleContainingIgnoreCaseOrBoardTypeAndBoardStatusAndWriter_IdAndRecruitmentStatusAndGroupIdIsNullAndContentContainingIgnoreCase(
+                            boardType, BoardStatus.ACTIVE, writerId, BoardRecruitmentStatus.OPEN, keyword,
+                            boardType, BoardStatus.ACTIVE, writerId, BoardRecruitmentStatus.OPEN, keyword, pageable);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 검색 조건입니다.");
+        };
+    }
+
+    // 게시글 조회 및 조회수 증가 선택
+    @Override
+    @Transactional
+    public BoardDTO readBoard(Long boardId, String memberEmail, boolean increaseView) {
+        if (increaseView) {
+            int updatedCount = boardRepository.increaseViewCount(boardId, BoardStatus.ACTIVE);
+
+            if (updatedCount == 0) {
+                BoardStatus boardStatus = boardRepository.findById(boardId)
+                        .map(Board::getBoardStatus)
+                        .orElse(null);
+
+                if (boardStatus == BoardStatus.DELETED) {
+                    throw new ResponseStatusException(HttpStatus.GONE, "이미 삭제된 게시글입니다.");
+                }
+
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
+            }
+        }
+
+        Board board = findBoard(boardId);
+        // 비로그인 사용자는 member-specific 데이터 없이 반환
+        Member member = (memberEmail != null && !memberEmail.isBlank()) ? findMember(memberEmail) : null;
+
+        return toReadDTO(board, member);
+    }
+
+    @Override
+    @Transactional
+    public BoardDTO readBoard(Long boardId, String memberEmail) {
+        return readBoard(boardId, memberEmail, true);
+    }
+
+    // 로그인 회원 조회
+    @Override
+    public BoardMemberDTO getLoginMember(String memberEmail) {
+        Member member = findMember(memberEmail);
+
+        return BoardMemberDTO.builder()
+                .memberId(member.getId())
+                .nickname(member.getDisplayName())
+                .role(member.getRole())
+                .build();
+    }
+
+    // 게시글 수정
+    @Override
+    @Transactional
+    public BoardDTO updateBoard(Long boardId, BoardDTO boardDTO, String memberEmail) {
+        Board board = findBoard(boardId);
+        Member member = findMember(memberEmail);
+
+        validateUpdatePermission(board, member);
+        validateCommunityAccess(member);
+        validateBoardDTO(boardDTO);
+
+        board.update(boardDTO.getTitle().trim(), boardDTO.getContent().trim());
+
+        return toReadDTO(board, member);
+    }
+
+    // 게시글 삭제
+    @Override
+    @Transactional
+    public void deleteBoard(Long boardId, String memberEmail) {
+        Board board = findBoard(boardId);
+        Member member = findMember(memberEmail);
+
+        validateDeletePermission(board, member);
+
+        board.delete();
+    }
+
+    // 모집 상태 수정
+    @Override
+    @Transactional
+    public BoardDTO updateRecruitmentStatus(Long boardId, BoardRecruitmentStatus recruitmentStatus, String memberEmail) {
+        Board board = boardRepository.findActiveBoardForUpdate(boardId, BoardStatus.ACTIVE)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        Member member = findMember(memberEmail);
+
+        validateCommunityAccess(member);
+        validateRecruitmentStatusPermission(board, member);
+
+        if (recruitmentStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "모집 상태를 입력해 주세요.");
+        }
+
+        if (recruitmentStatus == BoardRecruitmentStatus.OPEN && board.getGroupId() != null) {
+            if (groupRepository.existsById(board.getGroupId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "모임이 생성된 게시글은 모집을 재개할 수 없습니다.");
+            }
+            board.clearGroupConnection();
+        }
+
+        board.updateRecruitmentStatus(recruitmentStatus);
+        return toReadDTO(board, member);
+    }
+
+    // 게시글 신고 여부 확인
+    @Override
+    public boolean hasReportedBoard(Long boardId, String reporterEmail) {
+        Board board = findBoard(boardId);
+        Member reporter = findMember(reporterEmail);
+
+        validateCommunityAccess(reporter);
+
+        if (board.getBoardType() == BoardType.NOTICE) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "공지사항 게시글은 신고할 수 없습니다.");
+        }
+
+        if (Objects.equals(board.getWriter().getId(), reporter.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인이 작성한 게시글은 신고할 수 없습니다.");
+        }
+
+        return boardReportRepository.existsByReporter_IdAndTargetTypeAndTargetId(
+                reporter.getId(), BoardReportTargetType.POST, boardId
+        );
+    }
+
+    // 게시글 신고
+    @Override
+    @Transactional
+    public Long reportBoard(Long boardId, BoardReportRequestDTO reportRequestDTO, String reporterEmail) {
+        Board board = findBoard(boardId);
+        Member reporter = findMember(reporterEmail);
+
+        validateCommunityAccess(reporter);
+
+        if (board.getBoardType() == BoardType.NOTICE) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "공지사항 게시글은 신고할 수 없습니다.");
+        }
+
+        if (Objects.equals(board.getWriter().getId(), reporter.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인이 작성한 게시글은 신고할 수 없습니다.");
+        }
+
+        validateBoardReportRequest(reportRequestDTO);
+
+        boolean duplicated = boardReportRepository.existsByReporter_IdAndTargetTypeAndTargetId(
+                reporter.getId(), BoardReportTargetType.POST, boardId
+        );
+
+        if (duplicated) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 신고한 게시글입니다.");
+        }
+
+        BoardReport boardReport = BoardReport.builder()
+                .reporter(reporter)
+                .targetType(BoardReportTargetType.POST)
+                .targetId(boardId)
+                .reasonCode(reportRequestDTO.getReasonCode())
+                .reasonDetail(normalizeReportDetail(reportRequestDTO.getReasonDetail()))
+                .build();
+
+        return boardReportRepository.save(boardReport).getReportId();
+    }
+
+    // 게시글 이미지 등록, 교체 및 실제 파일 삭제
+    @Override
+    @Transactional
+    public BoardImageDTO uploadBoardImage(Long boardId, MultipartFile image, String memberEmail) {
+        Board board = findBoard(boardId);
+        Member member = findMember(memberEmail);
+
+        validateUpdatePermission(board, member);
+        validateImage(image);
+
+        String fileUrl = saveImageFile(image);
+        registerNewFileRollbackSynchronization(fileUrl);
+
+        BoardImage boardImage = boardImageRepository.findByBoardBoardId(boardId)
+                .map(savedImage -> {
+                    String oldFileUrl = savedImage.getFileUrl();
+                    savedImage.updateFileUrl(fileUrl);
+                    deletePhysicalFileAfterCommit(oldFileUrl);
+                    return savedImage;
+                })
+                .orElseGet(() -> BoardImage.builder()
+                        .board(board)
+                        .fileUrl(fileUrl)
+                        .build());
+
+        return toImageDTO(boardImageRepository.save(boardImage));
+    }
+
+    // 게시글 이미지 정보 및 실제 파일 삭제
+    @Override
+    @Transactional
+    public void deleteBoardImage(Long boardId, Long imageId, String memberEmail) {
+        Board board = findBoard(boardId);
+        Member member = findMember(memberEmail);
+
+        validateUpdatePermission(board, member);
+
+        BoardImage boardImage = boardImageRepository.findByFileIdAndBoardBoardId(imageId, boardId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "게시글 이미지를 찾을 수 없습니다."
+                ));
+
+        String fileUrl = boardImage.getFileUrl();
+        boardImageRepository.delete(boardImage);
+        deletePhysicalFileAfterCommit(fileUrl);
+    }
+
+    // 로그인 회원 조회
+    private Member findMember(String memberEmail) {
+        if (memberEmail == null || memberEmail.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+
+        return memberRepository.findByEmail(memberEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "로그인 회원을 찾을 수 없습니다."
+                ));
+    }
+
+    // 커뮤니티 기능(작성 등) 이용 가능 여부 확인
+    private void validateCommunityAccess(Member member) {
+        if (member.getStatus() == Member.Status.BANNED) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "영구 정지된 회원은 커뮤니티 기능을 이용할 수 없습니다.");
+        }
+        if (member.getStatus() == Member.Status.SUSPENDED) {
+            if (member.getSuspendedUntil() != null && LocalDateTime.now().isBefore(member.getSuspendedUntil())) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "일시 정지 상태입니다. 정지 해제일: " + member.getSuspendedUntil().format(formatter));
+            } else {
+                member.updateStatus(Member.Status.ACTIVE, null);
+                memberRepository.save(member);
+            }
+        }
+    }
+
+    // 활성 상태 게시글 조회
+    private Board findBoard(Long boardId) {
+        if (boardId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "게시글 ID가 필요합니다.");
+        }
+
+        return boardRepository.findByBoardIdAndBoardStatus(boardId, BoardStatus.ACTIVE)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."
+                ));
+    }
+
+    // 공지사항 작성 권한 확인
+    private void validateNoticeWriter(BoardType boardType, Member member) {
+        if (boardType == BoardType.NOTICE && member.getRole() != Member.Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "공지사항은 관리자만 작성할 수 있습니다.");
+        }
+    }
+
+    // 게시글 삭제 권한 확인 (작성자 또는 관리자)
+    private void validateDeletePermission(Board board, Member member) {
+        if (member.getRole() != Member.Role.ADMIN && !Objects.equals(board.getWriter().getId(), member.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자 또는 관리자만 삭제할 수 있습니다.");
+        }
+    }
+
+    // 모집 상태 변경 권한 확인
+    private void validateRecruitmentStatusPermission(Board board, Member member) {
+        if (!board.isRecruitmentBoard()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "스터디와 소모임 게시글에서만 모집 상태를 변경할 수 있습니다.");
+        }
+        if (!Objects.equals(board.getWriter().getId(), member.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자만 모집 상태를 변경할 수 있습니다.");
+        }
+    }
+
+    // 게시글 수정 및 이미지 관리 권한 확인 (공지사항: 작성자 또는 관리자 / 일반 게시글: 작성자만)
+    private void validateUpdatePermission(Board board, Member member) {
+        if (board.getBoardType() == BoardType.NOTICE) {
+            if (member.getRole() != Member.Role.ADMIN && !Objects.equals(board.getWriter().getId(), member.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "공지사항은 작성자 또는 관리자만 수정할 수 있습니다.");
+            }
+        } else {
+            if (!Objects.equals(board.getWriter().getId(), member.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 작성자만 수정할 수 있습니다.");
+            }
+        }
+    }
+
+    // 게시글 입력값 확인
+    private void validateBoardDTO(BoardDTO boardDTO) {
+        if (boardDTO == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "게시글 정보를 입력해 주세요.");
+        }
+
+        if (boardDTO.getTitle() == null || boardDTO.getTitle().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "제목을 입력해 주세요.");
+        }
+
+        if (boardDTO.getTitle().trim().length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "제목은 100자 이하로 입력해 주세요.");
+        }
+
+        if (boardDTO.getContent() == null || boardDTO.getContent().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "내용을 입력해 주세요.");
+        }
+
+        if (boardDTO.getContent().trim().length() > 1000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "내용은 1000자 이하로 입력해 주세요.");
+        }
+    }
+
+    // 게시글 신고 입력값 확인
+    private void validateBoardReportRequest(BoardReportRequestDTO reportRequestDTO) {
+        if (reportRequestDTO == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 정보를 입력해 주세요.");
+        }
+
+        if (reportRequestDTO.getReasonCode() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 사유를 선택해 주세요.");
+        }
+
+        String reasonDetail = normalizeReportDetail(reportRequestDTO.getReasonDetail());
+        if (reasonDetail == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 내용을 입력해 주세요.");
+        }
+        if (reasonDetail != null && reasonDetail.length() > 200) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신고 세부내용은 200자 이하로 입력해 주세요.");
+        }
+    }
+
+    // 신고 세부내용 정리
+    private String normalizeReportDetail(String reasonDetail) {
+        return reasonDetail == null || reasonDetail.isBlank() ? null : reasonDetail.trim();
+    }
+
+    // 검색 조건 확인
+    private String normalizeSearchType(String searchType) {
+        String normalizedSearchType = searchType == null || searchType.isBlank() ? "titleContent" : searchType.trim();
+
+        if (!SEARCH_TYPES.contains(normalizedSearchType)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 검색 조건입니다.");
+        }
+
+        return normalizedSearchType;
+    }
+
+    // 정렬 조건 확인
+    private String normalizeSortType(String sort) {
+        String normalizedSort = sort == null || sort.isBlank() ? "latest" : sort.trim();
+
+        normalizedSort = switch (normalizedSort.toLowerCase(Locale.ROOT)) {
+            case "createdat,desc", "createdat,desc,boardid,desc" -> "latest";
+            case "createdat,asc", "createdat,asc,boardid,asc" -> "oldest";
+            case "viewcount,desc", "viewcount,desc,createdat,desc" -> "views";
+            case "commentcount,desc" -> "comments";
+            default -> normalizedSort.toLowerCase(Locale.ROOT);
+        };
+
+        if (!SORT_TYPES.contains(normalizedSort)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 정렬 조건입니다.");
+        }
+
+        return normalizedSort;
+    }
+
+    // 게시글 목록 페이지 및 정렬 생성
+    private Pageable createBoardPageable(int page, int size, String sort) {
+        if (page < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "페이지 번호는 0 이상이어야 합니다.");
+        }
+        if (size < 1 || size > 50) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "페이지 크기는 1개 이상 50개 이하여야 합니다.");
+        }
+
+        Sort boardSort = switch (sort) {
+            case "oldest" -> Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("boardId"));
+            case "views" -> Sort.by(Sort.Order.desc("viewCount"), Sort.Order.desc("createdAt"), Sort.Order.desc("boardId"));
+            case "comments" -> Sort.unsorted();
+            default -> Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("boardId"));
+        };
+
+        return PageRequest.of(page, size, boardSort);
+    }
+
+    // 검색어 확인 및 공백 제거
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+
+        String searchKeyword = keyword.trim();
+
+        if (searchKeyword.length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "검색어는 100자 이하로 입력해 주세요.");
+        }
+
+        return searchKeyword;
+    }
+
+    // 이미지 파일 확인
+    private void validateImage(MultipartFile image) {
+        if (image == null || image.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "업로드할 이미지를 선택해 주세요.");
+        }
+
+        String extension = getExtension(image.getOriginalFilename());
+
+        if (!IMAGE_EXTENSIONS.contains(extension)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "JPG, JPEG, PNG, WEBP 이미지만 업로드할 수 있습니다."
+            );
+        }
+
+        String contentType = image.getContentType();
+
+        if (contentType == null || !IMAGE_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 이미지 형식입니다.");
+        }
+    }
+
+    // 실제 이미지 파일 저장
+    private String saveImageFile(MultipartFile image) {
+        String extension = getExtension(image.getOriginalFilename());
+        String savedFileName = UUID.randomUUID() + "." + extension;
+        Path uploadDirectory = Path.of(boardUploadPath).toAbsolutePath().normalize();
+        Path savedFilePath = uploadDirectory.resolve(savedFileName).normalize();
+
+        if (!savedFilePath.startsWith(uploadDirectory)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "올바르지 않은 이미지 저장 경로입니다.");
+        }
+
+        try {
+            Files.createDirectories(uploadDirectory);
+
+            try (InputStream inputStream = image.getInputStream()) {
+                Files.copy(inputStream, savedFilePath, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "이미지 저장에 실패했습니다.", exception
+            );
+        }
+
+        return "/uploads/board/" + savedFileName;
+    }
+
+    // 이미지 확장자 조회
+    private String getExtension(String originalFilename) {
+        if (originalFilename == null || originalFilename.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일명이 올바르지 않습니다.");
+        }
+
+        int dotIndex = originalFilename.lastIndexOf('.');
+
+        if (dotIndex < 0 || dotIndex == originalFilename.length() - 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일 확장자가 필요합니다.");
+        }
+
+        return originalFilename.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
+    }
+
+    // 게시글 목록의 댓글 수를 게시글별로 한 번에 조회
+    private Map<Long, Long> getCommentCountMap(List<Board> boards) {
+        if (boards.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> boardIds = boards.stream()
+                .map(Board::getBoardId)
+                .toList();
+
+        Map<Long, Long> commentCountMap = new HashMap<>();
+
+        boardCommentRepository.countByBoardIdsAndCommentStatus(boardIds, BoardCommentStatus.ACTIVE)
+                .forEach(commentCount -> commentCountMap.put(
+                        commentCount.getBoardId(), commentCount.getCommentCount()
+                ));
+
+        return commentCountMap;
+    }
+
+    // 게시글별 실제 존재하는 모임 ID 조회
+    private Map<Long, Long> getGroupIdMap(List<Board> boards) {
+        if (boards.isEmpty()) {
+            return Map.of();
+        }
+
+        Set<Long> groupIds = boards.stream()
+                .map(Board::getGroupId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (groupIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Set<Long> existingGroupIds = groupRepository.findAllById(groupIds).stream()
+                .map(group -> group.getId())
+                .collect(Collectors.toSet());
+        Map<Long, Long> groupIdMap = new HashMap<>();
+
+        for (Board board : boards) {
+            if (board.getGroupId() != null && existingGroupIds.contains(board.getGroupId())) {
+                groupIdMap.put(board.getBoardId(), board.getGroupId());
+            }
+        }
+
+        return groupIdMap;
+    }
+
+    // 게시글 목록 DTO 변환
+    private BoardDTO toListDTO(Board board, long commentCount, Long groupId) {
+        return BoardDTO.builder()
+                .boardId(board.getBoardId())
+                .writerId(board.getWriter().getId())
+                .writerNickname(board.getWriter().getDisplayName())
+                .title(board.getTitle())
+                .viewCount(board.getViewCount())
+                .boardType(board.getBoardType())
+                .recruitmentStatus(board.getEffectiveRecruitmentStatus())
+                .groupId(groupId)
+                .groupCreated(groupId != null)
+                .commentCount(commentCount)
+                .createdAt(board.getCreatedAt())
+                .build();
+    }
+
+    // 게시글 조회 DTO 변환
+    private BoardDTO toReadDTO(Board board, Member member) {
+        BoardImageDTO boardImage = boardImageRepository.findByBoardBoardId(board.getBoardId())
+                .map(this::toImageDTO)
+                .orElse(null);
+
+        long commentCount = boardCommentRepository.countByBoardIdAndCommentStatus(
+                board.getBoardId(), BoardCommentStatus.ACTIVE
+        );
+
+        Long groupId = resolveExistingGroupId(board);
+        // 로그인 회원이 없으면 개인화 데이터는 null
+        BoardApplicationStatus myApplicationStatus = null;
+        GroupMemberStatus myGroupMemberStatus = null;
+
+        if (member != null) {
+            myApplicationStatus = boardApplicationRepository
+                    .findByBoard_BoardIdAndApplicant_Id(board.getBoardId(), member.getId())
+                    .map(application -> application.getApplicationStatus())
+                    .orElse(null);
+            myGroupMemberStatus = groupId == null
+                    ? null
+                    : groupMemberRepository.findByGroup_IdAndMember_Id(groupId, member.getId())
+                    .map(groupMember -> groupMember.getMemberStatus())
+                    .orElse(null);
+        }
+
+        return BoardDTO.builder()
+                .boardId(board.getBoardId())
+                .writerId(board.getWriter().getId())
+                .writerNickname(board.getWriter().getDisplayName())
+                .writerProfileImageUrl(board.getWriter().getProfileImageUrl())
+                .title(board.getTitle())
+                .content(board.getContent())
+                .viewCount(board.getViewCount())
+                .boardType(board.getBoardType())
+                .boardStatus(board.getBoardStatus())
+                .recruitmentStatus(board.getEffectiveRecruitmentStatus())
+                .groupId(groupId)
+                .groupCreated(groupId != null)
+                .myApplicationStatus(myApplicationStatus)
+                .myGroupMemberStatus(myGroupMemberStatus)
+                .boardImage(boardImage)
+                .commentCount(commentCount)
+                .createdAt(board.getCreatedAt())
+                .updatedAt(board.getUpdatedAt())
+                .build();
+    }
+
+    // 삭제된 모임을 가리키는 ID는 게시글에서 정리하고 모집 마감 상태는 유지
+    private Long resolveExistingGroupId(Board board) {
+        Long groupId = board.getGroupId();
+
+        if (groupId == null) {
+            return null;
+        }
+
+        if (groupRepository.existsById(groupId)) {
+            return groupId;
+        }
+
+        boardRepository.clearGroupId(board.getBoardId(), groupId);
+        return null;
+    }
+
+    // 게시글 이미지 DTO 변환
+    private BoardImageDTO toImageDTO(BoardImage boardImage) {
+        return BoardImageDTO.builder()
+                .fileId(boardImage.getFileId())
+                .boardId(boardImage.getBoard().getBoardId())
+                .fileUrl(boardImage.getFileUrl())
+                .createdAt(boardImage.getCreatedAt())
+                .build();
+    }
+
+    // 물리 이미지 파일 삭제
+    private void deletePhysicalFile(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return;
+        }
+
+        try {
+            int lastSlashIndex = fileUrl.lastIndexOf('/');
+
+            if (lastSlashIndex >= 0) {
+                String fileName = fileUrl.substring(lastSlashIndex + 1);
+                Path uploadDirectory = Path.of(boardUploadPath).toAbsolutePath().normalize();
+                Path filePath = uploadDirectory.resolve(fileName).normalize();
+
+                if (filePath.startsWith(uploadDirectory)) {
+                    Files.deleteIfExists(filePath);
+                }
+            }
+        } catch (IOException exception) {
+            log.error(
+                    "물리 이미지 파일 삭제 중 오류가 발생했습니다. fileUrl: {}, error: {}",
+                    fileUrl, exception.getMessage()
+            );
+        }
+    }
+
+    // 트랜잭션 커밋 후 물리 파일 삭제 예약
+    private void deletePhysicalFileAfterCommit(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return;
+        }
+
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    deletePhysicalFile(fileUrl);
+                }
+            });
+        } else {
+            deletePhysicalFile(fileUrl);
+        }
+    }
+
+    // 트랜잭션 롤백 시 신규 물리 파일 삭제 예약
+    private void registerNewFileRollbackSynchronization(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return;
+        }
+
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    if (status == STATUS_ROLLED_BACK) {
+                        deletePhysicalFile(fileUrl);
+                    }
+                }
+            });
+        }
+    }
+}

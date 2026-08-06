@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlanSlot - 일정 수정</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
+    <link rel="stylesheet" th:href="@{/css/schedule/schedule-modify.css(v='1.1.1')}">
+</head>
+<body>
+<!-- iframe 내부 전용 최상단 토스트 알림창 -->
+<div id="iframeToast" style="display: none; position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #FEF2F2; border: 2px solid #FCA5A5; color: #991B1B; font-weight: 800; font-size: 13.5px; padding: 12px 24px; border-radius: 12px; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.15); z-index: 99999; text-align: center; width: 90%; max-width: 380px; align-items: center; justify-content: center; gap: 8px; animation: slideDown 0.3s ease-out;">
+    <span style="font-size: 16px;">⚠️</span>
+    <span id="iframeToastText">종료 시간은 시작 시간보다 빠를 수 없습니다.</span>
+</div>
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<div class="wrap">
+
+    <!-- 로그인 상태 안내 -->
+    <div class="panel" id="authNotice" style="display:none">
+        <div class="panel-head">
+            <h2>로그인이 필요합니다</h2>
+        </div>
+        <p style="color:#748898;font-size:13px;line-height:1.6;margin:0 0 12px">
+            일정을 수정하려면 로그인이 필요합니다. 로그인 후 이용해주세요.
+        </p>
+        <div class="btn-row">
+            <a class="primary" style="text-decoration:none;display:inline-block" href="/auth/login">로그인 페이지로 이동</a>
+            <button class="ghost" onclick="location.reload()">토큰 다시 확인</button>
+        </div>
+    </div>
+
+    <!-- 일정 수정 -->
+    <div class="panel" id="scheduleFormPanel" style="display:none">
+        <div class="panel-head">
+            <h2>일정 수정</h2>
+        </div>
+        <div class="form">
+            <div>
+                <label>제목 *</label>
+                <input id="f-title" placeholder="일정 제목 (최대 50자)">
+            </div>
+            <div>
+                <label>설명 <span id="desc-counter" style="font-weight:500; color:#94A3B8;">0 / 400</span></label>
+                <textarea id="f-description" placeholder="일정 상세 설명 (최대 400자)" maxlength="400"
+                    oninput="updateDescCounter(this)"></textarea>
+                <div id="desc-warn" style="display:none; color:#EF4444; font-size:11px; font-weight:700; margin-top:4px;">⚠️ 설명은 400자를 초과할 수 없습니다.</div>
+            </div>
+            <div class="form-row">
+                <div>
+                    <label>반복 유형 *</label>
+                    <select id="f-scheduleType" onchange="toggleRecurrenceRow(this.value)">
+                        <option value="DAILY">당일</option>
+                        <option value="WEEKLY">주간</option>
+                        <option value="MONTHLY">월간</option>
+                        <option value="YEARLY">연간</option>
+                    </select>
+                </div>
+                <div>
+                    <label>장소</label>
+                    <input id="f-location" placeholder="예: 대학본부 2층">
+                </div>
+            </div>
+            <div class="form-row" id="recurrenceEndDateRow" style="display: none;">
+                <div>
+                    <label>반복 종료일 (선택)</label>
+                    <input id="f-recurrenceEndDate" type="text" placeholder="종료 날짜 선택" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff;">
+                </div>
+                <div>
+                </div>
+            </div>
+            <!-- 기간 선택 버튼 그룹 / 하루종일 토글 스위치 행 -->
+            <div class="form-row" style="margin-bottom: 16px;">
+                <!-- 기간 선택 버튼 그룹 -->
+                <div>
+                    <label>일정 기간 유형 *</label>
+                    <div class="period-btn-group" style="display: flex; background: #EEF2F6; padding: 4px; border-radius: 10px; height: 46px; box-sizing: border-box;">
+                        <button id="btn-single-day" type="button" class="active" style="flex: 1; padding: 10px; border-radius: 8px; font-size: 13.5px; font-weight: 800; cursor: pointer; transition: all 0.2s;" onclick="setPeriodMode(false)">하루 일정</button>
+                        <button id="btn-range-day" type="button" style="flex: 1; padding: 10px; border-radius: 8px; font-size: 13.5px; font-weight: 800; cursor: pointer; transition: all 0.2s;" onclick="setPeriodMode(true)">기간 일정</button>
+                    </div>
+                </div>
+                <!-- 하루종일 토글 -->
+                <div>
+                    <label>시간 설정 *</label>
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: #F3FAFF; border: 2px solid #DCEFFC; border-radius: 10px; padding: 0 14px; height: 46px; box-sizing: border-box;">
+                        <span style="font-size: 13.5px; font-weight: 700; color: #075985;">하루종일</span>
+                        <label class="toggle-switch" style="margin: 0;">
+                            <input id="f-allDay" type="checkbox" onchange="toggleAllDay(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 일정 날짜 입력 영역 -->
+            <div style="margin-bottom: 16px;">
+                <label id="dateRangeLabel">일정 날짜 선택 *</label>
+                <input id="f-dateRange" type="text" class="chip-input" placeholder="날짜를 선택하세요" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff;" required>
+            </div>
+
+            <!-- 커스텀 시간 범위 선택 영역 -->
+            <div class="form-row" id="timeInputRow">
+                <div id="timeInputs" style="grid-column: span 2; width: 100%; position: relative;">
+                    <label>일정 시간 범위 선택 *</label>
+                    <input id="f-timeRange" type="text" readonly class="chip-input" placeholder="시간을 선택하세요 (예: 09:00 ~ 10:00)" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff; cursor: pointer;" onclick="toggleTimeDropdown()">
+
+                    <!-- 시간 범위 드롭다운 레이어 -->
+                    <div id="timeRangeDropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 2px solid #DCEFFC; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 100; padding: 16px; margin-top: 6px;">
+                        <div style="display: flex; gap: 12px;">
+                            <div style="flex: 1;">
+                                <div style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 6px; text-align: center;">시작 시간</div>
+                                <div id="startTimeList" style="max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 6px; background:#fff;">
+                                    <!-- 옵션 렌더링 -->
+                                </div>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 6px; text-align: center;">종료 시간</div>
+                                <div id="endTimeList" style="max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 6px; background:#fff;">
+                                    <!-- 옵션 렌더링 -->
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; border-top: 1px solid #F1F5F9; padding-top: 10px;">
+                            <button type="button" class="ghost" style="padding: 6px 12px; font-size: 12px; border-radius:6px;" onclick="toggleTimeDropdown(false)">닫기</button>
+                            <button type="button" class="primary" style="padding: 6px 12px; font-size: 12px; border-radius:6px;" onclick="confirmTimeRange()">선택 완료</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label>데드라인 날짜 (선택)</label>
+                    <input id="f-deadlineDate" type="text" placeholder="마감 날짜 선택" style="width: 100%; border: 2px solid #DCEFFC; border-radius: 10px; padding: 11px 12px; font-size: 14px; background:#fff;">
+                </div>
+                <div>
+                    <label>며칠 전 알림 (선택)</label>
+                    <input id="f-notifyDaysBefore" type="number" min="0" placeholder="예: 1">
+                </div>
+            </div>
+            <div class="form-row" id="deadlineNotificationCalcRow" style="display: none; margin-top: -6px; margin-bottom: 12px; padding: 6px 12px; background: #F0FDF4; border: 1px dashed #BBF7D0; border-radius: 8px; width: 100%;">
+                <span id="deadlineNotificationCalcText" style="font-size: 12.5px; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 4px;">
+                    🔔 알림 발송 예정일: -
+                </span>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; background: #F3FAFF; border: 2px solid #DCEFFC; border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; margin-top: 12px; width: fit-content; min-width: 200px;">
+                <span style="font-size: 14px; font-weight: 700; color: #075985;">공개 일정으로 등록</span>
+                <label class="toggle-switch" style="margin: 0;">
+                    <input id="f-isPublic" type="checkbox">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="btn-row">
+                <button class="primary" id="submitBtn" onclick="updateSchedule()">수정 완료</button>
+                <button class="ghost" type="button" onclick="handleCancel()">취소</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script th:src="@{/js/schedule/schedule-modify.js(v='1.2.5')}"></script>
+</body>
+</html>

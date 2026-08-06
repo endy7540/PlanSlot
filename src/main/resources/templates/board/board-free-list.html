@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlanSlot - 자유게시판</title>
+  <link rel="stylesheet" th:href="@{/css/notification/notification.css}" href="/css/notification/notification.css">
+  <link rel="stylesheet" th:href="@{/css/board/board-common.css}" href="/css/board/board-common.css">
+  <link rel="stylesheet" th:href="@{/css/board/board-list.css}" href="/css/board/board-list.css">
+</head>
+<body data-board-page="list" data-board-type="FREE">
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<nav class="board-subnav" aria-label="게시판 메뉴">
+  <div class="board-subnav-inner">
+    <a data-board-nav="NOTICE" th:href="@{/board/notice}" href="/board/notice">공지사항</a>
+    <a data-board-nav="STUDY" th:href="@{/board/study}" href="/board/study">스터디</a>
+    <a data-board-nav="GROUP" th:href="@{/board/group}" href="/board/group">소모임</a>
+    <a data-board-nav="FREE" th:href="@{/board/free}" href="/board/free">자유게시판</a>
+  </div>
+</nav>
+
+<main class="board-main">
+  <div class="board-page-head">
+    <div>
+      <div class="board-label"><b>Community Board</b> · 게시판</div>
+      <h1>자유게시판</h1>
+      <p>학교생활과 일상의 다양한 이야기를 자유롭게 나눠보세요.</p>
+    </div>
+    <div class="board-head-actions">
+      <button class="board-btn board-btn-primary" id="boardRegisterButton" type="button" hidden>+ 글쓰기</button>
+    </div>
+  </div>
+
+  <section>
+    <div class="board-filter-tabs" role="group" aria-label="게시글 보기 필터">
+      <button class="board-filter-tab active" id="boardAllButton" type="button" aria-pressed="true">전체</button>
+      <button class="board-filter-tab" id="boardMineButton" type="button" aria-pressed="false">내 글</button>
+    </div>
+
+    <div class="board-card board-toolbar">
+      <div class="board-search">
+        <select id="boardSearchType" class="board-search-select" aria-label="검색 조건">
+          <option value="titleContent" selected>제목+내용</option>
+          <option value="title">제목</option>
+          <option value="content">내용</option>
+          <option value="writer">작성자</option>
+        </select>
+
+        <input id="boardSearchInput" type="search" maxlength="100" placeholder="검색어를 입력하세요">
+        <button class="board-btn board-btn-sky" id="boardSearchButton" type="button" aria-label="검색" title="검색">
+          <svg class="board-search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="10.8" cy="10.8" r="6.2"></circle>
+            <path d="m15.5 15.5 4.2 4.2"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="board-list-options">
+        <label class="board-sort-control" for="boardSortSelect">
+
+          <select id="boardSortSelect" class="board-sort-select" aria-label="게시글 정렬">
+            <option value="latest" selected>최신순</option>
+            <option value="oldest">오래된순</option>
+            <option value="views">조회순</option>
+            <option value="comments">댓글 많은 순</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <section class="board-card board-list-card">
+      <div class="board-list-head">
+        <div>제목</div><div>작성자</div><div>조회</div><div>작성일</div>
+      </div>
+      <div id="boardList"><div class="board-loading">게시글을 불러오는 중...</div></div>
+    </section>
+
+    <nav class="board-pagination" id="boardPagination" aria-label="게시글 페이지"></nav>
+  </section>
+</main>
+
+<div class="board-toast" id="boardToast"></div>
+<script th:src="@{/js/board/board-common.js}" src="/js/board/board-common.js"></script>
+<script th:src="@{/js/board/board-list.js}" src="/js/board/board-list.js"></script>
+</body>
+</html>

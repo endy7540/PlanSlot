@@ -1,0 +1,316 @@
+/* admin_tables.css */
+/* --------------------------------------
+   공통 관리자 테이블 스타일 (회원 관리, 신고 접수함)
+--------------------------------------- */
+
+/* 테이블 기본 뼈대 */
+.admin-table {
+    width: 100%;
+    min-width: 750px;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 14px;
+    text-align: left;
+}
+.admin-table th {
+    background-color: #f1f5f9;
+    color: #475569;
+    font-weight: 600;
+    padding: 12px 10px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.admin-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    color: #334155;
+}
+.admin-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+/* 유틸리티 */
+.no-wrap {
+    white-space: nowrap;
+}
+.truncate {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+.truncate-target { width: 100%; max-width: 100%; }
+.truncate-reporter { width: 100%; max-width: 100%; }
+
+/* 뱃지 통일 (상태, 권한 등) */
+.badge-status {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 76px;
+    height: 32px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.badge-waiting { background: #fef3c7; color: #d97706; }
+.badge-processed { background: #dcfce7; color: #16a34a; }
+.badge-rejected { background: #f1f5f9; color: #64748b; }
+
+.badge-member-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.badge-active { background-color: #dcfce7; color: #166534; }
+.badge-suspended { background-color: #fef08a; color: #854d0e; }
+.badge-banned { background-color: #fee2e2; color: #991b1b; }
+.badge-withdrawn { background-color: #e2e8f0; color: #475569; }
+.badge-admin { background-color: #e0f2fe; color: #075985; }
+.badge-member { background-color: #f1f5f9; color: #475569; }
+
+/* 테이블 내부 셀렉트, 버튼 */
+.select-status, .select-role {
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #334155;
+    background-color: #fff;
+    outline: none;
+}
+.btn-process {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 76px;
+    height: 32px;
+    padding: 0;
+    background-color: #0ea5e9;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-process:hover { background-color: #0284c7; }
+.btn-reject {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 50px;
+    height: 32px;
+    padding: 0;
+    background-color: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-left: 4px;
+}
+.btn-reject:hover { background-color: #dc2626; }
+.btn-approve {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 50px;
+    height: 32px;
+    padding: 0;
+    background-color: #10b981;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-approve:hover { background-color: #059669; }
+
+/* --------------------------------------
+   게시판 스타일 (검색창, 페이지네이션)
+--------------------------------------- */
+.board-toolbar { padding: 5px 0 10px 0; }
+.board-search { display:flex; align-items:center; gap:8px; flex: 1; }
+.board-search-select { width: 130px; height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 10px; outline: none; font-weight: 500; color: #334155; flex-shrink: 0; background-color: #fff; }
+.board-search-select:focus { border-color: #0ea5e9; box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1); }
+.board-search input { height: 38px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 12px; flex: 1; min-width: 0; outline: none; font-size: 14px; }
+.board-search input:focus { border-color: #0ea5e9; box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1); }
+.board-btn { flex-shrink: 0; height: 38px; padding: 0 18px; font-weight: 600; font-size: 14px; border-radius: 6px; border: none; cursor: pointer; transition: 0.2s; }
+.board-btn-sky { background: #334155; color: white; } /* 어드민에 맞게 차분한 슬레이트 계열로 변경 */
+.board-btn-sky:hover { background: #1e293b; }
+
+.board-pagination { display: flex; justify-content: center; gap: 6px; margin-top: 30px; }
+.board-page-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; font-weight: 600; color: #64748b; }
+.board-page-btn.active { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+.board-page-btn:hover:not(.active) { background: #f8fafc; }
+
+/* --------------------------------------
+   모달 (Modal)
+--------------------------------------- */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background: #fff;
+    padding: 24px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.modal-title { font-size: 18px; font-weight: 600; color: #0f172a; }
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #64748b;
+}
+.modal-body { font-size: 14px; color: #334155; line-height: 1.5; }
+.modal-body-item { margin-bottom: 12px; }
+.modal-body-label { font-weight: 600; color: #0f172a; margin-bottom: 4px; }
+.modal-body-content {
+    background: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+    word-break: break-all;
+}
+
+.clickable-title {
+    color: #0284c7;
+    cursor: pointer;
+    text-decoration: underline;
+}
+.clickable-title:hover { color: #0369a1; }
+.suspension-info {
+    font-size: 12px;
+    color: #854d0e;
+    background: #fef08a;
+    padding: 0 10px;
+    border-radius: 6px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    font-weight: 600;
+}
+/* 반응형 테이블 */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+/* Layout Helpers for Admin Pages */
+.admin-page-title { display: flex; justify-content: space-between; align-items: center; }
+.admin-member-count-wrapper, .admin-report-count-wrapper { font-size: 13px; color: #64748b; margin-bottom: 12px; font-weight: bold; }
+.admin-member-count-number, .admin-report-count-number { color: #0ea5e9; }
+.table-responsive { overflow-x: auto; width: 100%; }
+.admin-table th.col-id { width: 50px; }
+.admin-table th.col-email { width: 200px; }
+.admin-table th.col-nickname { width: 120px; }
+.admin-table th.col-report-count { width: 80px; }
+.admin-table th.col-date { width: 120px; }
+.admin-table th.col-action { width: 170px; }
+.admin-table th.col-suspend-date { width: 170px; }
+.admin-table th.col-type { width: 60px; }
+.admin-table th.col-target { width: 180px; }
+.admin-table th.col-reason { width: 150px; }
+.admin-table th.col-reporter { width: 80px; }
+.admin-table th.col-reported { width: 80px; }
+.admin-table th.col-regdate { width: 90px; }
+.admin-table th.col-status { width: 90px; }
+.admin-table th.col-manage { width: 140px; }
+.admin-table-empty { text-align: center; padding: 40px; color: #94a3b8; }
+.member-email, .member-nickname { word-break: break-all; }
+.report-count-positive { color: #ef4444; font-weight: bold; }
+.report-count-zero { color: #94a3b8; }
+.member-action-wrapper { display: flex; align-items: center; gap: 8px; }
+
+/* Report Action Buttons */
+.report-action-wrapper { display: flex; flex-direction: row; gap: 6px; align-items: center; justify-content: center; width: 100%; }
+.btn-approve, .btn-reject { padding: 6px 0; width: 60px; font-size: 11px; box-sizing: border-box; text-align: center; display: block; margin: 0; line-height: 1; }
+.report-status-text { display: inline-flex; align-items: center; justify-content: center; padding: 4px 12px; background-color: #f1f5f9; color: #64748b; font-size: 12px; font-weight: 600; border-radius: 6px; border: 1px solid #e2e8f0; }
+
+/* Modal Helpers */
+.modal-header-actions { display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px; }
+.modal-header-left { margin: 0; }
+.modal-header-right { display: flex; flex-direction: column; gap: 8px; text-align: right; }
+.modal-reason-code { color: #ef4444; font-weight: 600; }
+.modal-reported { color: #ef4444; font-size: 13px; font-weight: 600; }
+.modal-reporter { color: #64748b; font-size: 13px; }
+.modal-reason-detail { min-height: 40px; }
+.modal-target-content { min-height: 60px; }
+.modal-badge-title { font-size: 11px; background-color: #e2e8f0; color: #475569; padding: 3px 6px; border-radius: 4px; font-weight: bold; display: inline-block; margin-bottom: 8px; line-height: 1; }
+.modal-badge-content { font-size: 11px; background-color: #e2e8f0; color: #475569; padding: 3px 6px; border-radius: 4px; font-weight: bold; display: inline-block; margin-bottom: 8px; line-height: 1; margin-top: 12px; }
+
+.modal-target-header { margin-bottom: 4px; }
+.modal-target-text { font-size: 13px; color: #475569; line-height: 1.5; }
+.modal-target-body-container { display: none; border-top: 1px dashed #cbd5e1; padding-top: 12px; margin-top: 10px; }
+.modal-label-text { color: #94a3b8; font-size: 12px; margin-right: 4px; }
+
+/* Modal Generic Utilities */
+.modal-content.text-center { text-align: center; }
+.modal-body.padded { padding: 10px 0; }
+.modal-message { margin-bottom: 25px; color: #334155; font-size: 15px; font-weight: 500; line-height: 1.5; }
+.modal-actions { display: flex; justify-content: center; gap: 10px; }
+.modal-btn-cancel { background: #e2e8f0; color: #475569; width: 100px; }
+.modal-btn-confirm { width: 100px; }
+
+/* Suspend Modal Utilities */
+.suspend-modal-desc { margin-bottom: 15px; color: #475569; }
+.suspend-btn-group { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; margin-bottom: 20px; }
+.suspend-custom-label-wrapper { text-align: left; margin-bottom: 6px; padding-left: 2px; }
+.suspend-custom-label { font-size: 13px; font-weight: 600; color: #475569; }
+.suspend-custom-input-wrapper { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+.suspend-custom-input { flex: 1; min-width: 0; height: 36px; padding: 0 12px; font-size: 14px; }
+.suspend-custom-btn { width: 80px; height: 36px; font-size: 14px; }
+
+/* Modal Suspend Quick Buttons */
+.suspend-btn {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    flex: 1;
+    min-width: 45px;
+    text-align: center;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.suspend-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+.suspend-btn:active {
+    background: #f1f5f9;
+}
+

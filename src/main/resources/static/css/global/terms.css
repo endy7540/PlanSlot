@@ -1,0 +1,75 @@
+body {
+            background-color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .terms-container {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 480px;
+            padding: 40px;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #182B3A;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .terms-box {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 24px;
+        }
+        .terms-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #334155;
+            cursor: pointer;
+        }
+        .terms-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .terms-item.required {
+            font-weight: bold;
+            color: #182B3A;
+        }
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background-color: #0077FF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-submit:hover {
+            background-color: #005fcc;
+        }
+        .error-msg {
+            color: #B91C1C;
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 12px;
+            min-height: 18px;
+        }
+/* Extracted inline CSS */
+.terms-style-1 { font-weight: 700; color: #0077FF; margin-bottom: 8px; }
+.terms-style-2 { border:0; border-top:2px solid #e2e8f0; margin:0 0 8px 0; }
+.terms-style-3 { border:0; border-top:1px solid #e2e8f0; margin:4px 0; }

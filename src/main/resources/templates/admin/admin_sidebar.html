@@ -1,0 +1,12 @@
+<aside th:fragment="adminSidebar(activeMenu)" class="admin-sidebar" id="adminSidebar" aria-label="관리자 메뉴">
+    <div class="sidebar-heading">
+        <h2 class="sidebar-title">관리자 메뉴</h2>
+        <button type="button" class="admin-menu-close" id="adminMenuClose" aria-label="관리자 메뉴 닫기" style="display:none;">×</button>
+    </div>
+    <ul class="sidebar-menu">
+        <li th:class="${activeMenu == 'reports'} ? 'active' : ''"><a th:href="@{/admin/reports}">신고 접수함</a></li>
+        <li th:class="${activeMenu == 'members'} ? 'active' : ''"><a th:href="@{/admin/members}">회원 관리</a></li>
+    </ul>
+    
+    <script src="/js/admin/admin_layout.js"></script>
+</aside>

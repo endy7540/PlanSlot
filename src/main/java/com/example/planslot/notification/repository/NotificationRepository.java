@@ -1,0 +1,35 @@
+package com.example.planslot.notification.repository;
+
+import com.example.planslot.notification.entity.Notification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+import com.example.planslot.notification.entity.NotificationType;
+
+public interface NotificationRepository extends JpaRepository<Notification, Long> {
+
+    List<Notification> findAllByReceiver_IdOrderByCreatedAtDesc(Long receiverId);
+
+    Optional<Notification> findByIdAndReceiver_Id(Long notificationId, Long receiverId);
+
+    // 읽지 않은 알림 목록 조회 (벨 아이콘·드롭다운용)
+    List<Notification> findAllByReceiver_IdAndIsReadFalseOrderByCreatedAtDesc(Long receiverId);
+
+    List<Notification> findAllByReceiver_IdAndIsReadFalse(Long receiverId);
+    
+    List<Notification> findAllByReceiver_IdAndTargetTypeAndTargetIdAndIsReadFalse(Long receiverId, String targetType, Long targetId);
+
+    List<Notification> findAllByReceiver_IdAndTargetTypeAndTargetIdAndNotificationType(Long receiverId, String targetType, Long targetId, NotificationType notificationType);
+
+    Page<Notification> findAllByReceiver_Id(Long receiverId, Pageable pageable);
+
+    Page<Notification> findAllByReceiver_IdAndIsReadFalse(Long receiverId, Pageable pageable);
+
+    Page<Notification> findAllByReceiver_IdAndIsReadTrue(Long receiverId, Pageable pageable);
+
+    long countByReceiver_IdAndIsReadFalse(Long receiverId);
+}

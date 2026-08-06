@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlanSlot - 게시글</title>
+  <link rel="stylesheet" th:href="@{/css/notification/notification.css}" href="/css/notification/notification.css">
+  <link rel="stylesheet" th:href="@{/css/board/board-common.css}" href="/css/board/board-common.css">
+  <link rel="stylesheet" th:href="@{/css/board/board-read.css}" href="/css/board/board-read.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+</head>
+<body data-board-page="read" data-board-type="">
+
+<div th:replace="~{global/header :: headerFragment}"></div>
+
+<nav class="board-subnav" aria-label="게시판 메뉴">
+  <div class="board-subnav-inner">
+    <a data-board-nav="NOTICE" th:href="@{/board/notice}" href="/board/notice">공지사항</a>
+    <a data-board-nav="STUDY" th:href="@{/board/study}" href="/board/study">스터디</a>
+    <a data-board-nav="GROUP" th:href="@{/board/group}" href="/board/group">소모임</a>
+    <a data-board-nav="FREE" th:href="@{/board/free}" href="/board/free">자유게시판</a>
+  </div>
+</nav>
+
+<main class="board-main">
+  <div>
+    <div class="board-breadcrumb">
+      <a th:href="@{/planslot}" href="/planslot">홈</a><span>›</span>
+      <a id="boardListLink" href="/board/free">게시판</a><span>›</span>
+      <span>상세</span>
+    </div>
+
+    <div class="board-card board-auth-panel" id="boardReadLoading">
+      게시글을 불러오는 중...
+    </div>
+
+    <article class="board-card board-article" id="boardArticle" hidden>
+      <header class="board-article-head">
+        <div class="board-read-badges">
+          <span class="board-type-badge" id="boardReadCategory">게시판</span>
+          <div class="board-recruitment-badges" id="boardReadRecruitmentBadges" hidden></div>
+        </div>
+        <h1 id="boardReadTitle"></h1>
+        <div class="board-meta">
+          <span id="boardReadWriter"></span>
+          <span id="boardReadDate"></span>
+          <span id="boardReadViews"></span>
+        </div>
+      </header>
+
+      <div class="board-article-body">
+        <img class="board-article-image" id="boardReadImage" hidden>
+        <div class="board-article-content" id="boardReadContent"></div>
+      </div>
+
+      <footer class="board-article-actions" id="boardReadActions"></footer>
+    </article>
+
+    <section class="board-card board-comments">
+      <div class="board-section-title">
+        <h2>댓글 <span id="boardReadCommentCount">0</span></h2>
+      </div>
+
+      <div class="board-comment-form" id="boardCommentForm">
+        <textarea id="boardCommentContent" maxlength="1000" placeholder="댓글을 입력해 주세요."></textarea>
+        <button class="board-btn board-btn-primary" id="boardCommentSubmit" type="button">댓글 등록</button>
+      </div>
+
+      <div class="board-comment-list" id="boardCommentList">
+        <div class="board-loading">댓글을 불러오는 중...</div>
+      </div>
+      <div class="board-pagination" id="boardCommentPagination"></div>
+    </section>
+  </div>
+</main>
+
+
+<div class="board-modal-overlay" id="boardReportModal">
+  <div class="board-modal">
+    <h3 id="boardReportTitle">신고</h3>
+    <p>신고 내용은 관리자 확인을 위해 저장되며, 같은 대상을 중복 신고할 수 없습니다.</p>
+    <div class="board-field">
+      <label for="boardReportReason">신고 사유 <span class="board-required">*</span></label>
+      <select class="board-select" id="boardReportReason">
+        <option value="">신고 사유 선택</option>
+        <option value="SPAM">스팸/도배</option>
+        <option value="ABUSE">욕설/비하</option>
+        <option value="INAPPROPRIATE">음란물/부적절</option>
+        <option value="PERSONAL_INFORMATION">개인정보 노출</option>
+        <option value="OTHER">기타</option>
+      </select>
+    </div>
+    <div class="board-field">
+      <label for="boardReportDetail">세부내용 <span class="board-required">*</span></label>
+      <textarea class="board-textarea" id="boardReportDetail" maxlength="200" style="min-height:130px" placeholder="신고 내용을 입력해 주세요. (200자 이하)"></textarea>
+    </div>
+    <div class="board-modal-actions">
+      <button class="board-btn board-btn-ghost" id="boardReportCancel" type="button">취소</button>
+      <button class="board-btn board-btn-danger" id="boardReportSubmit" type="button">신고 접수</button>
+    </div>
+  </div>
+</div>
+
+<div class="board-modal-overlay" id="boardGroupModal">
+  <div class="board-modal board-group-modal">
+    <div class="board-group-step" id="boardGroupStep1">
+      <h3>모임 만들기</h3>
+      <p>모임 이름과 프로필 사진을 설정해 주세요.</p>
+      <div class="board-field">
+        <label for="boardGroupName">모임 이름 <span class="board-required">*</span></label>
+        <input class="board-input" id="boardGroupName" maxlength="30" type="text">
+        <div class="board-field-info"><span>게시글 제목이 기본값으로 입력됩니다.</span><span id="boardGroupNameCount">0 / 30</span></div>
+      </div>
+      <div class="board-group-profile-field">
+        <input id="boardGroupProfileImage" type="file" accept="image/*" aria-label="모임 프로필 사진">
+      </div>
+      <div class="board-modal-actions">
+        <button class="board-btn board-btn-ghost" id="boardGroupCancelStep1" type="button">취소</button>
+        <button class="board-btn board-btn-primary" id="boardGroupNext" type="button">다음</button>
+      </div>
+    </div>
+
+    <div class="board-group-step" id="boardGroupStep2" hidden>
+      <h3>인원 선택</h3>
+      <p>신청자는 모임 생성과 동시에 참여가 확정되고, 댓글·대댓글 작성자는 모임 초대를 받습니다.</p>
+      <div class="board-group-candidate-section">
+        <strong>신청자 선택</strong>
+        <div class="board-group-candidate-list" id="boardApplicantCandidates"></div>
+      </div>
+      <div class="board-group-candidate-section board-group-invite-section">
+        <strong>댓글·대댓글 작성자 추가 초대</strong>
+        <div class="board-group-candidate-list" id="boardInviteCandidates"></div>
+      </div>
+      <div class="board-modal-actions">
+        <button class="board-btn board-btn-ghost" id="boardGroupCancelStep2" type="button">취소</button>
+        <button class="board-btn board-btn-ghost" id="boardGroupPrevious" type="button">이전</button>
+        <button class="board-btn board-btn-primary" id="boardGroupCreate" type="button">모임 만들기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="board-modal-overlay" id="boardGroupCropModal">
+  <div class="board-modal board-group-crop-modal">
+    <h3>모임 사진 편집</h3>
+    <div class="board-group-crop-stage">
+      <img id="boardGroupCropImage" src="" alt="크롭 대상 이미지">
+    </div>
+    <div class="board-modal-actions">
+      <button class="board-btn board-btn-ghost" id="boardGroupCropCancel" type="button">취소</button>
+      <button class="board-btn board-btn-primary" id="boardGroupCropConfirm" type="button">적용</button>
+    </div>
+  </div>
+</div>
+
+<div class="board-toast" id="boardToast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+<script th:src="@{/js/board/board-common.js}" src="/js/board/board-common.js"></script>
+<script th:src="@{/js/board/board-group.js}" src="/js/board/board-group.js"></script>
+<script th:src="@{/js/board/board-read.js}" src="/js/board/board-read.js"></script>
+</body>
+</html>
